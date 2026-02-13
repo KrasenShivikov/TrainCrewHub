@@ -4,6 +4,7 @@ import { renderLoginPage } from './pages/login/js/login.js';
 import { renderRegisterPage } from './pages/register/js/register.js';
 import { renderScheduleKeysPage } from './pages/schedule-keys/js/schedule-keys.js';
 import { renderDutiesPage } from './pages/duties/js/duties.js';
+import { renderEmployeesPage } from './pages/employees/js/employees.js';
 
 const routes = {
   '/': {
@@ -29,6 +30,10 @@ const routes = {
   '/duties': {
     render: renderDutiesPage,
     title: 'TrainCrewHub / Повески'
+  },
+  '/employees': {
+    render: renderEmployeesPage,
+    title: 'TrainCrewHub / Служители'
   }
 };
 
