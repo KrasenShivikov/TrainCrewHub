@@ -31,6 +31,7 @@ Use modular code structure, with separate files for components, services, and ut
 # Backend and Database Guidelines:
 - Use Supabase for backend services and PostgreSQL for database management.
 - After apllaying migration in Supabase database, keep the copy of migration SQL file in the code.
+- Never edit already applied migration files; always create a new migration file for schema changes.
 - Use Supabase MCP (Migration Control Panel) to manage database schema changes and migrations.
 - Use Supabase Storage for file uploads and management.
 
