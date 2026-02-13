@@ -2,6 +2,8 @@ import { renderIndexPage } from './pages/index/index.js';
 import { renderDashboardPage } from './pages/dashboard/dashboard.js';
 import { renderLoginPage } from './pages/login/login.js';
 import { renderRegisterPage } from './pages/register/register.js';
+import { renderScheduleKeysPage } from './pages/schedule-keys/schedule-keys.js';
+import { renderDutiesPage } from './pages/duties/duties.js';
 
 const routes = {
   '/': {
@@ -19,6 +21,14 @@ const routes = {
   '/register': {
     render: renderRegisterPage,
     title: 'TrainCrewHub / Register'
+  },
+  '/schedule-keys': {
+    render: renderScheduleKeysPage,
+    title: 'TrainCrewHub / Ключ-График'
+  },
+  '/duties': {
+    render: renderDutiesPage,
+    title: 'TrainCrewHub / Повески'
   }
 };
 
