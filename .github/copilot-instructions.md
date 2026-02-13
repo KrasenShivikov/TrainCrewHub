@@ -6,6 +6,7 @@ A comprehensive platform for managing train crew schedules, assignments, and com
 - Backend: Supabase.
 - Database: PostreSQL.
 - Authentication: Supabase Auth.
+- Build Tools: Vite, npm.
 - Hosting: Netlify.
 - Api: Supabase RESTful API.
 - Version Control: GitHub.

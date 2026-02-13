@@ -1,0 +1,49 @@
+import { renderIndexPage } from './pages/index/index.js';
+import { renderDashboardPage } from './pages/dashboard/dashboard.js';
+
+const routes = {
+  '/': {
+    render: renderIndexPage,
+    title: 'TrainCrewHub'
+  },
+  '/dashboard': {
+    render: renderDashboardPage,
+    title: 'TrainCrewHub / Dashboard'
+  }
+};
+
+const contentRootId = 'page-content';
+
+function getRouteConfig(pathname) {
+  return routes[pathname] ?? routes['/'];
+}
+
+async function renderCurrentRoute() {
+  const contentRoot = document.getElementById(contentRootId);
+  const config = getRouteConfig(window.location.pathname);
+  
+  document.title = config.title;
+  await config.render(contentRoot);
+}
+
+function handleLinkClick(event) {
+  const anchor = event.target.closest('a[data-link]');
+  if (!anchor) {
+    return;
+  }
+
+  event.preventDefault();
+  const nextPath = anchor.getAttribute('href');
+  if (nextPath === window.location.pathname) {
+    return;
+  }
+
+  window.history.pushState({}, '', nextPath);
+  renderCurrentRoute();
+}
+
+export function initRouter() {
+  window.addEventListener('popstate', renderCurrentRoute);
+  document.addEventListener('click', handleLinkClick);
+  renderCurrentRoute();
+}
