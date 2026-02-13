@@ -1,9 +1,9 @@
-import { renderIndexPage } from './pages/index/index.js';
-import { renderDashboardPage } from './pages/dashboard/dashboard.js';
-import { renderLoginPage } from './pages/login/login.js';
-import { renderRegisterPage } from './pages/register/register.js';
-import { renderScheduleKeysPage } from './pages/schedule-keys/schedule-keys.js';
-import { renderDutiesPage } from './pages/duties/duties.js';
+import { renderIndexPage } from './pages/index/js/index.js';
+import { renderDashboardPage } from './pages/dashboard/js/dashboard.js';
+import { renderLoginPage } from './pages/login/js/login.js';
+import { renderRegisterPage } from './pages/register/js/register.js';
+import { renderScheduleKeysPage } from './pages/schedule-keys/js/schedule-keys.js';
+import { renderDutiesPage } from './pages/duties/js/duties.js';
 
 const routes = {
   '/': {

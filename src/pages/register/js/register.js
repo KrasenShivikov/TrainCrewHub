@@ -1,9 +1,9 @@
-import { loadHtml } from '../../utils/loadHtml.js';
-import { supabase } from '../../services/supabaseClient.js';
-import { showToast } from '../../components/toast/toast.js';
+import { loadHtml } from '../../../utils/loadHtml.js';
+import { supabase } from '../../../services/supabaseClient.js';
+import { showToast } from '../../../components/toast/toast.js';
 
 export async function renderRegisterPage(container) {
-  const pageHtml = await loadHtml('./register.html', import.meta.url);
+  const pageHtml = await loadHtml('../register.html', import.meta.url);
   container.innerHTML = pageHtml;
   attachRegisterFormListener(container);
 }

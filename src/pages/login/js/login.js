@@ -1,9 +1,9 @@
-import { loadHtml } from '../../utils/loadHtml.js';
-import { supabase } from '../../services/supabaseClient.js';
-import { showToast } from '../../components/toast/toast.js';
+import { loadHtml } from '../../../utils/loadHtml.js';
+import { supabase } from '../../../services/supabaseClient.js';
+import { showToast } from '../../../components/toast/toast.js';
 
 export async function renderLoginPage(container) {
-  const pageHtml = await loadHtml('./login.html', import.meta.url);
+  const pageHtml = await loadHtml('../login.html', import.meta.url);
   container.innerHTML = pageHtml;
   attachLoginFormListener(container);
 }

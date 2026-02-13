@@ -13,6 +13,18 @@ A comprehensive platform for managing train crew schedules, assignments, and com
 
 Use modular code structure, with separate files for components, services, and utilities. Use ES6 modules to organize code.
 
+# Code Organization Workflow:
+- Keep page JavaScript files in a `js` subfolder inside each page folder.
+- Use structure like:
+	- `src/pages/<page>/<page>.html`
+	- `src/pages/<page>/js/<page>.js` (page orchestrator)
+	- `src/pages/<page>/js/helpers.js`
+	- `src/pages/<page>/js/state.js`
+	- `src/pages/<page>/js/table.js` (or other feature modules like `panel.js` when needed)
+- Keep `router.js` imports pointed to `src/pages/<page>/js/<page>.js`.
+- For large files, split logic into small ES modules by responsibility (state, rendering, handlers, data access) without changing UX behavior.
+- Apply this structure by default for all next implementation steps and new pages.
+
 # UI Guidelines:
 - Use HTML, CSS, Bootstrap, and Vanilla JS for the frontend development.
 - Implement a modern, responsive and intuitive design for easy navigation.

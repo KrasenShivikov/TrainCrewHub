@@ -1,11 +1,16 @@
-import { loadHtml } from '../../utils/loadHtml.js';
-import { supabase } from '../../services/supabaseClient.js';
-import { showToast } from '../../components/toast/toast.js';
+import { loadHtml } from '../../../utils/loadHtml.js';
+import { supabase } from '../../../services/supabaseClient.js';
+import { showToast } from '../../../components/toast/toast.js';
+import { closeModal, openModal } from './helpers.js';
+import { scheduleKeysState } from './state.js';
+import { loadScheduleKeys, renderScheduleKeysTable } from './table.js';
+import { attachScheduleKeyDutiesHandlers, openScheduleKeyDutiesModal } from './duties-panel.js';
 
 export async function renderScheduleKeysPage(container) {
-  const pageHtml = await loadHtml('./schedule-keys.html', import.meta.url);
+  const pageHtml = await loadHtml('../schedule-keys.html', import.meta.url);
   container.innerHTML = pageHtml;
   attachScheduleKeysHandlers(container);
+  attachScheduleKeyDutiesHandlers(container);
   await loadScheduleKeys(container);
 }
 
@@ -16,9 +21,16 @@ function attachScheduleKeysHandlers(container) {
   const tableBody = container.querySelector('#schedule-keys-table-body');
   const scheduleKeyModal = container.querySelector('#schedule-key-modal');
   const deleteModal = container.querySelector('#schedule-key-delete-modal');
+  const dutiesModal = container.querySelector('#schedule-key-duties-modal');
   const modalCloseButton = container.querySelector('#schedule-key-modal-close');
   const deleteConfirmButton = container.querySelector('#schedule-key-delete-confirm');
   const deleteCancelButton = container.querySelector('#schedule-key-delete-cancel');
+  const filterNameInput = container.querySelector('#filter-name');
+  const filterTypeInput = container.querySelector('#filter-type');
+  const filterActiveInput = container.querySelector('#filter-active');
+  const filterValidFromInput = container.querySelector('#filter-valid-from');
+  const filterValidToInput = container.querySelector('#filter-valid-to');
+  const filterResetButton = container.querySelector('#filter-reset');
 
   createButton?.addEventListener('click', () => {
     resetScheduleKeyForm(container);
@@ -42,6 +54,49 @@ function attachScheduleKeysHandlers(container) {
     closeModal(deleteModal);
   });
 
+  filterNameInput?.addEventListener('input', (event) => {
+    scheduleKeysState.filters.name = event.target.value.trim().toLowerCase();
+    renderScheduleKeysTable(container);
+  });
+
+  filterTypeInput?.addEventListener('change', (event) => {
+    scheduleKeysState.filters.type = event.target.value;
+    renderScheduleKeysTable(container);
+  });
+
+  filterActiveInput?.addEventListener('change', (event) => {
+    scheduleKeysState.filters.isActive = event.target.value;
+    renderScheduleKeysTable(container);
+  });
+
+  filterValidFromInput?.addEventListener('change', (event) => {
+    scheduleKeysState.filters.validFrom = event.target.value;
+    renderScheduleKeysTable(container);
+  });
+
+  filterValidToInput?.addEventListener('change', (event) => {
+    scheduleKeysState.filters.validTo = event.target.value;
+    renderScheduleKeysTable(container);
+  });
+
+  filterResetButton?.addEventListener('click', () => {
+    scheduleKeysState.filters = {
+      name: '',
+      type: '',
+      isActive: '',
+      validFrom: '',
+      validTo: ''
+    };
+
+    if (filterNameInput) filterNameInput.value = '';
+    if (filterTypeInput) filterTypeInput.value = '';
+    if (filterActiveInput) filterActiveInput.value = '';
+    if (filterValidFromInput) filterValidFromInput.value = '';
+    if (filterValidToInput) filterValidToInput.value = '';
+
+    renderScheduleKeysTable(container);
+  });
+
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') {
       return;
@@ -49,6 +104,11 @@ function attachScheduleKeysHandlers(container) {
 
     if (!deleteModal?.classList.contains('d-none')) {
       closeModal(deleteModal);
+      return;
+    }
+
+    if (!dutiesModal?.classList.contains('d-none')) {
+      closeModal(dutiesModal);
       return;
     }
 
@@ -86,6 +146,13 @@ function attachScheduleKeysHandlers(container) {
       const id = actionButton.getAttribute('data-id');
       container.querySelector('#schedule-key-delete-id').value = id;
       openModal(deleteModal);
+      return;
+    }
+
+    if (action === 'duties') {
+      const scheduleKeyId = actionButton.getAttribute('data-id');
+      const scheduleKeyName = actionButton.getAttribute('data-name') || '';
+      await openScheduleKeyDutiesModal(container, scheduleKeyId, scheduleKeyName);
     }
   });
 }
@@ -197,93 +264,4 @@ async function deleteScheduleKey(id, container) {
   closeModal(container.querySelector('#schedule-key-delete-modal'));
   resetScheduleKeyForm(container);
   await loadScheduleKeys(container);
-}
-
-function openModal(modalElement) {
-  modalElement.classList.remove('d-none');
-  document.body.classList.add('overflow-hidden');
-}
-
-function closeModal(modalElement) {
-  modalElement.classList.add('d-none');
-  if (
-    document.querySelector('#schedule-key-modal')?.classList.contains('d-none') &&
-    document.querySelector('#schedule-key-delete-modal')?.classList.contains('d-none')
-  ) {
-    document.body.classList.remove('overflow-hidden');
-  }
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-}
-
-async function loadScheduleKeys(container) {
-  const tableBody = container.querySelector('#schedule-keys-table-body');
-  const emptyState = container.querySelector('#schedule-keys-empty');
-
-  const { data, error } = await supabase
-    .from('schedule_keys')
-    .select('id, name, is_active, type, valid_from, valid_to')
-    .order('valid_from', { ascending: false });
-
-  if (error) {
-    showToast(error.message, 'error');
-    tableBody.innerHTML = '';
-    emptyState.classList.remove('d-none');
-    emptyState.textContent = 'Грешка при зареждане на Ключ-График.';
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    tableBody.innerHTML = '';
-    emptyState.classList.remove('d-none');
-    emptyState.textContent = 'Няма въведени записи в Ключ-График.';
-    return;
-  }
-
-  emptyState.classList.add('d-none');
-  tableBody.innerHTML = data
-    .map(
-      (item) => `
-        <tr>
-          <td>${escapeHtml(item.name ?? '-')}</td>
-          <td>${escapeHtml(item.type ?? '-')}</td>
-          <td>${item.is_active ? 'Да' : 'Не'}</td>
-          <td>${escapeHtml(item.valid_from ?? '-')}</td>
-          <td>${escapeHtml(item.valid_to ?? '-')}</td>
-          <td class="text-end">
-            <div class="d-inline-flex gap-2">
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-primary"
-                data-action="edit"
-                data-id="${item.id}"
-                data-name="${escapeHtml(item.name ?? '')}"
-                data-type="${escapeHtml(item.type ?? 'seasonal')}"
-                data-active="${item.is_active ? 'true' : 'false'}"
-                data-valid-from="${escapeHtml(item.valid_from ?? '')}"
-                data-valid-to="${escapeHtml(item.valid_to ?? '')}"
-              >
-                Редакция
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-danger"
-                data-action="delete"
-                data-id="${item.id}"
-              >
-                Изтрий
-              </button>
-            </div>
-          </td>
-        </tr>
-      `
-    )
-    .join('');
 }
