@@ -1,5 +1,7 @@
 import { renderIndexPage } from './pages/index/index.js';
 import { renderDashboardPage } from './pages/dashboard/dashboard.js';
+import { renderLoginPage } from './pages/login/login.js';
+import { renderRegisterPage } from './pages/register/register.js';
 
 const routes = {
   '/': {
@@ -9,6 +11,14 @@ const routes = {
   '/dashboard': {
     render: renderDashboardPage,
     title: 'TrainCrewHub / Dashboard'
+  },
+  '/login': {
+    render: renderLoginPage,
+    title: 'TrainCrewHub / Sign In'
+  },
+  '/register': {
+    render: renderRegisterPage,
+    title: 'TrainCrewHub / Register'
   }
 };
 
