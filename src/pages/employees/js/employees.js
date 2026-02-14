@@ -1,7 +1,7 @@
 import { loadHtml } from '../../../utils/loadHtml.js';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
-import { closeModal, escapeHtml, openModal } from './helpers.js';
+import { closeModal, escapeHtml, openModal, setupModalEscapeHandler } from './helpers.js';
 import { employeesState } from './state.js';
 import { loadEmployees, renderEmployeesTable } from './table.js';
 
@@ -101,25 +101,11 @@ function attachEmployeesHandlers(container) {
     setEmployeePhotoPreview(container, null);
   });
 
-  document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') {
-      return;
-    }
-
-    if (!deleteModal?.classList.contains('d-none')) {
-      closeModal(deleteModal);
-      return;
-    }
-
-    if (!profileModal?.classList.contains('d-none')) {
-      closeModal(profileModal);
-      return;
-    }
-
-    if (!employeeModal?.classList.contains('d-none')) {
-      closeModal(employeeModal);
-    }
-  });
+  setupModalEscapeHandler('employees', [
+    deleteModal,
+    profileModal,
+    employeeModal
+  ]);
 
   deleteConfirmButton?.addEventListener('click', async () => {
     const id = container.querySelector('#employee-delete-id').value;

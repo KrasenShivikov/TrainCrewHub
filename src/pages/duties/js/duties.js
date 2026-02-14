@@ -5,7 +5,7 @@ import {
 } from '../../../utils/dutyTime.js';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
-import { closeModal, escapeHtml, openModal } from './helpers.js';
+import { closeModal, escapeHtml, openModal, setupModalEscapeHandler } from './helpers.js';
 import { dutiesState } from './state.js';
 import { loadDuties, persistDutiesOrder, renderDutiesTable } from './table.js';
 
@@ -90,20 +90,10 @@ function attachDutiesHandlers(container) {
     renderDutiesTable(container);
   });
 
-  document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') {
-      return;
-    }
-
-    if (!deleteModal?.classList.contains('d-none')) {
-      closeModal(deleteModal);
-      return;
-    }
-
-    if (!dutyModal?.classList.contains('d-none')) {
-      closeModal(dutyModal);
-    }
-  });
+  setupModalEscapeHandler('duties', [
+    deleteModal,
+    dutyModal
+  ]);
 
   deleteConfirmButton?.addEventListener('click', async () => {
     const id = container.querySelector('#duty-delete-id').value;

@@ -1,7 +1,7 @@
 import { loadHtml } from '../../../utils/loadHtml.js';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
-import { closeModal, openModal } from './helpers.js';
+import { closeModal, openModal, setupModalEscapeHandler } from './helpers.js';
 import { dutyTypesState } from './state.js';
 import { loadDutyTypes, renderDutyTypesTable } from './table.js';
 
@@ -51,20 +51,10 @@ function attachDutyTypesHandlers(container) {
     renderDutyTypesTable(container);
   });
 
-  document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') {
-      return;
-    }
-
-    if (!deleteModal?.classList.contains('d-none')) {
-      closeModal(deleteModal);
-      return;
-    }
-
-    if (!dutyTypeModal?.classList.contains('d-none')) {
-      closeModal(dutyTypeModal);
-    }
-  });
+  setupModalEscapeHandler('duty-types', [
+    deleteModal,
+    dutyTypeModal
+  ]);
 
   deleteConfirmButton?.addEventListener('click', async () => {
     const id = container.querySelector('#duty-type-delete-id').value;

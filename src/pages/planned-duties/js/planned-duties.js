@@ -1,11 +1,27 @@
 import { loadHtml } from '../../../utils/loadHtml.js';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
-import { closeModal, escapeHtml, openModal } from './helpers.js';
+import { closeModal, openModal, setupModalEscapeHandler } from './helpers.js';
 import { plannedDutiesState } from './state.js';
 import { loadPlannedDuties, renderPlannedDutiesTable } from './table.js';
-
-let dutiesLookup = [];
+import {
+  loadDutyOptions,
+  loadEmployeeOptions,
+  loadScheduleKeyOptions,
+  renderDutyOptionsByScheduleKey,
+  isDutyForScheduleKey
+} from './options.js';
+import {
+  renderAutoStartDutyOptionsByScheduleKey,
+  resetAutoPlanForm,
+  saveAutoPlannedDuties
+} from './auto-planning.js';
+import {
+  deleteSelectedPlannedDuties,
+  openBulkDeleteModal,
+  toggleSelectAllVisible,
+  toggleSingleSelection
+} from './bulk-delete.js';
 
 export async function renderPlannedDutiesPage(container) {
   const pageHtml = await loadHtml('../planned-duties.html', import.meta.url);
@@ -19,27 +35,55 @@ export async function renderPlannedDutiesPage(container) {
 
 function attachPlannedDutiesHandlers(container) {
   const createButton = container.querySelector('#open-create-planned-duty');
+  const bulkDeleteButton = container.querySelector('#open-bulk-delete-planned-duty');
+  const autoPlanButton = container.querySelector('#open-auto-plan-duty');
   const form = container.querySelector('#planned-duty-form');
+  const autoForm = container.querySelector('#planned-duty-auto-form');
   const cancelButton = container.querySelector('#planned-duty-cancel-btn');
+  const autoCancelButton = container.querySelector('#planned-duty-auto-cancel-btn');
   const tableBody = container.querySelector('#planned-duties-table-body');
   const plannedDutyModal = container.querySelector('#planned-duty-modal');
+  const autoModal = container.querySelector('#planned-duty-auto-modal');
   const deleteModal = container.querySelector('#planned-duty-delete-modal');
+  const bulkDeleteModal = container.querySelector('#planned-duty-bulk-delete-modal');
   const modalCloseButton = container.querySelector('#planned-duty-modal-close');
+  const autoModalCloseButton = container.querySelector('#planned-duty-auto-modal-close');
   const deleteConfirmButton = container.querySelector('#planned-duty-delete-confirm');
   const deleteCancelButton = container.querySelector('#planned-duty-delete-cancel');
+  const bulkDeleteConfirmButton = container.querySelector('#planned-duty-bulk-delete-confirm');
+  const bulkDeleteCancelButton = container.querySelector('#planned-duty-bulk-delete-cancel');
+  const selectAllInput = container.querySelector('#planned-duties-select-all');
   const searchInput = container.querySelector('#planned-duties-search');
   const dateFilterInput = container.querySelector('#planned-duties-date-filter');
   const resetFilterButton = container.querySelector('#planned-duties-filter-reset');
   const scheduleKeyInput = container.querySelector('#planned-duty-schedule-key');
+  const autoScheduleKeyInput = container.querySelector('#planned-duty-auto-schedule-key');
 
   createButton?.addEventListener('click', () => {
     resetPlannedDutyForm(container);
     openModal(plannedDutyModal);
   });
 
+  bulkDeleteButton?.addEventListener('click', () => {
+    openBulkDeleteModal(container);
+  });
+
+  autoPlanButton?.addEventListener('click', async () => {
+    resetAutoPlanForm(container);
+    openModal(autoModal);
+    await renderAutoStartDutyOptionsByScheduleKey(container, autoScheduleKeyInput?.value || '', '');
+  });
+
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
     await savePlannedDuty(container);
+  });
+
+  autoForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    await saveAutoPlannedDuties(container, async () => {
+      await loadPlannedDuties(container);
+    });
   });
 
   cancelButton?.addEventListener('click', () => {
@@ -50,8 +94,20 @@ function attachPlannedDutiesHandlers(container) {
     closeModal(plannedDutyModal);
   });
 
+  autoModalCloseButton?.addEventListener('click', () => {
+    closeModal(autoModal);
+  });
+
+  autoCancelButton?.addEventListener('click', () => {
+    closeModal(autoModal);
+  });
+
   deleteCancelButton?.addEventListener('click', () => {
     closeModal(deleteModal);
+  });
+
+  bulkDeleteCancelButton?.addEventListener('click', () => {
+    closeModal(bulkDeleteModal);
   });
 
   searchInput?.addEventListener('input', (event) => {
@@ -83,24 +139,42 @@ function attachPlannedDutiesHandlers(container) {
     renderDutyOptionsByScheduleKey(container, scheduleKeyInput.value || '', '');
   });
 
-  document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') {
-      return;
-    }
-
-    if (!deleteModal?.classList.contains('d-none')) {
-      closeModal(deleteModal);
-      return;
-    }
-
-    if (!plannedDutyModal?.classList.contains('d-none')) {
-      closeModal(plannedDutyModal);
-    }
+  autoScheduleKeyInput?.addEventListener('change', async () => {
+    await renderAutoStartDutyOptionsByScheduleKey(container, autoScheduleKeyInput.value || '', '');
   });
+
+  selectAllInput?.addEventListener('change', () => {
+    toggleSelectAllVisible(selectAllInput.checked);
+    renderPlannedDutiesTable(container);
+  });
+
+  setupModalEscapeHandler('planned-duties', [
+    deleteModal,
+    bulkDeleteModal,
+    autoModal,
+    plannedDutyModal
+  ]);
 
   deleteConfirmButton?.addEventListener('click', async () => {
     const id = container.querySelector('#planned-duty-delete-id').value;
     await deletePlannedDuty(id, container);
+  });
+
+  bulkDeleteConfirmButton?.addEventListener('click', async () => {
+    await deleteSelectedPlannedDuties(container, async () => {
+      await loadPlannedDuties(container);
+    });
+  });
+
+  tableBody?.addEventListener('change', (event) => {
+    const checkbox = event.target.closest('input[data-select-id]');
+    if (!checkbox) {
+      return;
+    }
+
+    const plannedDutyId = checkbox.getAttribute('data-select-id');
+    toggleSingleSelection(plannedDutyId, checkbox.checked);
+    renderPlannedDutiesTable(container);
   });
 
   tableBody?.addEventListener('click', (event) => {
@@ -130,112 +204,6 @@ function attachPlannedDutiesHandlers(container) {
   });
 }
 
-async function loadEmployeeOptions(container) {
-  const select = container.querySelector('#planned-duty-employee');
-  const { data, error } = await supabase
-    .from('employees')
-    .select('id, first_name, last_name')
-    .order('last_name', { ascending: true })
-    .order('first_name', { ascending: true });
-
-  if (error) {
-    showToast(error.message, 'error');
-    return;
-  }
-
-  const options = (data || [])
-    .map((item) => {
-      const fullName = `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim() || '-';
-      return `<option value="${item.id}">${escapeHtml(fullName)}</option>`;
-    })
-    .join('');
-
-  select.innerHTML = '<option value="">Избери служител</option>' + options;
-}
-
-async function loadDutyOptions(container) {
-  const { data: mappings, error: mappingsError } = await supabase
-    .from('schedule_key_duties')
-    .select('schedule_key_id, duty_id, duties(id, name)');
-
-  if (mappingsError) {
-    showToast(mappingsError.message, 'error');
-    return;
-  }
-
-  const lookupMap = new Map();
-  (mappings || []).forEach((row) => {
-    const duty = row?.duties;
-    if (!duty?.id) {
-      return;
-    }
-
-    const existing = lookupMap.get(duty.id) || {
-      id: duty.id,
-      name: duty.name || '-',
-      scheduleKeyIds: []
-    };
-
-    if (row.schedule_key_id && !existing.scheduleKeyIds.includes(row.schedule_key_id)) {
-      existing.scheduleKeyIds.push(row.schedule_key_id);
-    }
-
-    lookupMap.set(duty.id, existing);
-  });
-
-  dutiesLookup = Array.from(lookupMap.values()).sort((a, b) =>
-    String(a.name || '').localeCompare(String(b.name || ''), 'bg')
-  );
-
-  renderDutyOptionsByScheduleKey(container, '', '');
-}
-
-async function loadScheduleKeyOptions(container) {
-  const select = container.querySelector('#planned-duty-schedule-key');
-  const { data, error } = await supabase
-    .from('schedule_keys')
-    .select('id, name')
-    .order('name', { ascending: true });
-
-  if (error) {
-    showToast(error.message, 'error');
-    return;
-  }
-
-  const options = (data || [])
-    .map((item) => `<option value="${item.id}">${escapeHtml(item.name ?? '-')}</option>`)
-    .join('');
-
-  select.innerHTML = '<option value="">Избери ключ-график</option>' + options;
-}
-
-function renderDutyOptionsByScheduleKey(container, scheduleKeyId, selectedDutyId) {
-  const dutySelect = container.querySelector('#planned-duty-duty');
-  if (!dutySelect) {
-    return;
-  }
-
-  if (!scheduleKeyId) {
-    dutySelect.innerHTML = '<option value="">Първо избери ключ-график</option>';
-    dutySelect.value = '';
-    return;
-  }
-
-  const options = dutiesLookup
-    .filter((item) => item.scheduleKeyIds?.includes(scheduleKeyId))
-    .map((item) => {
-      const selected = item.id === selectedDutyId ? 'selected' : '';
-      return `<option value="${item.id}" ${selected}>${escapeHtml(item.name ?? '-')}</option>`;
-    })
-    .join('');
-
-  dutySelect.innerHTML = '<option value="">Избери повеска</option>' + options;
-
-  if (selectedDutyId) {
-    dutySelect.value = selectedDutyId;
-  }
-}
-
 async function savePlannedDuty(container) {
   const idInput = container.querySelector('#planned-duty-id');
   const dateInput = container.querySelector('#planned-duty-date');
@@ -255,8 +223,7 @@ async function savePlannedDuty(container) {
     return;
   }
 
-  const selectedDuty = dutiesLookup.find((item) => item.id === dutyId);
-  if (!selectedDuty || !selectedDuty.scheduleKeyIds?.includes(scheduleKeyId)) {
+  if (!isDutyForScheduleKey(dutyId, scheduleKeyId)) {
     showToast('Избери повеска от посочения ключ-график.', 'warning');
     return;
   }
@@ -339,6 +306,7 @@ async function deletePlannedDuty(id, container) {
   }
 
   showToast('Планирането е изтрито.', 'success');
+  plannedDutiesState.selectedIds = plannedDutiesState.selectedIds.filter((selectedId) => selectedId !== id);
   closeModal(container.querySelector('#planned-duty-delete-modal'));
   resetPlannedDutyForm(container);
   await loadPlannedDuties(container);

@@ -1,16 +1,14 @@
 import { loadHtml } from '../../../utils/loadHtml.js';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
-import { closeModal, openModal } from './helpers.js';
+import { closeModal, openModal, setupModalEscapeHandler } from './helpers.js';
 import { scheduleKeysState } from './state.js';
 import { loadScheduleKeys, renderScheduleKeysTable } from './table.js';
-import { attachScheduleKeyDutiesHandlers, openScheduleKeyDutiesModal } from './duties-panel.js';
 
 export async function renderScheduleKeysPage(container) {
   const pageHtml = await loadHtml('../schedule-keys.html', import.meta.url);
   container.innerHTML = pageHtml;
   attachScheduleKeysHandlers(container);
-  attachScheduleKeyDutiesHandlers(container);
   await loadScheduleKeys(container);
 }
 
@@ -21,7 +19,6 @@ function attachScheduleKeysHandlers(container) {
   const tableBody = container.querySelector('#schedule-keys-table-body');
   const scheduleKeyModal = container.querySelector('#schedule-key-modal');
   const deleteModal = container.querySelector('#schedule-key-delete-modal');
-  const dutiesModal = container.querySelector('#schedule-key-duties-modal');
   const modalCloseButton = container.querySelector('#schedule-key-modal-close');
   const deleteConfirmButton = container.querySelector('#schedule-key-delete-confirm');
   const deleteCancelButton = container.querySelector('#schedule-key-delete-cancel');
@@ -97,25 +94,10 @@ function attachScheduleKeysHandlers(container) {
     renderScheduleKeysTable(container);
   });
 
-  document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') {
-      return;
-    }
-
-    if (!deleteModal?.classList.contains('d-none')) {
-      closeModal(deleteModal);
-      return;
-    }
-
-    if (!dutiesModal?.classList.contains('d-none')) {
-      closeModal(dutiesModal);
-      return;
-    }
-
-    if (!scheduleKeyModal?.classList.contains('d-none')) {
-      closeModal(scheduleKeyModal);
-    }
-  });
+  setupModalEscapeHandler('schedule-keys', [
+    deleteModal,
+    scheduleKeyModal
+  ]);
 
   deleteConfirmButton?.addEventListener('click', async () => {
     const id = container.querySelector('#schedule-key-delete-id').value;
@@ -152,7 +134,13 @@ function attachScheduleKeysHandlers(container) {
     if (action === 'duties') {
       const scheduleKeyId = actionButton.getAttribute('data-id');
       const scheduleKeyName = actionButton.getAttribute('data-name') || '';
-      await openScheduleKeyDutiesModal(container, scheduleKeyId, scheduleKeyName);
+      const params = new URLSearchParams({
+        scheduleKeyId,
+        scheduleKeyName
+      });
+
+      window.history.pushState({}, '', `/schedule-key-duties?${params.toString()}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
     }
   });
 }

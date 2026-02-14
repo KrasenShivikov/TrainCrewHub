@@ -31,6 +31,12 @@ export async function loadPlannedDuties(container) {
 export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
   const tableBody = container.querySelector('#planned-duties-table-body');
   const emptyState = container.querySelector('#planned-duties-empty');
+  const selectAllInput = container.querySelector('#planned-duties-select-all');
+  const bulkDeleteButton = container.querySelector('#open-bulk-delete-planned-duty');
+
+  plannedDutiesState.selectedIds = plannedDutiesState.selectedIds.filter((id) =>
+    plannedDutiesState.rows.some((row) => row.id === id)
+  );
 
   const filteredRows = plannedDutiesState.rows.filter((item) => {
     const employeeName = getEmployeeFullName(item.employees).toLowerCase();
@@ -49,19 +55,43 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
   });
 
   if (!filteredRows.length) {
+    plannedDutiesState.visibleRowIds = [];
     tableBody.innerHTML = '';
     emptyState.classList.remove('d-none');
     emptyState.textContent = explicitEmptyMessage || 'Няма планирани повески.';
+    if (selectAllInput) {
+      selectAllInput.checked = false;
+      selectAllInput.indeterminate = false;
+      selectAllInput.disabled = true;
+    }
+    if (bulkDeleteButton) {
+      bulkDeleteButton.disabled = plannedDutiesState.selectedIds.length === 0;
+      bulkDeleteButton.textContent = plannedDutiesState.selectedIds.length
+        ? `Изтрий избраните (${plannedDutiesState.selectedIds.length})`
+        : 'Изтрий избраните';
+    }
     return;
   }
+
+  plannedDutiesState.visibleRowIds = filteredRows.map((row) => row.id);
 
   emptyState.classList.add('d-none');
   tableBody.innerHTML = filteredRows
     .map(
       (item) => {
         const dutyScheduleKeyId = getFirstDutyScheduleKeyId(item);
+        const isSelected = plannedDutiesState.selectedIds.includes(item.id);
         return `
         <tr>
+          <td>
+            <input
+              type="checkbox"
+              class="form-check-input"
+              data-select-id="${item.id}"
+              ${isSelected ? 'checked' : ''}
+              aria-label="Избери планиране"
+            />
+          </td>
           <td>${escapeHtml(item.date ?? '-')}</td>
           <td>${escapeHtml(getEmployeeFullName(item.employees))}</td>
           <td>${escapeHtml(item.duties?.name ?? '-')}</td>
@@ -94,6 +124,20 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
       }
     )
     .join('');
+
+  const selectedVisibleCount = filteredRows.filter((row) => plannedDutiesState.selectedIds.includes(row.id)).length;
+  if (selectAllInput) {
+    selectAllInput.disabled = false;
+    selectAllInput.checked = selectedVisibleCount > 0 && selectedVisibleCount === filteredRows.length;
+    selectAllInput.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < filteredRows.length;
+  }
+
+  if (bulkDeleteButton) {
+    bulkDeleteButton.disabled = plannedDutiesState.selectedIds.length === 0;
+    bulkDeleteButton.textContent = plannedDutiesState.selectedIds.length
+      ? `Изтрий избраните (${plannedDutiesState.selectedIds.length})`
+      : 'Изтрий избраните';
+  }
 }
 
 function getFirstDutyScheduleKeyId(item) {

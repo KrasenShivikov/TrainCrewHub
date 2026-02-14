@@ -1,5 +1,7 @@
 export const plannedDutiesState = {
   rows: [],
   searchQuery: '',
-  dateFilter: ''
+  dateFilter: '',
+  selectedIds: [],
+  visibleRowIds: []
 };
