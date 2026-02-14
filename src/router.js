@@ -6,6 +6,7 @@ import { renderScheduleKeysPage } from './pages/schedule-keys/js/schedule-keys.j
 import { renderDutiesPage } from './pages/duties/js/duties.js';
 import { renderEmployeesPage } from './pages/employees/js/employees.js';
 import { renderPlannedDutiesPage } from './pages/planned-duties/js/planned-duties.js';
+import { renderActualDutiesPage } from './pages/actual-duties/js/actual-duties.js';
 import { renderDutyTypesPage } from './pages/duty-types/js/duty-types.js';
 import { renderScheduleKeyDutiesPage } from './pages/schedule-key-duties/js/schedule-key-duties.js';
 
@@ -45,6 +46,10 @@ const routes = {
   '/planned-duties': {
     render: renderPlannedDutiesPage,
     title: 'TrainCrewHub / Планирани повески'
+  },
+  '/actual-duties': {
+    render: renderActualDutiesPage,
+    title: 'TrainCrewHub / Реални повески'
   },
   '/schedule-key-duties': {
     render: renderScheduleKeyDutiesPage,

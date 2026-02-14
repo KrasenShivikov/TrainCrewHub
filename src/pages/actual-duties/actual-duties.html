@@ -1,0 +1,178 @@
+<section class="card border-0 shadow-sm">
+  <div class="card-body p-4 p-md-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h1 class="h3 mb-0">Реално изпълнение</h1>
+      <div class="d-flex gap-2">
+        <button id="open-bulk-add-actual-duty" type="button" class="btn btn-outline-primary">Добави от планирани</button>
+        <button id="open-bulk-delete-actual-duty" type="button" class="btn btn-outline-danger" disabled>Изтрий избраните</button>
+        <button id="open-create-actual-duty" type="button" class="btn btn-primary">Нов запис</button>
+      </div>
+    </div>
+
+    <p class="text-secondary">Служители по повески - реално изпълнение.</p>
+
+    <div class="row g-3 align-items-end mb-3">
+      <div class="col-md-6">
+        <label for="actual-duties-search" class="form-label">Търсене</label>
+        <input id="actual-duties-search" type="text" class="form-control" placeholder="Търси по служител, повеска или дата" />
+      </div>
+      <div class="col-md-3">
+        <label for="actual-duties-date-filter" class="form-label">Филтър по дата</label>
+        <input id="actual-duties-date-filter" type="date" class="form-control" />
+      </div>
+      <div class="col-md-3">
+        <button id="actual-duties-filter-reset" type="button" class="btn btn-outline-secondary w-100">Изчисти филтрите</button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th style="width: 42px;">
+              <input id="actual-duties-select-all" class="form-check-input" type="checkbox" aria-label="Избери всички" />
+            </th>
+            <th>Дата</th>
+            <th>Служител</th>
+            <th>Повеска</th>
+            <th class="text-end">Действия</th>
+          </tr>
+        </thead>
+        <tbody id="actual-duties-table-body"></tbody>
+      </table>
+    </div>
+
+    <p id="actual-duties-empty" class="text-secondary d-none mb-0"></p>
+  </div>
+</section>
+
+<div id="actual-duty-modal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50" style="z-index: 1060;">
+  <div class="d-flex align-items-center justify-content-center h-100 p-3">
+    <div class="card w-100" style="max-width: 760px;">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 id="actual-duty-form-title" class="h5 mb-0">Нов запис</h2>
+          <button id="actual-duty-modal-close" type="button" class="btn-close" aria-label="Close"></button>
+        </div>
+
+        <form id="actual-duty-form">
+          <input type="hidden" id="actual-duty-id" />
+
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label for="actual-duty-date" class="form-label">Дата</label>
+              <input id="actual-duty-date" class="form-control" type="date" required />
+            </div>
+
+            <div class="col-md-4">
+              <label for="actual-duty-employee" class="form-label">Служител</label>
+              <select id="actual-duty-employee" class="form-select" required>
+                <option value="">Избери служител</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label for="actual-duty-schedule-key" class="form-label">Ключ-график</label>
+              <select id="actual-duty-schedule-key" class="form-select" required>
+                <option value="">Избери ключ-график</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label for="actual-duty-duty" class="form-label">Повеска</label>
+              <select id="actual-duty-duty" class="form-select" required>
+                <option value="">Избери повеска</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <button id="actual-duty-cancel-btn" type="button" class="btn btn-outline-secondary">Отказ</button>
+            <button id="actual-duty-save-btn" type="submit" class="btn btn-primary">Създай</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="actual-duty-delete-modal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50" style="z-index: 1060;">
+  <div class="d-flex align-items-center justify-content-center h-100 p-3">
+    <div class="card w-100" style="max-width: 520px;">
+      <div class="card-body p-4">
+        <h2 class="h5 mb-3">Потвърди изтриване</h2>
+        <p class="text-secondary mb-4">Сигурен ли си, че искаш да изтриеш този запис?</p>
+        <input type="hidden" id="actual-duty-delete-id" />
+        <div class="d-flex justify-content-end gap-2">
+          <button id="actual-duty-delete-cancel" type="button" class="btn btn-outline-secondary">Отказ</button>
+          <button id="actual-duty-delete-confirm" type="button" class="btn btn-danger">Изтрий</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="actual-duty-bulk-delete-modal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50" style="z-index: 1060;">
+  <div class="d-flex align-items-center justify-content-center h-100 p-3">
+    <div class="card w-100" style="max-width: 520px;">
+      <div class="card-body p-4">
+        <h2 class="h5 mb-3">Потвърди масово изтриване</h2>
+        <p class="text-secondary mb-4">Сигурен ли си, че искаш да изтриеш избраните записи (<span id="actual-duty-bulk-delete-count">0</span>)?</p>
+        <div class="d-flex justify-content-end gap-2">
+          <button id="actual-duty-bulk-delete-cancel" type="button" class="btn btn-outline-secondary">Отказ</button>
+          <button id="actual-duty-bulk-delete-confirm" type="button" class="btn btn-danger">Изтрий избраните</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="actual-duty-bulk-add-modal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50" style="z-index: 1060;">
+  <div class="d-flex align-items-center justify-content-center h-100 p-3">
+    <div class="card w-100" style="max-width: 960px;">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">Добави от планирани повески</h2>
+          <button id="actual-duty-bulk-add-modal-close" type="button" class="btn-close" aria-label="Close"></button>
+        </div>
+
+        <div class="row g-3 align-items-end mb-3">
+          <div class="col-md-6">
+            <label for="actual-duty-bulk-add-search" class="form-label">Търсене</label>
+            <input id="actual-duty-bulk-add-search" type="text" class="form-control" placeholder="Търси по служител, повеска или дата" />
+          </div>
+          <div class="col-md-3">
+            <label for="actual-duty-bulk-add-date-filter" class="form-label">Филтър по дата</label>
+            <input id="actual-duty-bulk-add-date-filter" type="date" class="form-control" />
+          </div>
+          <div class="col-md-3">
+            <button id="actual-duty-bulk-add-filter-reset" type="button" class="btn btn-outline-secondary w-100">Изчисти филтрите</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                <th style="width: 42px;">
+                  <input id="actual-duty-bulk-add-select-all" class="form-check-input" type="checkbox" aria-label="Избери всички" />
+                </th>
+                <th>Дата</th>
+                <th>Служител</th>
+                <th>Повеска</th>
+              </tr>
+            </thead>
+            <tbody id="actual-duty-bulk-add-table-body"></tbody>
+          </table>
+        </div>
+
+        <p id="actual-duty-bulk-add-empty" class="text-secondary d-none mb-0"></p>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button id="actual-duty-bulk-add-cancel" type="button" class="btn btn-outline-secondary">Отказ</button>
+          <button id="actual-duty-bulk-add-confirm" type="button" class="btn btn-primary" disabled>Добави избраните</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
