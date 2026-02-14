@@ -120,6 +120,7 @@ function attachDutiesHandlers(container) {
         scheduleKeyIds,
         startTime: actionButton.getAttribute('data-start-time'),
         endTime: actionButton.getAttribute('data-end-time'),
+        secondDay: actionButton.getAttribute('data-second-day') === 'true',
         breakStartTime: actionButton.getAttribute('data-break-start-time'),
         breakEndTime: actionButton.getAttribute('data-break-end-time')
       });
@@ -218,6 +219,7 @@ async function saveDuty(container) {
   const scheduleKeysInput = container.querySelector('#duty-schedule-keys');
   const startTimeInput = container.querySelector('#duty-start-time');
   const endTimeInput = container.querySelector('#duty-end-time');
+  const secondDayInput = container.querySelector('#duty-second-day');
   const breakStartInput = container.querySelector('#duty-break-start-time');
   const breakEndInput = container.querySelector('#duty-break-end-time');
   const saveButton = container.querySelector('#duty-save-btn');
@@ -230,6 +232,7 @@ async function saveDuty(container) {
   const primaryScheduleKeyId = selectedScheduleKeyIds[0] || null;
   const startTime = startTimeInput.value;
   const endTime = endTimeInput.value;
+  const secondDay = secondDayInput.checked;
   const breakStartTime = breakStartInput.value;
   const breakEndTime = breakEndInput.value;
   const editingId = idInput.value;
@@ -261,6 +264,7 @@ async function saveDuty(container) {
     schedule_key_id: primaryScheduleKeyId,
     start_time: startTime,
     end_time: endTime,
+    second_day: secondDay,
     break_start_time: breakStartTime,
     break_end_time: breakEndTime
   };
@@ -316,6 +320,7 @@ function populateDutyForm(container, duty) {
   });
   container.querySelector('#duty-start-time').value = duty.startTime ?? '';
   container.querySelector('#duty-end-time').value = duty.endTime ?? '';
+  container.querySelector('#duty-second-day').checked = Boolean(duty.secondDay);
   container.querySelector('#duty-break-start-time').value = intervalToTimeInput(duty.breakStartTime);
   container.querySelector('#duty-break-end-time').value = intervalToTimeInput(duty.breakEndTime);
 
@@ -333,6 +338,7 @@ function resetDutyForm(container) {
   });
   container.querySelector('#duty-start-time').value = '';
   container.querySelector('#duty-end-time').value = '';
+  container.querySelector('#duty-second-day').checked = false;
   container.querySelector('#duty-break-start-time').value = '00:00';
   container.querySelector('#duty-break-end-time').value = '00:00';
 

@@ -163,6 +163,7 @@ function attachScheduleKeyDutiesHandlers(container) {
           .filter(Boolean),
         startTime: actionButton.getAttribute('data-start-time'),
         endTime: actionButton.getAttribute('data-end-time'),
+        secondDay: actionButton.getAttribute('data-second-day') === 'true',
         breakStartTime: actionButton.getAttribute('data-break-start-time'),
         breakEndTime: actionButton.getAttribute('data-break-end-time')
       });
@@ -255,6 +256,7 @@ async function saveDutyForScheduleKey(container) {
   const scheduleKeysInput = container.querySelector('#schedule-key-duty-create-schedule-keys');
   const startInput = container.querySelector('#schedule-key-duty-create-start');
   const endInput = container.querySelector('#schedule-key-duty-create-end');
+  const secondDayInput = container.querySelector('#schedule-key-duty-create-second-day');
   const breakStartInput = container.querySelector('#schedule-key-duty-create-break-start');
   const breakEndInput = container.querySelector('#schedule-key-duty-create-break-end');
   const saveButton = container.querySelector('#schedule-key-duty-create-save');
@@ -267,6 +269,7 @@ async function saveDutyForScheduleKey(container) {
   const primaryScheduleKeyId = selectedScheduleKeyIds[0] || null;
   const startTime = startInput.value;
   const endTime = endInput.value;
+  const secondDay = secondDayInput.checked;
   const breakStartTime = breakStartInput.value;
   const breakEndTime = breakEndInput.value;
 
@@ -306,6 +309,7 @@ async function saveDutyForScheduleKey(container) {
       name,
       start_time: startTime,
       end_time: endTime,
+      second_day: secondDay,
       break_start_time: breakStartTime,
       break_end_time: breakEndTime,
       created_from: createdFrom,
@@ -346,6 +350,7 @@ function openEditDutyModal(container, duty) {
   });
   container.querySelector('#schedule-key-duty-edit-start').value = duty.startTime ?? '';
   container.querySelector('#schedule-key-duty-edit-end').value = duty.endTime ?? '';
+  container.querySelector('#schedule-key-duty-edit-second-day').checked = Boolean(duty.secondDay);
   container.querySelector('#schedule-key-duty-edit-break-start').value = intervalToTimeInput(duty.breakStartTime);
   container.querySelector('#schedule-key-duty-edit-break-end').value = intervalToTimeInput(duty.breakEndTime);
   openModal(container.querySelector('#schedule-key-duty-edit-modal'));
@@ -367,6 +372,7 @@ function resetCreateDutyForm(container) {
 
   container.querySelector('#schedule-key-duty-create-start').value = '';
   container.querySelector('#schedule-key-duty-create-end').value = '';
+  container.querySelector('#schedule-key-duty-create-second-day').checked = false;
   container.querySelector('#schedule-key-duty-create-break-start').value = '00:00';
   container.querySelector('#schedule-key-duty-create-break-end').value = '00:00';
 }
@@ -383,6 +389,7 @@ async function saveEditedDutyForScheduleKey(container) {
   const primaryScheduleKeyId = selectedScheduleKeyIds[0] || null;
   const startTime = container.querySelector('#schedule-key-duty-edit-start').value;
   const endTime = container.querySelector('#schedule-key-duty-edit-end').value;
+  const secondDay = container.querySelector('#schedule-key-duty-edit-second-day').checked;
   const breakStartTime = container.querySelector('#schedule-key-duty-edit-break-start').value;
   const breakEndTime = container.querySelector('#schedule-key-duty-edit-break-end').value;
   const saveButton = container.querySelector('#schedule-key-duty-edit-save');
@@ -416,6 +423,7 @@ async function saveEditedDutyForScheduleKey(container) {
       schedule_key_id: primaryScheduleKeyId,
       start_time: startTime,
       end_time: endTime,
+      second_day: secondDay,
       break_start_time: breakStartTime,
       break_end_time: breakEndTime
     })

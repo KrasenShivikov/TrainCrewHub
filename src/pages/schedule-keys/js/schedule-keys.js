@@ -24,6 +24,7 @@ function attachScheduleKeysHandlers(container) {
   const deleteCancelButton = container.querySelector('#schedule-key-delete-cancel');
   const filterNameInput = container.querySelector('#filter-name');
   const filterTypeInput = container.querySelector('#filter-type');
+  const filterCrewRoleInput = container.querySelector('#filter-crew-role');
   const filterActiveInput = container.querySelector('#filter-active');
   const filterValidFromInput = container.querySelector('#filter-valid-from');
   const filterValidToInput = container.querySelector('#filter-valid-to');
@@ -61,6 +62,11 @@ function attachScheduleKeysHandlers(container) {
     renderScheduleKeysTable(container);
   });
 
+  filterCrewRoleInput?.addEventListener('change', (event) => {
+    scheduleKeysState.filters.crewRole = event.target.value;
+    renderScheduleKeysTable(container);
+  });
+
   filterActiveInput?.addEventListener('change', (event) => {
     scheduleKeysState.filters.isActive = event.target.value;
     renderScheduleKeysTable(container);
@@ -80,6 +86,7 @@ function attachScheduleKeysHandlers(container) {
     scheduleKeysState.filters = {
       name: '',
       type: '',
+      crewRole: '',
       isActive: '',
       validFrom: '',
       validTo: ''
@@ -87,6 +94,7 @@ function attachScheduleKeysHandlers(container) {
 
     if (filterNameInput) filterNameInput.value = '';
     if (filterTypeInput) filterTypeInput.value = '';
+    if (filterCrewRoleInput) filterCrewRoleInput.value = '';
     if (filterActiveInput) filterActiveInput.value = '';
     if (filterValidFromInput) filterValidFromInput.value = '';
     if (filterValidToInput) filterValidToInput.value = '';
@@ -116,6 +124,7 @@ function attachScheduleKeysHandlers(container) {
         id: actionButton.getAttribute('data-id'),
         name: actionButton.getAttribute('data-name'),
         type: actionButton.getAttribute('data-type'),
+        crewRole: actionButton.getAttribute('data-crew-role') || 'кондуктор',
         isActive: actionButton.getAttribute('data-active') === 'true',
         validFrom: actionButton.getAttribute('data-valid-from'),
         validTo: actionButton.getAttribute('data-valid-to')
@@ -149,6 +158,7 @@ async function saveScheduleKey(container) {
   const idInput = container.querySelector('#schedule-key-id');
   const nameInput = container.querySelector('#schedule-key-name');
   const typeInput = container.querySelector('#schedule-key-type');
+  const crewRoleInput = container.querySelector('#schedule-key-crew-role');
   const activeInput = container.querySelector('#schedule-key-active');
   const validFromInput = container.querySelector('#schedule-key-valid-from');
   const validToInput = container.querySelector('#schedule-key-valid-to');
@@ -156,13 +166,19 @@ async function saveScheduleKey(container) {
 
   const name = nameInput.value.trim();
   const type = typeInput.value;
+  const crewRole = crewRoleInput.value;
   const isActive = activeInput.checked;
   const validFrom = validFromInput.value;
   const validTo = validToInput.value;
   const editingId = idInput.value;
 
-  if (!name || !type || !validFrom || !validTo) {
+  if (!name || !type || !crewRole || !validFrom || !validTo) {
     showToast('Моля, попълни всички задължителни полета.', 'warning');
+    return;
+  }
+
+  if (!['началник влак', 'кондуктор'].includes(crewRole)) {
+    showToast('Невалидна стойност за екип.', 'warning');
     return;
   }
 
@@ -178,6 +194,7 @@ async function saveScheduleKey(container) {
   const payload = {
     name,
     type,
+    crew_role: crewRole,
     is_active: isActive,
     valid_from: validFrom,
     valid_to: validTo
@@ -211,6 +228,7 @@ function populateScheduleKeyForm(container, scheduleKey) {
   container.querySelector('#schedule-key-id').value = scheduleKey.id;
   container.querySelector('#schedule-key-name').value = scheduleKey.name ?? '';
   container.querySelector('#schedule-key-type').value = scheduleKey.type ?? 'seasonal';
+  container.querySelector('#schedule-key-crew-role').value = scheduleKey.crewRole ?? 'кондуктор';
   container.querySelector('#schedule-key-active').checked = Boolean(scheduleKey.isActive);
   container.querySelector('#schedule-key-valid-from').value = scheduleKey.validFrom ?? '';
   container.querySelector('#schedule-key-valid-to').value = scheduleKey.validTo ?? '';
@@ -224,6 +242,7 @@ function resetScheduleKeyForm(container) {
   container.querySelector('#schedule-key-id').value = '';
   container.querySelector('#schedule-key-name').value = '';
   container.querySelector('#schedule-key-type').value = 'seasonal';
+  container.querySelector('#schedule-key-crew-role').value = 'кондуктор';
   container.querySelector('#schedule-key-active').checked = true;
   container.querySelector('#schedule-key-valid-from').value = '';
   container.querySelector('#schedule-key-valid-to').value = '';

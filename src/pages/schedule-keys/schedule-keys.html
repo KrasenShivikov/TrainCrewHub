@@ -28,6 +28,14 @@
           </select>
         </div>
         <div class="col-md-2">
+          <label for="filter-crew-role" class="form-label">Екип</label>
+          <select id="filter-crew-role" class="form-select form-select-sm">
+            <option value="">Всички</option>
+            <option value="началник влак">Началник влак</option>
+            <option value="кондуктор">Кондуктор</option>
+          </select>
+        </div>
+        <div class="col-md-2">
           <label for="filter-active" class="form-label">Активен</label>
           <select id="filter-active" class="form-select form-select-sm">
             <option value="">Всички</option>
@@ -52,6 +60,7 @@
           <tr>
             <th>Наименование</th>
             <th>Тип</th>
+            <th>Екип</th>
             <th>Активен</th>
             <th>От дата</th>
             <th>До дата</th>
@@ -90,6 +99,14 @@
                 <option value="seasonal">seasonal</option>
                 <option value="ad-hoc">ad-hoc</option>
                 <option value="temporary">temporary</option>
+              </select>
+            </div>
+
+            <div class="col-md-3">
+              <label for="schedule-key-crew-role" class="form-label">Екип</label>
+              <select id="schedule-key-crew-role" class="form-select" required>
+                <option value="началник влак">Началник влак</option>
+                <option value="кондуктор">Кондуктор</option>
               </select>
             </div>
 

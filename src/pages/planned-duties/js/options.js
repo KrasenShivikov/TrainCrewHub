@@ -35,7 +35,7 @@ export async function loadScheduleKeyOptions(container) {
   const autoSelect = container.querySelector('#planned-duty-auto-schedule-key');
   const { data, error } = await supabase
     .from('schedule_keys')
-    .select('id, name')
+    .select('id, name, crew_role')
     .order('name', { ascending: true });
 
   if (error) {
@@ -44,12 +44,28 @@ export async function loadScheduleKeyOptions(container) {
   }
 
   const options = (data || [])
-    .map((item) => `<option value="${item.id}">${escapeHtml(item.name ?? '-')}</option>`)
+    .map((item) => {
+      const roleLabel = getCrewRoleLabel(item.crew_role);
+      const label = roleLabel ? `${item.name ?? '-'} (${roleLabel})` : (item.name ?? '-');
+      return `<option value="${item.id}">${escapeHtml(label)}</option>`;
+    })
     .join('');
 
   const baseOptions = '<option value="">Избери ключ-график</option>' + options;
   singleSelect.innerHTML = baseOptions;
   autoSelect.innerHTML = baseOptions;
+}
+
+function getCrewRoleLabel(value) {
+  if (value === 'началник влак') {
+    return 'Началник влак';
+  }
+
+  if (value === 'кондуктор') {
+    return 'Кондуктор';
+  }
+
+  return '';
 }
 
 export async function loadDutyOptions(container) {

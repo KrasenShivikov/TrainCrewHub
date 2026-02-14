@@ -6,7 +6,7 @@ import { scheduleKeyDutiesState } from './state.js';
 export async function loadDutiesForScheduleKey(container) {
   const { data, error } = await supabase
     .from('duties')
-    .select('id, name, duty_type_id, schedule_key_id, start_time, end_time, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, schedule_key_duties(schedule_key_id)')
+    .select('id, name, duty_type_id, schedule_key_id, start_time, end_time, second_day, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, schedule_key_duties(schedule_key_id)')
     .eq('schedule_key_id', scheduleKeyDutiesState.scheduleKeyId)
     .order('display_order', { ascending: true })
     .order('name', { ascending: true });
@@ -45,6 +45,7 @@ export function renderScheduleKeyDutiesTable(container, explicitEmptyMessage) {
           <td>${escapeHtml(item.name ?? '-')}</td>
           <td>${escapeHtml(item.start_time ?? '-')}</td>
           <td>${escapeHtml(item.end_time ?? '-')}</td>
+          <td>${item.second_day ? 'Да' : 'Не'}</td>
           <td>${escapeHtml(formatInterval(item.break_duration_interval))}</td>
           <td>${escapeHtml(formatInterval(item.duration_interval))}</td>
           <td class="text-end">
@@ -59,6 +60,7 @@ export function renderScheduleKeyDutiesTable(container, explicitEmptyMessage) {
                 data-schedule-key-ids="${escapeHtml(scheduleKeyIds.join(','))}"
                 data-start-time="${escapeHtml(item.start_time ?? '')}"
                 data-end-time="${escapeHtml(item.end_time ?? '')}"
+                data-second-day="${item.second_day ? 'true' : 'false'}"
                 data-break-start-time="${escapeHtml(item.break_start_time ?? '00:00:00')}"
                 data-break-end-time="${escapeHtml(item.break_end_time ?? '00:00:00')}"
               >

@@ -6,7 +6,7 @@ import { scheduleKeysState } from './state.js';
 export async function loadScheduleKeys(container) {
   const { data, error } = await supabase
     .from('schedule_keys')
-    .select('id, name, is_active, type, valid_from, valid_to')
+    .select('id, name, is_active, type, crew_role, valid_from, valid_to')
     .order('valid_from', { ascending: false });
 
   if (error) {
@@ -31,6 +31,9 @@ export function renderScheduleKeysTable(container, explicitEmptyMessage) {
 
     const matchesType = !scheduleKeysState.filters.type || item.type === scheduleKeysState.filters.type;
 
+    const matchesCrewRole =
+      !scheduleKeysState.filters.crewRole || item.crew_role === scheduleKeysState.filters.crewRole;
+
     const matchesActive =
       !scheduleKeysState.filters.isActive ||
       String(Boolean(item.is_active)) === scheduleKeysState.filters.isActive;
@@ -41,7 +44,7 @@ export function renderScheduleKeysTable(container, explicitEmptyMessage) {
     const matchesValidTo =
       !scheduleKeysState.filters.validTo || item.valid_to === scheduleKeysState.filters.validTo;
 
-    return matchesName && matchesType && matchesActive && matchesValidFrom && matchesValidTo;
+    return matchesName && matchesType && matchesCrewRole && matchesActive && matchesValidFrom && matchesValidTo;
   });
 
   if (!filteredRows.length) {
@@ -58,6 +61,7 @@ export function renderScheduleKeysTable(container, explicitEmptyMessage) {
         <tr>
           <td>${escapeHtml(item.name ?? '-')}</td>
           <td>${escapeHtml(item.type ?? '-')}</td>
+          <td>${escapeHtml(item.crew_role ?? '-')}</td>
           <td>${item.is_active ? 'Да' : 'Не'}</td>
           <td>${escapeHtml(item.valid_from ?? '-')}</td>
           <td>${escapeHtml(item.valid_to ?? '-')}</td>
@@ -70,6 +74,7 @@ export function renderScheduleKeysTable(container, explicitEmptyMessage) {
                 data-id="${item.id}"
                 data-name="${escapeHtml(item.name ?? '')}"
                 data-type="${escapeHtml(item.type ?? 'seasonal')}"
+                data-crew-role="${escapeHtml(item.crew_role ?? 'кондуктор')}"
                 data-active="${item.is_active ? 'true' : 'false'}"
                 data-valid-from="${escapeHtml(item.valid_from ?? '')}"
                 data-valid-to="${escapeHtml(item.valid_to ?? '')}"

@@ -18,6 +18,7 @@
             <th>Наименование</th>
             <th>Начало</th>
             <th>Край</th>
+            <th>Втори ден</th>
             <th>Прекъсване</th>
             <th>Времетраене</th>
             <th class="text-end">Действия</th>
@@ -64,6 +65,12 @@
             <div class="col-md-2">
               <label for="schedule-key-duty-create-end" class="form-label">Край</label>
               <input id="schedule-key-duty-create-end" class="form-control" type="time" required />
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="schedule-key-duty-create-second-day" />
+                <label class="form-check-label" for="schedule-key-duty-create-second-day">Втори ден</label>
+              </div>
             </div>
             <div class="col-md-2">
               <label for="schedule-key-duty-create-break-start" class="form-label">Начало на прекъсването</label>
@@ -119,6 +126,12 @@
             <div class="col-md-2">
               <label for="schedule-key-duty-edit-end" class="form-label">Край</label>
               <input id="schedule-key-duty-edit-end" class="form-control" type="time" required />
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="schedule-key-duty-edit-second-day" />
+                <label class="form-check-label" for="schedule-key-duty-edit-second-day">Втори ден</label>
+              </div>
             </div>
             <div class="col-md-2">
               <label for="schedule-key-duty-edit-break-start" class="form-label">Начало на прекъсването</label>

@@ -3,6 +3,7 @@ export const scheduleKeysState = {
   filters: {
     name: '',
     type: '',
+    crewRole: '',
     isActive: '',
     validFrom: '',
     validTo: ''

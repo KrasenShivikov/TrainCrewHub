@@ -115,7 +115,7 @@ async function loadPlanScheduleData(container) {
 
   const { data: plannedRows, error: plannedError } = await supabase
     .from('planned_duties')
-    .select('duty_id, assignment_role, employees(first_name, last_name, positions(title)), duties(id, name, schedule_key_id, display_order, start_time, end_time, duty_types(name))')
+    .select('duty_id, assignment_role, employees(first_name, last_name, positions(title)), duties(id, name, schedule_key_id, display_order, start_time, end_time, second_day, duty_types(name))')
     .eq('date', selectedDate);
 
   if (plannedError) {
@@ -288,16 +288,27 @@ function getDutyFromPlannedRow(row) {
 }
 
 function renderBoards(container, groupedDuties, assignmentsByDuty) {
-  renderDutyBoard(container.querySelector('#plan-schedule-train'), groupedDuties.train, assignmentsByDuty);
+  renderDutyBoard(container.querySelector('#plan-schedule-train'), groupedDuties.train, assignmentsByDuty, {
+    conductorRows: 3,
+    showHours: true,
+    separateSecondDay: true
+  });
   renderDutyBoard(
     container.querySelector('#plan-schedule-business-trip'),
     groupedDuties.businessTrip,
-    assignmentsByDuty
+    assignmentsByDuty,
+    {
+      conductorRows: 3,
+      showHours: false
+    }
   );
-  renderDutyBoard(container.querySelector('#plan-schedule-day-off'), groupedDuties.dayOff, assignmentsByDuty);
+  renderDutyBoard(container.querySelector('#plan-schedule-day-off'), groupedDuties.dayOff, assignmentsByDuty, {
+    conductorRows: 3,
+    showHours: false
+  });
 }
 
-function renderDutyBoard(root, duties, assignmentsByDuty) {
+function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
   if (!root) {
     return;
   }
@@ -307,8 +318,13 @@ function renderDutyBoard(root, duties, assignmentsByDuty) {
     return;
   }
 
+  const normalizedDuties = options.separateSecondDay ? buildDutiesWithSecondDaySeparator(duties) : duties;
+  const conductorRowsCount = Number.isInteger(options.conductorRows) && options.conductorRows > 0
+    ? options.conductorRows
+    : 3;
+
   const maxDutiesPerRow = 5;
-  const chunks = chunkArray(duties, maxDutiesPerRow);
+  const chunks = chunkArray(normalizedDuties, maxDutiesPerRow);
 
   root.innerHTML = chunks
     .map((chunk) => {
@@ -335,46 +351,40 @@ function renderDutyBoard(root, duties, assignmentsByDuty) {
           }
 
           const assignment = assignmentsByDuty.get(duty.id) || { chiefs: [] };
-          const value = assignment.chiefs.length ? assignment.chiefs.join(', ') : '-';
+          const value = assignment.chiefs.length ? assignment.chiefs.join(', ') : '';
           return `<td>${escapeHtml(value)}</td>`;
         })
         .join('');
 
-      const conductorRow1 = normalized
-        .map((duty) => {
-          if (!duty) {
-            return '<td></td>';
-          }
+      const conductorRowsHtml = Array.from({ length: conductorRowsCount }, (_, rowIndex) => {
+        const conductorCells = normalized
+          .map((duty) => {
+            if (!duty) {
+              return '<td></td>';
+            }
 
-          const assignment = assignmentsByDuty.get(duty.id) || { conductors: [] };
-          const value = assignment.conductors[0] || '-';
-          return `<td>${escapeHtml(value)}</td>`;
-        })
-        .join('');
+            const assignment = assignmentsByDuty.get(duty.id) || { conductors: [] };
+            const value = assignment.conductors[rowIndex] || '';
+            return `<td>${escapeHtml(value)}</td>`;
+          })
+          .join('');
 
-      const conductorRow2 = normalized
-        .map((duty) => {
-          if (!duty) {
-            return '<td></td>';
-          }
+        return `
+          <tr>
+            <th scope="row">К-р</th>
+            ${conductorCells}
+          </tr>
+        `;
+      }).join('');
 
-          const assignment = assignmentsByDuty.get(duty.id) || { conductors: [] };
-          const value = assignment.conductors[1] || '-';
-          return `<td>${escapeHtml(value)}</td>`;
-        })
-        .join('');
-
-      const conductorRow3 = normalized
-        .map((duty) => {
-          if (!duty) {
-            return '<td></td>';
-          }
-
-          const assignment = assignmentsByDuty.get(duty.id) || { conductors: [] };
-          const value = assignment.conductors[2] || '-';
-          return `<td>${escapeHtml(value)}</td>`;
-        })
-        .join('');
+      const hoursRow = options.showHours === false
+        ? ''
+        : `
+            <tr>
+              <th scope="row">Час</th>
+              ${hoursCells}
+            </tr>
+          `;
 
       return `
         <table class="table table-bordered align-middle mb-3 plan-schedule-table">
@@ -385,26 +395,12 @@ function renderDutyBoard(root, duties, assignmentsByDuty) {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <th scope="row">Час</th>
-              ${hoursCells}
-            </tr>
+            ${hoursRow}
             <tr>
               <th scope="row">Началник влак</th>
               ${chiefsCells}
             </tr>
-            <tr>
-              <th scope="row">К-р 1</th>
-              ${conductorRow1}
-            </tr>
-            <tr>
-              <th scope="row">К-р 2</th>
-              ${conductorRow2}
-            </tr>
-            <tr>
-              <th scope="row">К-р 3</th>
-              ${conductorRow3}
-            </tr>
+            ${conductorRowsHtml}
           </tbody>
         </table>
       `;
@@ -459,7 +455,7 @@ function formatDutyTimeRange(duty) {
   const end = (duty?.end_time || '').slice(0, 5);
 
   if (!start && !end) {
-    return '-';
+    return '';
   }
 
   if (start && end) {
@@ -486,6 +482,12 @@ function compareByScheduleKeyOrder(left, right) {
 }
 
 function compareByDutyStartTime(left, right) {
+  const leftSecondDay = Boolean(left?.second_day);
+  const rightSecondDay = Boolean(right?.second_day);
+  if (leftSecondDay !== rightSecondDay) {
+    return leftSecondDay ? 1 : -1;
+  }
+
   const leftStart = normalizeTimeValue(left?.start_time);
   const rightStart = normalizeTimeValue(right?.start_time);
   if (leftStart !== rightStart) {
@@ -493,6 +495,26 @@ function compareByDutyStartTime(left, right) {
   }
 
   return compareByScheduleKeyOrder(left, right);
+}
+
+function buildDutiesWithSecondDaySeparator(duties) {
+  const firstDay = [];
+  const secondDay = [];
+
+  duties.forEach((duty) => {
+    if (duty?.second_day) {
+      secondDay.push(duty);
+      return;
+    }
+
+    firstDay.push(duty);
+  });
+
+  if (!firstDay.length || !secondDay.length) {
+    return duties;
+  }
+
+  return [...firstDay, null, ...secondDay];
 }
 
 function normalizeTimeValue(value) {
