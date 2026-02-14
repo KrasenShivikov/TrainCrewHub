@@ -6,7 +6,7 @@ import { dutiesState, PAGE_SIZE } from './state.js';
 export async function loadDuties(container) {
   const { data, error } = await supabase
     .from('duties')
-    .select('id, name, schedule_key_id, start_time, end_time, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, schedule_keys(name)')
+    .select('id, name, duty_type_id, start_time, end_time, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, duty_types(name), schedule_key_duties(schedule_key_id, schedule_keys(name))')
     .order('display_order', { ascending: true })
     .order('name', { ascending: true });
 
@@ -58,8 +58,13 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
     }
 
     const name = (item.name || '').toLowerCase();
-    const scheduleKeyName = (item.schedule_keys?.name || '').toLowerCase();
-    return name.includes(dutiesState.searchQuery) || scheduleKeyName.includes(dutiesState.searchQuery);
+    const typeName = (item.duty_types?.name || '').toLowerCase();
+    const scheduleKeyNames = getScheduleKeyNames(item).join(' ').toLowerCase();
+    return (
+      name.includes(dutiesState.searchQuery) ||
+      typeName.includes(dutiesState.searchQuery) ||
+      scheduleKeyNames.includes(dutiesState.searchQuery)
+    );
   });
 
   if (!filteredDuties.length) {
@@ -86,11 +91,15 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
 
   tableBody.innerHTML = pagedDuties
     .map(
-      (item) => `
+      (item) => {
+        const scheduleKeyNames = getScheduleKeyNames(item);
+        const scheduleKeyIds = getScheduleKeyIds(item);
+        return `
         <tr data-duty-id="${item.id}" draggable="true">
           <td class="text-secondary">↕</td>
           <td>${escapeHtml(item.name ?? '-')}</td>
-          <td>${escapeHtml(item.schedule_keys?.name ?? '-')}</td>
+          <td>${escapeHtml(item.duty_types?.name ?? '-')}</td>
+          <td>${escapeHtml(scheduleKeyNames.length ? scheduleKeyNames.join(', ') : '-')}</td>
           <td>${escapeHtml(item.start_time ?? '-')}</td>
           <td>${escapeHtml(item.end_time ?? '-')}</td>
           <td>${escapeHtml(formatDuration(item.break_duration_interval))}</td>
@@ -103,7 +112,8 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
                 data-action="edit"
                 data-id="${item.id}"
                 data-name="${escapeHtml(item.name ?? '')}"
-                data-schedule-key-id="${item.schedule_key_id ?? ''}"
+                data-duty-type-id="${item.duty_type_id ?? ''}"
+                data-schedule-key-ids="${escapeHtml(scheduleKeyIds.join(','))}"
                 data-start-time="${escapeHtml(item.start_time ?? '')}"
                 data-end-time="${escapeHtml(item.end_time ?? '')}"
                 data-break-start-time="${escapeHtml(item.break_start_time ?? '00:00:00')}"
@@ -122,7 +132,8 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
             </div>
           </td>
         </tr>
-      `
+      `;
+      }
     )
     .join('');
 
@@ -135,4 +146,28 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
   pageInfo.textContent = `Страница ${dutiesState.currentPage} от ${totalPages}`;
   prevPageButton.disabled = dutiesState.currentPage <= 1;
   nextPageButton.disabled = dutiesState.currentPage >= totalPages;
+}
+
+function getScheduleKeyRows(item) {
+  return Array.isArray(item.schedule_key_duties)
+    ? item.schedule_key_duties
+    : item.schedule_key_duties
+      ? [item.schedule_key_duties]
+      : [];
+}
+
+function getScheduleKeyNames(item) {
+  const names = getScheduleKeyRows(item)
+    .map((row) => row?.schedule_keys?.name)
+    .filter(Boolean);
+
+  return [...new Set(names)];
+}
+
+function getScheduleKeyIds(item) {
+  const ids = getScheduleKeyRows(item)
+    .map((row) => row?.schedule_key_id)
+    .filter(Boolean);
+
+  return [...new Set(ids)];
 }

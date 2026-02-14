@@ -1,0 +1,106 @@
+<section class="card border-0 shadow-sm">
+  <div class="card-body p-4 p-md-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h1 class="h3 mb-0">Планирани повески</h1>
+      <button id="open-create-planned-duty" type="button" class="btn btn-primary">Ново планиране</button>
+    </div>
+
+    <p class="text-secondary">Планиране на служители по повески за конкретна дата.</p>
+
+    <div class="row g-3 align-items-end mb-3">
+      <div class="col-md-6">
+        <label for="planned-duties-search" class="form-label">Търсене</label>
+        <input id="planned-duties-search" type="text" class="form-control" placeholder="Търси по служител, повеска или дата" />
+      </div>
+      <div class="col-md-3">
+        <label for="planned-duties-date-filter" class="form-label">Филтър по дата</label>
+        <input id="planned-duties-date-filter" type="date" class="form-control" />
+      </div>
+      <div class="col-md-3">
+        <button id="planned-duties-filter-reset" type="button" class="btn btn-outline-secondary w-100">Изчисти филтрите</button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th>Дата</th>
+            <th>Служител</th>
+            <th>Повеска</th>
+            <th class="text-end">Действия</th>
+          </tr>
+        </thead>
+        <tbody id="planned-duties-table-body"></tbody>
+      </table>
+    </div>
+
+    <p id="planned-duties-empty" class="text-secondary d-none mb-0"></p>
+  </div>
+</section>
+
+<div id="planned-duty-modal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50" style="z-index: 1060;">
+  <div class="d-flex align-items-center justify-content-center h-100 p-3">
+    <div class="card w-100" style="max-width: 760px;">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 id="planned-duty-form-title" class="h5 mb-0">Ново планиране</h2>
+          <button id="planned-duty-modal-close" type="button" class="btn-close" aria-label="Close"></button>
+        </div>
+
+        <form id="planned-duty-form">
+          <input type="hidden" id="planned-duty-id" />
+
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label for="planned-duty-date" class="form-label">Дата</label>
+              <input id="planned-duty-date" class="form-control" type="date" required />
+            </div>
+
+            <div class="col-md-4">
+              <label for="planned-duty-employee" class="form-label">Служител</label>
+              <select id="planned-duty-employee" class="form-select" required>
+                <option value="">Избери служител</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label for="planned-duty-schedule-key" class="form-label">Ключ-график</label>
+              <select id="planned-duty-schedule-key" class="form-select" required>
+                <option value="">Избери ключ-график</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label for="planned-duty-duty" class="form-label">Повеска</label>
+              <select id="planned-duty-duty" class="form-select" required>
+                <option value="">Избери повеска</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <button id="planned-duty-cancel-btn" type="button" class="btn btn-outline-secondary">Отказ</button>
+            <button id="planned-duty-save-btn" type="submit" class="btn btn-primary">Създай</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="planned-duty-delete-modal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50" style="z-index: 1060;">
+  <div class="d-flex align-items-center justify-content-center h-100 p-3">
+    <div class="card w-100" style="max-width: 520px;">
+      <div class="card-body p-4">
+        <h2 class="h5 mb-3">Потвърди изтриване</h2>
+        <p class="text-secondary mb-4">Сигурен ли си, че искаш да изтриеш това планиране?</p>
+        <input type="hidden" id="planned-duty-delete-id" />
+        <div class="d-flex justify-content-end gap-2">
+          <button id="planned-duty-delete-cancel" type="button" class="btn btn-outline-secondary">Отказ</button>
+          <button id="planned-duty-delete-confirm" type="button" class="btn btn-danger">Изтрий</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

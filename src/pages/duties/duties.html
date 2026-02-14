@@ -20,6 +20,7 @@
           <tr>
             <th style="width: 44px;">↕</th>
             <th>Наименование</th>
+            <th>Тип</th>
             <th>Ключ-График</th>
             <th>Начало</th>
             <th>Край</th>
@@ -63,10 +64,17 @@
             </div>
 
             <div class="col-md-6">
-              <label for="duty-schedule-key" class="form-label">Ключ-График</label>
-              <select id="duty-schedule-key" class="form-select">
-                <option value="">Без ключ-график</option>
+              <label for="duty-type" class="form-label">Тип на повеската</label>
+              <select id="duty-type" class="form-select" required>
+                <option value="">Избери тип</option>
               </select>
+            </div>
+
+            <div class="col-md-6">
+              <label for="duty-schedule-keys" class="form-label">Ключ-Графици</label>
+              <select id="duty-schedule-keys" class="form-select" multiple required size="5">
+              </select>
+              <div class="form-text">Може да избереш един или повече ключ-графика.</div>
             </div>
 
             <div class="col-md-6">

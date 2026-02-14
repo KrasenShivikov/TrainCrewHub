@@ -5,6 +5,8 @@ import { renderRegisterPage } from './pages/register/js/register.js';
 import { renderScheduleKeysPage } from './pages/schedule-keys/js/schedule-keys.js';
 import { renderDutiesPage } from './pages/duties/js/duties.js';
 import { renderEmployeesPage } from './pages/employees/js/employees.js';
+import { renderPlannedDutiesPage } from './pages/planned-duties/js/planned-duties.js';
+import { renderDutyTypesPage } from './pages/duty-types/js/duty-types.js';
 
 const routes = {
   '/': {
@@ -31,9 +33,17 @@ const routes = {
     render: renderDutiesPage,
     title: 'TrainCrewHub / Повески'
   },
+  '/duty-types': {
+    render: renderDutyTypesPage,
+    title: 'TrainCrewHub / Типове повески'
+  },
   '/employees': {
     render: renderEmployeesPage,
     title: 'TrainCrewHub / Служители'
+  },
+  '/planned-duties': {
+    render: renderPlannedDutiesPage,
+    title: 'TrainCrewHub / Планирани повески'
   }
 };
 
