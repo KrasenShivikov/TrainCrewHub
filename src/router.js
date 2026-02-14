@@ -5,9 +5,11 @@ import { renderRegisterPage } from './pages/register/js/register.js';
 import { renderScheduleKeysPage } from './pages/schedule-keys/js/schedule-keys.js';
 import { renderDutiesPage } from './pages/duties/js/duties.js';
 import { renderEmployeesPage } from './pages/employees/js/employees.js';
+import { renderEmployeeAbsencesPage } from './pages/employee-absences/js/employee-absences.js';
 import { renderPlannedDutiesPage } from './pages/planned-duties/js/planned-duties.js';
 import { renderActualDutiesPage } from './pages/actual-duties/js/actual-duties.js';
 import { renderPlanSchedulePage } from './pages/plan-schedule/js/plan-schedule.js';
+import { renderSchedulePage } from './pages/schedule/js/schedule.js';
 import { renderDutyTypesPage } from './pages/duty-types/js/duty-types.js';
 import { renderScheduleKeyDutiesPage } from './pages/schedule-key-duties/js/schedule-key-duties.js';
 
@@ -44,6 +46,10 @@ const routes = {
     render: renderEmployeesPage,
     title: 'TrainCrewHub / Служители'
   },
+  '/employee-absences': {
+    render: renderEmployeeAbsencesPage,
+    title: 'TrainCrewHub / Отсъствия'
+  },
   '/planned-duties': {
     render: renderPlannedDutiesPage,
     title: 'TrainCrewHub / Планирани повески'
@@ -55,6 +61,10 @@ const routes = {
   '/plan-schedule': {
     render: renderPlanSchedulePage,
     title: 'TrainCrewHub / План График'
+  },
+  '/schedule': {
+    render: renderSchedulePage,
+    title: 'TrainCrewHub / График'
   },
   '/schedule-key-duties': {
     render: renderScheduleKeyDutiesPage,

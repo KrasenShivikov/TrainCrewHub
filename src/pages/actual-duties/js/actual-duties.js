@@ -10,6 +10,14 @@ let dutiesLookup = [];
 export async function renderActualDutiesPage(container) {
   const pageHtml = await loadHtml('../actual-duties.html', import.meta.url);
   container.innerHTML = pageHtml;
+
+  const dateFromQuery = getDateFromQuery();
+  const dateFilterInput = container.querySelector('#actual-duties-date-filter');
+  if (dateFromQuery && dateFilterInput) {
+    dateFilterInput.value = dateFromQuery;
+    actualDutiesState.dateFilter = dateFromQuery;
+  }
+
   attachActualDutiesHandlers(container);
   await loadEmployeeOptions(container);
   await loadScheduleKeyOptions(container);
@@ -19,6 +27,7 @@ export async function renderActualDutiesPage(container) {
 
 function attachActualDutiesHandlers(container) {
   const createButton = container.querySelector('#open-create-actual-duty');
+  const goToScheduleButton = container.querySelector('#go-to-schedule');
   const bulkDeleteButton = container.querySelector('#open-bulk-delete-actual-duty');
   const bulkAddButton = container.querySelector('#open-bulk-add-actual-duty');
   const form = container.querySelector('#actual-duty-form');
@@ -108,6 +117,7 @@ function attachActualDutiesHandlers(container) {
 
   dateFilterInput?.addEventListener('change', (event) => {
     actualDutiesState.dateFilter = event.target.value || '';
+    updateGoToScheduleState(goToScheduleButton, actualDutiesState.dateFilter);
     renderActualDutiesTable(container);
   });
 
@@ -123,8 +133,24 @@ function attachActualDutiesHandlers(container) {
       dateFilterInput.value = '';
     }
 
+    updateGoToScheduleState(goToScheduleButton, actualDutiesState.dateFilter);
+
     renderActualDutiesTable(container);
   });
+
+  goToScheduleButton?.addEventListener('click', () => {
+    const selectedDate = actualDutiesState.dateFilter || dateFilterInput?.value || '';
+    if (!selectedDate) {
+      showToast('Избери дата от филтъра, за да отвориш График.', 'warning');
+      return;
+    }
+
+    const params = new URLSearchParams({ date: selectedDate });
+    window.history.pushState({}, '', `/schedule?${params.toString()}`);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+
+  updateGoToScheduleState(goToScheduleButton, actualDutiesState.dateFilter || dateFilterInput?.value || '');
 
   scheduleKeyInput?.addEventListener('change', () => {
     renderDutyOptionsByScheduleKey(container, scheduleKeyInput.value || '', '');
@@ -684,4 +710,23 @@ async function addSelectedPlannedToActual(container) {
   closeModal(container.querySelector('#actual-duty-bulk-add-modal'));
   await loadActualDuties(container);
   showToast(`Обработени записи: ${attemptedCount}. Съществуващите са пропуснати.`, 'success');
+}
+
+function updateGoToScheduleState(button, selectedDate) {
+  if (!button) {
+    return;
+  }
+
+  button.disabled = !selectedDate;
+}
+
+function getDateFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const date = params.get('date') || '';
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return '';
+  }
+
+  return date;
 }

@@ -1,0 +1,114 @@
+<section class="card border-0 shadow-sm">
+  <div class="card-body p-4 p-md-5">
+    <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+      <h1 class="h3 mb-0">График</h1>
+      <div class="d-flex gap-2">
+        <button id="schedule-go-to-actual" type="button" class="btn btn-outline-secondary">Към Реални повески</button>
+        <button id="schedule-print" type="button" class="btn btn-outline-secondary">Печат</button>
+      </div>
+    </div>
+
+    <p class="text-secondary no-print">Разпределение по реални повески с възможност за редакция на служителите.</p>
+
+    <div class="row g-3 align-items-end mb-4 no-print">
+      <div class="col-md-4">
+        <label for="schedule-date" class="form-label">Дата</label>
+        <input id="schedule-date" type="date" class="form-control" />
+      </div>
+      <div class="col-md-3">
+        <label for="schedule-print-orientation" class="form-label">Ориентация за печат</label>
+        <select id="schedule-print-orientation" class="form-select">
+          <option value="landscape" selected>Landscape</option>
+          <option value="portrait">Portrait</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <div class="form-check mt-4 pt-2">
+          <input class="form-check-input" type="checkbox" id="schedule-print-compact" checked />
+          <label class="form-check-label" for="schedule-print-compact">Компактен</label>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="form-check mt-4 pt-2">
+          <input class="form-check-input" type="checkbox" id="schedule-print-fit-one-page" checked />
+          <label class="form-check-label" for="schedule-print-fit-one-page">Събери на 1 страница</label>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <button id="schedule-refresh" type="button" class="btn btn-outline-secondary w-100">Обнови</button>
+      </div>
+    </div>
+
+    <p class="small text-secondary no-print">Кликни върху име в таблицата, за да редактираш реалния запис.</p>
+
+    <article class="border rounded p-3 p-md-4 plan-schedule-sheet">
+      <header class="text-center mb-3">
+        <h2 class="h3 mb-1">ГРАФИК</h2>
+        <p id="schedule-sheet-date" class="mb-0 text-secondary"></p>
+      </header>
+
+      <section class="mb-4">
+        <h3 class="h6 text-uppercase text-center mb-2">Пътнически влакове</h3>
+        <div id="schedule-train" class="table-responsive"></div>
+      </section>
+
+      <footer class="row g-3 mt-3">
+        <div class="col-md-4 text-center">
+          <div class="small text-uppercase text-secondary">Одобрил:</div>
+          <div class="border-bottom mt-4"></div>
+        </div>
+        <div class="col-md-4 text-center">
+          <div class="small text-uppercase text-secondary">Изготвил:</div>
+          <div class="border-bottom mt-4"></div>
+        </div>
+        <div class="col-md-4 text-center">
+          <div class="small text-uppercase text-secondary">Проверил:</div>
+          <div class="border-bottom mt-4"></div>
+        </div>
+      </footer>
+    </article>
+
+    <div id="schedule-empty" class="text-secondary mt-3 d-none"></div>
+    <div id="schedule-error" class="text-danger mt-3 d-none"></div>
+    <div id="schedule-hint" class="text-secondary mt-3 d-none"></div>
+  </div>
+</section>
+
+<div id="schedule-actual-edit-modal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50" style="z-index: 1060;">
+  <div class="d-flex align-items-center justify-content-center h-100 p-3">
+    <div class="card w-100" style="max-width: 640px;">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">Редакция на актуална повеска</h2>
+          <button id="schedule-actual-edit-modal-close" type="button" class="btn-close" aria-label="Close"></button>
+        </div>
+
+        <form id="schedule-actual-edit-form">
+          <input type="hidden" id="schedule-actual-edit-id" />
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Дата</label>
+              <input id="schedule-actual-edit-date" class="form-control" type="text" disabled />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Повеска</label>
+              <input id="schedule-actual-edit-duty" class="form-control" type="text" disabled />
+            </div>
+            <div class="col-md-12">
+              <label for="schedule-actual-edit-employee" class="form-label">Служител</label>
+              <select id="schedule-actual-edit-employee" class="form-select" required>
+                <option value="">Избери служител</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <button id="schedule-actual-edit-cancel" type="button" class="btn btn-outline-secondary">Отказ</button>
+            <button id="schedule-actual-edit-save" type="submit" class="btn btn-primary">Запази</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

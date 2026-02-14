@@ -17,6 +17,7 @@ import {
   saveAutoPlannedDuties
 } from './auto-planning.js';
 import {
+  addSelectedPlannedToActualDuties,
   deleteSelectedPlannedDuties,
   openBulkDeleteModal,
   toggleSelectAllVisible,
@@ -36,6 +37,7 @@ export async function renderPlannedDutiesPage(container) {
 function attachPlannedDutiesHandlers(container) {
   const createButton = container.querySelector('#open-create-planned-duty');
   const bulkDeleteButton = container.querySelector('#open-bulk-delete-planned-duty');
+  const addToActualButton = container.querySelector('#add-selected-to-actual-duty');
   const goToPlanScheduleButton = container.querySelector('#go-to-plan-schedule');
   const autoPlanButton = container.querySelector('#open-auto-plan-duty');
   const form = container.querySelector('#planned-duty-form');
@@ -68,6 +70,12 @@ function attachPlannedDutiesHandlers(container) {
 
   bulkDeleteButton?.addEventListener('click', () => {
     openBulkDeleteModal(container);
+  });
+
+  addToActualButton?.addEventListener('click', async () => {
+    await addSelectedPlannedToActualDuties(container, async () => {
+      await loadPlannedDuties(container);
+    });
   });
 
   autoPlanButton?.addEventListener('click', async () => {

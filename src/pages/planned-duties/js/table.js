@@ -33,6 +33,7 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
   const emptyState = container.querySelector('#planned-duties-empty');
   const selectAllInput = container.querySelector('#planned-duties-select-all');
   const bulkDeleteButton = container.querySelector('#open-bulk-delete-planned-duty');
+  const addToActualButton = container.querySelector('#add-selected-to-actual-duty');
 
   plannedDutiesState.selectedIds = plannedDutiesState.selectedIds.filter((id) =>
     plannedDutiesState.rows.some((row) => row.id === id)
@@ -70,6 +71,12 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
       bulkDeleteButton.textContent = plannedDutiesState.selectedIds.length
         ? `Изтрий избраните (${plannedDutiesState.selectedIds.length})`
         : 'Изтрий избраните';
+    }
+    if (addToActualButton) {
+      addToActualButton.disabled = plannedDutiesState.selectedIds.length === 0;
+      addToActualButton.textContent = plannedDutiesState.selectedIds.length
+        ? `Към Актуални (${plannedDutiesState.selectedIds.length})`
+        : 'Към Актуални';
     }
     return;
   }
@@ -140,6 +147,13 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
     bulkDeleteButton.textContent = plannedDutiesState.selectedIds.length
       ? `Изтрий избраните (${plannedDutiesState.selectedIds.length})`
       : 'Изтрий избраните';
+  }
+
+  if (addToActualButton) {
+    addToActualButton.disabled = plannedDutiesState.selectedIds.length === 0;
+    addToActualButton.textContent = plannedDutiesState.selectedIds.length
+      ? `Към Актуални (${plannedDutiesState.selectedIds.length})`
+      : 'Към Актуални';
   }
 }
 

@@ -82,3 +82,68 @@ export async function deleteSelectedPlannedDuties(container, reloadCallback) {
   await reloadCallback();
   showToast(`Изтрити планирания: ${deletedCount}.`, 'success');
 }
+
+export async function addSelectedPlannedToActualDuties(container, reloadCallback) {
+  const addButton = container.querySelector('#add-selected-to-actual-duty');
+  const selectedIds = [...plannedDutiesState.selectedIds];
+
+  if (!selectedIds.length) {
+    showToast('Избери поне едно планиране за прехвърляне към Актуални.', 'warning');
+    return;
+  }
+
+  const selectedMap = new Set(selectedIds);
+  const selectedRows = plannedDutiesState.rows.filter((row) => selectedMap.has(row.id));
+
+  if (!selectedRows.length) {
+    showToast('Няма валидни избрани планирания за прехвърляне.', 'warning');
+    return;
+  }
+
+  const payload = selectedRows
+    .filter((row) => row?.date && row?.employee_id && row?.duty_id)
+    .map((row) => ({
+      date: row.date,
+      employee_id: row.employee_id,
+      duty_id: row.duty_id
+    }));
+
+  if (!payload.length) {
+    showToast('Избраните записи са невалидни за прехвърляне.', 'warning');
+    return;
+  }
+
+  const originalText = addButton?.innerHTML || 'Към Актуални';
+  if (addButton) {
+    addButton.disabled = true;
+    addButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Прехвърляне...';
+  }
+
+  let upsertError = null;
+  for (let index = 0; index < payload.length; index += 200) {
+    const chunk = payload.slice(index, index + 200);
+    const { error } = await supabase
+      .from('actual_duties')
+      .upsert(chunk, { onConflict: 'date,employee_id,duty_id', ignoreDuplicates: true });
+
+    if (error) {
+      upsertError = error;
+      break;
+    }
+  }
+
+  if (addButton) {
+    addButton.disabled = false;
+    addButton.innerHTML = originalText;
+  }
+
+  if (upsertError) {
+    showToast(upsertError.message, 'error');
+    return;
+  }
+
+  const movedCount = payload.length;
+  plannedDutiesState.selectedIds = [];
+  await reloadCallback();
+  showToast(`Прехвърлени към Актуални: ${movedCount}. Съществуващите са пропуснати.`, 'success');
+}
