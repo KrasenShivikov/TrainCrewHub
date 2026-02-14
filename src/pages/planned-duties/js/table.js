@@ -14,7 +14,7 @@ function getEmployeeFullName(employee) {
 export async function loadPlannedDuties(container) {
   const { data, error } = await supabase
     .from('planned_duties')
-    .select('id, date, employee_id, duty_id, employees(first_name, last_name), duties(name, schedule_key_duties(schedule_key_id))')
+    .select('id, date, employee_id, duty_id, assignment_role, employees(first_name, last_name), duties(name, schedule_key_duties(schedule_key_id))')
     .order('date', { ascending: false });
 
   if (error) {
@@ -50,8 +50,9 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
       date.includes(plannedDutiesState.searchQuery);
 
     const matchesDate = !plannedDutiesState.dateFilter || item.date === plannedDutiesState.dateFilter;
+    const matchesRole = !plannedDutiesState.roleFilter || item.assignment_role === plannedDutiesState.roleFilter;
 
-    return matchesSearch && matchesDate;
+    return matchesSearch && matchesDate && matchesRole;
   });
 
   if (!filteredRows.length) {
@@ -94,6 +95,7 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
           </td>
           <td>${escapeHtml(item.date ?? '-')}</td>
           <td>${escapeHtml(getEmployeeFullName(item.employees))}</td>
+          <td>${escapeHtml(getAssignmentRoleLabel(item.assignment_role))}</td>
           <td>${escapeHtml(item.duties?.name ?? '-')}</td>
           <td class="text-end">
             <div class="d-inline-flex gap-2">
@@ -105,6 +107,7 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
                 data-date="${escapeHtml(item.date ?? '')}"
                 data-employee-id="${item.employee_id ?? ''}"
                 data-duty-id="${item.duty_id ?? ''}"
+                data-assignment-role="${item.assignment_role ?? 'conductor'}"
                 data-duty-schedule-key-id="${dutyScheduleKeyId}"
               >
                 Редакция
@@ -148,4 +151,8 @@ function getFirstDutyScheduleKeyId(item) {
       : [];
 
   return rows.find((row) => row?.schedule_key_id)?.schedule_key_id || '';
+}
+
+function getAssignmentRoleLabel(value) {
+  return value === 'chief' ? 'Началник влак' : 'Кондуктор';
 }

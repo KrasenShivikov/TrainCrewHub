@@ -36,6 +36,7 @@ export async function renderPlannedDutiesPage(container) {
 function attachPlannedDutiesHandlers(container) {
   const createButton = container.querySelector('#open-create-planned-duty');
   const bulkDeleteButton = container.querySelector('#open-bulk-delete-planned-duty');
+  const goToPlanScheduleButton = container.querySelector('#go-to-plan-schedule');
   const autoPlanButton = container.querySelector('#open-auto-plan-duty');
   const form = container.querySelector('#planned-duty-form');
   const autoForm = container.querySelector('#planned-duty-auto-form');
@@ -55,6 +56,7 @@ function attachPlannedDutiesHandlers(container) {
   const selectAllInput = container.querySelector('#planned-duties-select-all');
   const searchInput = container.querySelector('#planned-duties-search');
   const dateFilterInput = container.querySelector('#planned-duties-date-filter');
+  const roleFilterInput = container.querySelector('#planned-duties-role-filter');
   const resetFilterButton = container.querySelector('#planned-duties-filter-reset');
   const scheduleKeyInput = container.querySelector('#planned-duty-schedule-key');
   const autoScheduleKeyInput = container.querySelector('#planned-duty-auto-schedule-key');
@@ -117,12 +119,19 @@ function attachPlannedDutiesHandlers(container) {
 
   dateFilterInput?.addEventListener('change', (event) => {
     plannedDutiesState.dateFilter = event.target.value || '';
+    updateGoToPlanScheduleState(goToPlanScheduleButton, plannedDutiesState.dateFilter);
+    renderPlannedDutiesTable(container);
+  });
+
+  roleFilterInput?.addEventListener('change', (event) => {
+    plannedDutiesState.roleFilter = event.target.value || '';
     renderPlannedDutiesTable(container);
   });
 
   resetFilterButton?.addEventListener('click', () => {
     plannedDutiesState.searchQuery = '';
     plannedDutiesState.dateFilter = '';
+    plannedDutiesState.roleFilter = '';
 
     if (searchInput) {
       searchInput.value = '';
@@ -132,8 +141,28 @@ function attachPlannedDutiesHandlers(container) {
       dateFilterInput.value = '';
     }
 
+    if (roleFilterInput) {
+      roleFilterInput.value = '';
+    }
+
+    updateGoToPlanScheduleState(goToPlanScheduleButton, plannedDutiesState.dateFilter);
+
     renderPlannedDutiesTable(container);
   });
+
+  goToPlanScheduleButton?.addEventListener('click', () => {
+    const selectedDate = plannedDutiesState.dateFilter || dateFilterInput?.value || '';
+    if (!selectedDate) {
+      showToast('Избери дата от филтъра, за да отвориш План-График.', 'warning');
+      return;
+    }
+
+    const params = new URLSearchParams({ date: selectedDate });
+    window.history.pushState({}, '', `/plan-schedule?${params.toString()}`);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+
+  updateGoToPlanScheduleState(goToPlanScheduleButton, plannedDutiesState.dateFilter || dateFilterInput?.value || '');
 
   scheduleKeyInput?.addEventListener('change', () => {
     renderDutyOptionsByScheduleKey(container, scheduleKeyInput.value || '', '');
@@ -189,6 +218,7 @@ function attachPlannedDutiesHandlers(container) {
         id: actionButton.getAttribute('data-id'),
         date: actionButton.getAttribute('data-date'),
         employeeId: actionButton.getAttribute('data-employee-id'),
+        assignmentRole: actionButton.getAttribute('data-assignment-role') || 'conductor',
         dutyId: actionButton.getAttribute('data-duty-id'),
         dutyScheduleKeyId: actionButton.getAttribute('data-duty-schedule-key-id')
       });
@@ -208,18 +238,25 @@ async function savePlannedDuty(container) {
   const idInput = container.querySelector('#planned-duty-id');
   const dateInput = container.querySelector('#planned-duty-date');
   const employeeInput = container.querySelector('#planned-duty-employee');
+  const assignmentRoleInput = container.querySelector('#planned-duty-assignment-role');
   const scheduleKeyInput = container.querySelector('#planned-duty-schedule-key');
   const dutyInput = container.querySelector('#planned-duty-duty');
   const saveButton = container.querySelector('#planned-duty-save-btn');
 
   const date = dateInput.value;
   const employeeId = employeeInput.value || null;
+  const assignmentRole = assignmentRoleInput.value || '';
   const scheduleKeyId = scheduleKeyInput.value || null;
   const dutyId = dutyInput.value || null;
   const editingId = idInput.value;
 
-  if (!date || !employeeId || !scheduleKeyId || !dutyId) {
+  if (!date || !employeeId || !assignmentRole || !scheduleKeyId || !dutyId) {
     showToast('Моля, попълни всички полета.', 'warning');
+    return;
+  }
+
+  if (!['chief', 'conductor'].includes(assignmentRole)) {
+    showToast('Невалидна роля. Избери Кондуктор или Началник влак.', 'warning');
     return;
   }
 
@@ -235,6 +272,7 @@ async function savePlannedDuty(container) {
   const payload = {
     date,
     employee_id: employeeId,
+    assignment_role: assignmentRole,
     duty_id: dutyId
   };
 
@@ -271,6 +309,7 @@ function populatePlannedDutyForm(container, plannedDuty) {
   container.querySelector('#planned-duty-id').value = plannedDuty.id;
   container.querySelector('#planned-duty-date').value = plannedDuty.date ?? '';
   container.querySelector('#planned-duty-employee').value = plannedDuty.employeeId ?? '';
+  container.querySelector('#planned-duty-assignment-role').value = plannedDuty.assignmentRole ?? 'conductor';
   container.querySelector('#planned-duty-schedule-key').value = plannedDuty.dutyScheduleKeyId ?? '';
   renderDutyOptionsByScheduleKey(container, plannedDuty.dutyScheduleKeyId ?? '', plannedDuty.dutyId ?? '');
 
@@ -282,6 +321,7 @@ function resetPlannedDutyForm(container) {
   container.querySelector('#planned-duty-id').value = '';
   container.querySelector('#planned-duty-date').value = '';
   container.querySelector('#planned-duty-employee').value = '';
+  container.querySelector('#planned-duty-assignment-role').value = 'conductor';
   container.querySelector('#planned-duty-schedule-key').value = '';
   renderDutyOptionsByScheduleKey(container, '', '');
 
@@ -310,4 +350,12 @@ async function deletePlannedDuty(id, container) {
   closeModal(container.querySelector('#planned-duty-delete-modal'));
   resetPlannedDutyForm(container);
   await loadPlannedDuties(container);
+}
+
+function updateGoToPlanScheduleState(button, selectedDate) {
+  if (!button) {
+    return;
+  }
+
+  button.disabled = !selectedDate;
 }

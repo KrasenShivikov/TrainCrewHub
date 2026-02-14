@@ -7,6 +7,7 @@ import { renderDutiesPage } from './pages/duties/js/duties.js';
 import { renderEmployeesPage } from './pages/employees/js/employees.js';
 import { renderPlannedDutiesPage } from './pages/planned-duties/js/planned-duties.js';
 import { renderActualDutiesPage } from './pages/actual-duties/js/actual-duties.js';
+import { renderPlanSchedulePage } from './pages/plan-schedule/js/plan-schedule.js';
 import { renderDutyTypesPage } from './pages/duty-types/js/duty-types.js';
 import { renderScheduleKeyDutiesPage } from './pages/schedule-key-duties/js/schedule-key-duties.js';
 
@@ -51,6 +52,10 @@ const routes = {
     render: renderActualDutiesPage,
     title: 'TrainCrewHub / Реални повески'
   },
+  '/plan-schedule': {
+    render: renderPlanSchedulePage,
+    title: 'TrainCrewHub / План График'
+  },
   '/schedule-key-duties': {
     render: renderScheduleKeyDutiesPage,
     title: 'TrainCrewHub / Повески към Ключ-График'
@@ -69,6 +74,7 @@ async function renderCurrentRoute() {
   
   document.title = config.title;
   await config.render(contentRoot);
+  window.dispatchEvent(new CustomEvent('route:changed', { detail: { pathname: window.location.pathname } }));
 }
 
 function handleLinkClick(event) {

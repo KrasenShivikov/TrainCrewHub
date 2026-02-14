@@ -3,6 +3,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h1 class="h3 mb-0">Планирани повески</h1>
       <div class="d-flex gap-2">
+        <button id="go-to-plan-schedule" type="button" class="btn btn-outline-secondary" disabled>Към План-График</button>
         <button id="open-bulk-delete-planned-duty" type="button" class="btn btn-outline-danger" disabled>Изтрий избраните</button>
         <button id="open-auto-plan-duty" type="button" class="btn btn-outline-primary">Автоматично планиране</button>
         <button id="open-create-planned-duty" type="button" class="btn btn-primary">Ново планиране</button>
@@ -12,7 +13,7 @@
     <p class="text-secondary">Планиране на служители по повески за конкретна дата.</p>
 
     <div class="row g-3 align-items-end mb-3">
-      <div class="col-md-6">
+      <div class="col-md-5">
         <label for="planned-duties-search" class="form-label">Търсене</label>
         <input id="planned-duties-search" type="text" class="form-control" placeholder="Търси по служител, повеска или дата" />
       </div>
@@ -20,7 +21,15 @@
         <label for="planned-duties-date-filter" class="form-label">Филтър по дата</label>
         <input id="planned-duties-date-filter" type="date" class="form-control" />
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
+        <label for="planned-duties-role-filter" class="form-label">Роля</label>
+        <select id="planned-duties-role-filter" class="form-select">
+          <option value="">Всички</option>
+          <option value="conductor">Кондуктор</option>
+          <option value="chief">Началник влак</option>
+        </select>
+      </div>
+      <div class="col-md-2">
         <button id="planned-duties-filter-reset" type="button" class="btn btn-outline-secondary w-100">Изчисти филтрите</button>
       </div>
     </div>
@@ -34,6 +43,7 @@
             </th>
             <th>Дата</th>
             <th>Служител</th>
+            <th>Роля</th>
             <th>Повеска</th>
             <th class="text-end">Действия</th>
           </tr>
@@ -68,6 +78,14 @@
               <label for="planned-duty-employee" class="form-label">Служител</label>
               <select id="planned-duty-employee" class="form-select" required>
                 <option value="">Избери служител</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label for="planned-duty-assignment-role" class="form-label">Роля</label>
+              <select id="planned-duty-assignment-role" class="form-select" required>
+                <option value="conductor">Кондуктор</option>
+                <option value="chief">Началник влак</option>
               </select>
             </div>
 
@@ -111,6 +129,14 @@
               <label for="planned-duty-auto-employee" class="form-label">Служител</label>
               <select id="planned-duty-auto-employee" class="form-select" required>
                 <option value="">Избери служител</option>
+              </select>
+            </div>
+
+            <div class="col-md-3">
+              <label for="planned-duty-auto-assignment-role" class="form-label">Роля</label>
+              <select id="planned-duty-auto-assignment-role" class="form-select" required>
+                <option value="conductor">Кондуктор</option>
+                <option value="chief">Началник влак</option>
               </select>
             </div>
 

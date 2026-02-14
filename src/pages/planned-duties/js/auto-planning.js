@@ -39,6 +39,7 @@ export async function renderAutoStartDutyOptionsByScheduleKey(container, schedul
 
 export function resetAutoPlanForm(container) {
   container.querySelector('#planned-duty-auto-employee').value = '';
+  container.querySelector('#planned-duty-auto-assignment-role').value = 'conductor';
   container.querySelector('#planned-duty-auto-date-from').value = '';
   container.querySelector('#planned-duty-auto-date-to').value = '';
   container.querySelector('#planned-duty-auto-schedule-key').value = '';
@@ -49,6 +50,7 @@ export function resetAutoPlanForm(container) {
 
 export async function saveAutoPlannedDuties(container, reloadCallback) {
   const employeeId = container.querySelector('#planned-duty-auto-employee').value || null;
+  const assignmentRole = container.querySelector('#planned-duty-auto-assignment-role').value || '';
   const dateFrom = container.querySelector('#planned-duty-auto-date-from').value;
   const dateTo = container.querySelector('#planned-duty-auto-date-to').value;
   const scheduleKeyId = container.querySelector('#planned-duty-auto-schedule-key').value || null;
@@ -56,8 +58,13 @@ export async function saveAutoPlannedDuties(container, reloadCallback) {
   const overwriteExisting = container.querySelector('#planned-duty-auto-overwrite').checked;
   const saveButton = container.querySelector('#planned-duty-auto-save-btn');
 
-  if (!employeeId || !dateFrom || !dateTo || !scheduleKeyId || !startDutyId) {
+  if (!employeeId || !assignmentRole || !dateFrom || !dateTo || !scheduleKeyId || !startDutyId) {
     showToast('Моля, попълни всички полета за автоматично планиране.', 'warning');
+    return;
+  }
+
+  if (!['chief', 'conductor'].includes(assignmentRole)) {
+    showToast('Невалидна роля. Избери Кондуктор или Началник влак.', 'warning');
     return;
   }
 
@@ -120,6 +127,7 @@ export async function saveAutoPlannedDuties(container, reloadCallback) {
     payload.push({
       date,
       employee_id: employeeId,
+      assignment_role: assignmentRole,
       duty_id: duty.id,
       created_from: createdFrom
     });

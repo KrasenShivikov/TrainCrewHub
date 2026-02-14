@@ -1,3 +1,106 @@
 body {
   color: #1f2937;
 }
+
+.plan-schedule-sheet .plan-schedule-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.plan-schedule-sheet .plan-schedule-table th:first-child,
+.plan-schedule-sheet .plan-schedule-table td:first-child {
+  width: 180px;
+}
+
+.plan-schedule-sheet .plan-schedule-table tbody th,
+.plan-schedule-sheet .plan-schedule-table tbody td {
+  height: 40px;
+  vertical-align: middle;
+}
+
+@media print {
+  @page plan-landscape {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  @page plan-portrait {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  .plan-schedule-sheet.print-landscape-page {
+    page: plan-landscape;
+  }
+
+  .plan-schedule-sheet.print-portrait-page {
+    page: plan-portrait;
+  }
+
+  #app-header,
+  #app-footer,
+  .no-print {
+    display: none !important;
+  }
+
+  #page-content {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .card,
+  .plan-schedule-sheet {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .table {
+    font-size: 10px;
+  }
+
+  .plan-schedule-sheet h2,
+  .plan-schedule-sheet h3,
+  .plan-schedule-sheet p {
+    margin-bottom: 0.35rem !important;
+  }
+
+  .plan-schedule-sheet section {
+    margin-bottom: 0.75rem !important;
+  }
+
+  .plan-schedule-sheet footer {
+    margin-top: 0.5rem !important;
+  }
+
+  .table-responsive {
+    overflow: visible !important;
+  }
+
+  html.print-compact .table {
+    font-size: 10px;
+  }
+
+  html.print-compact .table > :not(caption) > * > * {
+    padding: 0.12rem 0.2rem;
+  }
+
+  html.print-compact .plan-schedule-sheet .plan-schedule-table tbody th,
+  html.print-compact .plan-schedule-sheet .plan-schedule-table tbody td {
+    height: 28px;
+  }
+
+  html.print-fit-one-page .plan-schedule-sheet {
+    zoom: var(--plan-print-scale, 1);
+  }
+
+  .plan-schedule-sheet section,
+  .plan-schedule-sheet footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .plan-schedule-sheet footer {
+    break-before: avoid-page;
+    page-break-before: avoid;
+  }
+}

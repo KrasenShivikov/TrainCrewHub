@@ -20,23 +20,51 @@
         <li class="nav-item">
           <a class="nav-link" href="/dashboard" data-link>Dashboard</a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link" href="/schedule-keys" data-link>Ключ-График</a>
+        <li class="nav-item dropdown">
+          <a
+            class="nav-link dropdown-toggle"
+            href="#"
+            role="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            Графици
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/schedule-keys" data-link>Ключ-График</a></li>
+            <li><a class="dropdown-item" href="/plan-schedule" data-link>План График</a></li>
+          </ul>
         </li>
-        <li class="nav-item">
-          <a class="nav-link" href="/duties" data-link>Повески</a>
+        <li class="nav-item dropdown">
+          <a
+            class="nav-link dropdown-toggle"
+            href="#"
+            role="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            Повески
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/duties" data-link>Повески</a></li>
+            <li><a class="dropdown-item" href="/duty-types" data-link>Типове повески</a></li>
+            <li><a class="dropdown-item" href="/planned-duties" data-link>Планирани повески</a></li>
+            <li><a class="dropdown-item" href="/actual-duties" data-link>Реални повески</a></li>
+          </ul>
         </li>
-        <li class="nav-item">
-          <a class="nav-link" href="/duty-types" data-link>Типове повески</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="/employees" data-link>Служители</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="/planned-duties" data-link>Планирани повески</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="/actual-duties" data-link>Реални повески</a>
+        <li class="nav-item dropdown">
+          <a
+            class="nav-link dropdown-toggle"
+            href="#"
+            role="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            Персонал
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/employees" data-link>Служители</a></li>
+          </ul>
         </li>
         <li class="nav-item" id="nav-sign-in">
           <a class="nav-link" href="/login" data-link>Sign In</a>
