@@ -12,13 +12,21 @@
     <p class="text-secondary">Служители по повески - реално изпълнение.</p>
 
     <div class="row g-3 align-items-end mb-3">
-      <div class="col-md-6">
+      <div class="col-md-4">
         <label for="actual-duties-search" class="form-label">Търсене</label>
         <input id="actual-duties-search" type="text" class="form-control" placeholder="Търси по служител, повеска или дата" />
       </div>
       <div class="col-md-3">
         <label for="actual-duties-date-filter" class="form-label">Филтър по дата</label>
         <input id="actual-duties-date-filter" type="date" class="form-control" />
+      </div>
+      <div class="col-md-2">
+        <label for="actual-duties-role-filter" class="form-label">Роля</label>
+        <select id="actual-duties-role-filter" class="form-select">
+          <option value="">Всички</option>
+          <option value="conductor">Кондуктор</option>
+          <option value="chief">Началник влак</option>
+        </select>
       </div>
       <div class="col-md-3">
         <button id="actual-duties-filter-reset" type="button" class="btn btn-outline-secondary w-100">Изчисти филтрите</button>
@@ -34,6 +42,7 @@
             </th>
             <th>Дата</th>
             <th>Служител</th>
+            <th>Роля</th>
             <th>Повеска</th>
             <th class="text-end">Действия</th>
           </tr>
@@ -82,6 +91,14 @@
               <label for="actual-duty-duty" class="form-label">Повеска</label>
               <select id="actual-duty-duty" class="form-select" required>
                 <option value="">Избери повеска</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label for="actual-duty-assignment-role" class="form-label">Роля</label>
+              <select id="actual-duty-assignment-role" class="form-select" required>
+                <option value="conductor">Кондуктор</option>
+                <option value="chief">Началник влак</option>
               </select>
             </div>
           </div>
@@ -159,6 +176,7 @@
                 </th>
                 <th>Дата</th>
                 <th>Служител</th>
+                <th>Роля</th>
                 <th>Повеска</th>
               </tr>
             </thead>

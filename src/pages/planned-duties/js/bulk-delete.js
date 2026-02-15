@@ -105,7 +105,8 @@ export async function addSelectedPlannedToActualDuties(container, reloadCallback
     .map((row) => ({
       date: row.date,
       employee_id: row.employee_id,
-      duty_id: row.duty_id
+      duty_id: row.duty_id,
+      assignment_role: row.assignment_role || 'conductor'
     }));
 
   if (!payload.length) {

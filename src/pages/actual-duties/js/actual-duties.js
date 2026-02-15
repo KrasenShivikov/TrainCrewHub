@@ -52,6 +52,7 @@ function attachActualDutiesHandlers(container) {
   const bulkAddTableBody = container.querySelector('#actual-duty-bulk-add-table-body');
   const searchInput = container.querySelector('#actual-duties-search');
   const dateFilterInput = container.querySelector('#actual-duties-date-filter');
+  const roleFilterInput = container.querySelector('#actual-duties-role-filter');
   const resetFilterButton = container.querySelector('#actual-duties-filter-reset');
   const scheduleKeyInput = container.querySelector('#actual-duty-schedule-key');
   const selectAllInput = container.querySelector('#actual-duties-select-all');
@@ -121,9 +122,15 @@ function attachActualDutiesHandlers(container) {
     renderActualDutiesTable(container);
   });
 
+  roleFilterInput?.addEventListener('change', (event) => {
+    actualDutiesState.roleFilter = event.target.value || '';
+    renderActualDutiesTable(container);
+  });
+
   resetFilterButton?.addEventListener('click', () => {
     actualDutiesState.searchQuery = '';
     actualDutiesState.dateFilter = '';
+    actualDutiesState.roleFilter = '';
 
     if (searchInput) {
       searchInput.value = '';
@@ -131,6 +138,10 @@ function attachActualDutiesHandlers(container) {
 
     if (dateFilterInput) {
       dateFilterInput.value = '';
+    }
+
+    if (roleFilterInput) {
+      roleFilterInput.value = '';
     }
 
     updateGoToScheduleState(goToScheduleButton, actualDutiesState.dateFilter);
@@ -266,6 +277,7 @@ function attachActualDutiesHandlers(container) {
         id: actionButton.getAttribute('data-id'),
         date: actionButton.getAttribute('data-date'),
         employeeId: actionButton.getAttribute('data-employee-id'),
+        assignmentRole: actionButton.getAttribute('data-assignment-role') || 'conductor',
         dutyId: actionButton.getAttribute('data-duty-id'),
         dutyScheduleKeyId: actionButton.getAttribute('data-duty-schedule-key-id')
       });
@@ -405,12 +417,14 @@ async function saveActualDuty(container) {
   const employeeInput = container.querySelector('#actual-duty-employee');
   const scheduleKeyInput = container.querySelector('#actual-duty-schedule-key');
   const dutyInput = container.querySelector('#actual-duty-duty');
+  const assignmentRoleInput = container.querySelector('#actual-duty-assignment-role');
   const saveButton = container.querySelector('#actual-duty-save-btn');
 
   const date = dateInput.value;
   const employeeId = employeeInput.value || null;
   const scheduleKeyId = scheduleKeyInput.value || null;
   const dutyId = dutyInput.value || null;
+  const assignmentRole = assignmentRoleInput.value || 'conductor';
   const editingId = idInput.value;
 
   if (!date || !employeeId || !scheduleKeyId || !dutyId) {
@@ -423,6 +437,11 @@ async function saveActualDuty(container) {
     return;
   }
 
+  if (!['chief', 'conductor'].includes(assignmentRole)) {
+    showToast('Невалидна роля. Избери Кондуктор или Началник влак.', 'warning');
+    return;
+  }
+
   const originalText = saveButton.innerHTML;
   saveButton.disabled = true;
   saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Запис...';
@@ -430,7 +449,8 @@ async function saveActualDuty(container) {
   const payload = {
     date,
     employee_id: employeeId,
-    duty_id: dutyId
+    duty_id: dutyId,
+    assignment_role: assignmentRole
   };
 
   let error;
@@ -464,6 +484,7 @@ function populateActualDutyForm(container, row) {
   container.querySelector('#actual-duty-id').value = row.id;
   container.querySelector('#actual-duty-date').value = row.date ?? '';
   container.querySelector('#actual-duty-employee').value = row.employeeId ?? '';
+  container.querySelector('#actual-duty-assignment-role').value = row.assignmentRole ?? 'conductor';
   container.querySelector('#actual-duty-schedule-key').value = row.dutyScheduleKeyId ?? '';
   renderDutyOptionsByScheduleKey(container, row.dutyScheduleKeyId ?? '', row.dutyId ?? '');
 
@@ -475,6 +496,7 @@ function resetActualDutyForm(container) {
   container.querySelector('#actual-duty-id').value = '';
   container.querySelector('#actual-duty-date').value = '';
   container.querySelector('#actual-duty-employee').value = '';
+  container.querySelector('#actual-duty-assignment-role').value = 'conductor';
   container.querySelector('#actual-duty-schedule-key').value = '';
   renderDutyOptionsByScheduleKey(container, '', '');
 
@@ -545,7 +567,7 @@ async function deleteSelectedActualDuties(container) {
 async function loadPlannedRowsForBulkAdd(container) {
   const { data, error } = await supabase
     .from('planned_duties')
-    .select('id, date, employee_id, duty_id, employees(first_name, last_name), duties(name)')
+    .select('id, date, employee_id, duty_id, assignment_role, employees(first_name, last_name), duties(name)')
     .order('date', { ascending: false });
 
   if (error) {
@@ -627,6 +649,7 @@ function renderBulkAddTable(container, explicitEmptyMessage) {
           </td>
           <td>${escapeHtml(item.date ?? '-')}</td>
           <td>${escapeHtml(fullName)}</td>
+          <td>${escapeHtml(getAssignmentRoleLabel(item.assignment_role))}</td>
           <td>${escapeHtml(item.duties?.name ?? '-')}</td>
         </tr>
       `;
@@ -678,7 +701,8 @@ async function addSelectedPlannedToActual(container) {
   const payload = selectedRows.map((row) => ({
     date: row.date,
     employee_id: row.employee_id,
-    duty_id: row.duty_id
+    duty_id: row.duty_id,
+    assignment_role: row.assignment_role || 'conductor'
   }));
 
   const originalText = addButton.innerHTML;
@@ -729,4 +753,8 @@ function getDateFromQuery() {
   }
 
   return date;
+}
+
+function getAssignmentRoleLabel(role) {
+  return role === 'chief' ? 'Началник влак' : 'Кондуктор';
 }

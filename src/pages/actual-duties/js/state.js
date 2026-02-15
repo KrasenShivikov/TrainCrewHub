@@ -2,6 +2,7 @@ export const actualDutiesState = {
   rows: [],
   searchQuery: '',
   dateFilter: '',
+  roleFilter: '',
   selectedIds: [],
   visibleRowIds: [],
   plannedRows: [],
