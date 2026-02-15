@@ -31,24 +31,12 @@ export function setupModalEscapeHandler(handlerKey, modalsInPriority) {
 export function closeModal(modalElement) {
   modalElement.classList.add('d-none');
   if (
-    document.querySelector('#duty-modal')?.classList.contains('d-none') &&
-    document.querySelector('#duty-delete-modal')?.classList.contains('d-none') &&
-    document.querySelector('#duty-profile-modal')?.classList.contains('d-none')
+    document.querySelector('#train-modal')?.classList.contains('d-none') &&
+    document.querySelector('#train-delete-modal')?.classList.contains('d-none') &&
+    document.querySelector('#train-timetable-preview-modal')?.classList.contains('d-none')
   ) {
     document.body.classList.remove('overflow-hidden');
   }
-}
-
-export function formatDuration(durationValue) {
-  if (!durationValue) {
-    return '-';
-  }
-
-  if (typeof durationValue === 'string') {
-    return durationValue.replace('.000000', '');
-  }
-
-  return String(durationValue);
 }
 
 export function escapeHtml(value) {
@@ -58,4 +46,14 @@ export function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
+}
+
+export function toTimeInputValue(value) {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return '';
+  }
+
+  const match = raw.match(/^(\d{1,2}:\d{2})/);
+  return match ? match[1] : raw.slice(0, 5);
 }

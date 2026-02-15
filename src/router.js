@@ -12,6 +12,7 @@ import { renderPlanSchedulePage } from './pages/plan-schedule/js/plan-schedule.j
 import { renderSchedulePage } from './pages/schedule/js/schedule.js';
 import { renderDutyTypesPage } from './pages/duty-types/js/duty-types.js';
 import { renderScheduleKeyDutiesPage } from './pages/schedule-key-duties/js/schedule-key-duties.js';
+import { renderTrainsPage } from './pages/trains/js/trains.js';
 
 const routes = {
   '/': {
@@ -41,6 +42,10 @@ const routes = {
   '/duty-types': {
     render: renderDutyTypesPage,
     title: 'TrainCrewHub / Типове повески'
+  },
+  '/trains': {
+    render: renderTrainsPage,
+    title: 'TrainCrewHub / Влакове'
   },
   '/employees': {
     render: renderEmployeesPage,

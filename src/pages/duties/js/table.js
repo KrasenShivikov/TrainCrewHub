@@ -6,7 +6,7 @@ import { dutiesState, PAGE_SIZE } from './state.js';
 export async function loadDuties(container) {
   const { data, error } = await supabase
     .from('duties')
-    .select('id, name, duty_type_id, start_time, end_time, second_day, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, duty_types(name), schedule_key_duties(schedule_key_id, schedule_keys(name))')
+    .select('id, name, duty_type_id, start_time, end_time, second_day, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, duty_types(name), schedule_key_duties(schedule_key_id, schedule_keys(name)), duty_trains(train_id, sequence_order, trains(number))')
     .order('display_order', { ascending: true })
     .order('name', { ascending: true });
 
@@ -60,10 +60,12 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
     const name = (item.name || '').toLowerCase();
     const typeName = (item.duty_types?.name || '').toLowerCase();
     const scheduleKeyNames = getScheduleKeyNames(item).join(' ').toLowerCase();
+    const trainNames = getTrainNames(item).join(' ').toLowerCase();
     return (
       name.includes(dutiesState.searchQuery) ||
       typeName.includes(dutiesState.searchQuery) ||
-      scheduleKeyNames.includes(dutiesState.searchQuery)
+      scheduleKeyNames.includes(dutiesState.searchQuery) ||
+      trainNames.includes(dutiesState.searchQuery)
     );
   });
 
@@ -94,6 +96,7 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
       (item) => {
         const scheduleKeyNames = getScheduleKeyNames(item);
         const scheduleKeyIds = getScheduleKeyIds(item);
+        const trainIds = getTrainIds(item);
         return `
         <tr data-duty-id="${item.id}" draggable="true">
           <td class="text-secondary">↕</td>
@@ -102,24 +105,23 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
           <td>${escapeHtml(scheduleKeyNames.length ? scheduleKeyNames.join(', ') : '-')}</td>
           <td>${escapeHtml(item.start_time ?? '-')}</td>
           <td>${escapeHtml(item.end_time ?? '-')}</td>
-          <td>${item.second_day ? 'Да' : 'Не'}</td>
           <td>${escapeHtml(formatDuration(item.break_duration_interval))}</td>
           <td>${escapeHtml(formatDuration(item.duration_interval))}</td>
           <td class="text-end">
             <div class="d-inline-flex gap-2">
               <button
                 type="button"
+                class="btn btn-sm btn-outline-secondary"
+                data-action="profile"
+                data-id="${item.id}"
+              >
+                Профил
+              </button>
+              <button
+                type="button"
                 class="btn btn-sm btn-outline-primary"
                 data-action="edit"
                 data-id="${item.id}"
-                data-name="${escapeHtml(item.name ?? '')}"
-                data-duty-type-id="${item.duty_type_id ?? ''}"
-                data-schedule-key-ids="${escapeHtml(scheduleKeyIds.join(','))}"
-                data-start-time="${escapeHtml(item.start_time ?? '')}"
-                data-end-time="${escapeHtml(item.end_time ?? '')}"
-                data-second-day="${item.second_day ? 'true' : 'false'}"
-                data-break-start-time="${escapeHtml(item.break_start_time ?? '00:00:00')}"
-                data-break-end-time="${escapeHtml(item.break_end_time ?? '00:00:00')}"
               >
                 Редакция
               </button>
@@ -158,6 +160,14 @@ function getScheduleKeyRows(item) {
       : [];
 }
 
+function getTrainRows(item) {
+  return Array.isArray(item.duty_trains)
+    ? item.duty_trains
+    : item.duty_trains
+      ? [item.duty_trains]
+      : [];
+}
+
 function getScheduleKeyNames(item) {
   const names = getScheduleKeyRows(item)
     .map((row) => row?.schedule_keys?.name)
@@ -172,4 +182,36 @@ function getScheduleKeyIds(item) {
     .filter(Boolean);
 
   return [...new Set(ids)];
+}
+
+function getTrainNames(item) {
+  const names = getTrainRows(item)
+    .map((row) => row?.trains?.number)
+    .filter(Boolean);
+
+  return [...new Set(names)];
+}
+
+function getTrainNamesOrdered(item) {
+  const rows = getTrainRows(item)
+    .map((row) => ({
+      number: row?.trains?.number,
+      sequenceOrder: Number.isFinite(Number(row?.sequence_order)) ? Number(row.sequence_order) : Number.MAX_SAFE_INTEGER
+    }))
+    .filter((row) => Boolean(row.number))
+    .sort((left, right) => left.sequenceOrder - right.sequenceOrder);
+
+  return [...new Set(rows.map((row) => row.number))];
+}
+
+function getTrainIds(item) {
+  const rows = getTrainRows(item)
+    .map((row) => ({
+      trainId: row?.train_id,
+      sequenceOrder: Number.isFinite(Number(row?.sequence_order)) ? Number(row.sequence_order) : Number.MAX_SAFE_INTEGER
+    }))
+    .filter((row) => Boolean(row.trainId))
+    .sort((left, right) => left.sequenceOrder - right.sequenceOrder);
+
+  return [...new Set(rows.map((row) => row.trainId))];
 }

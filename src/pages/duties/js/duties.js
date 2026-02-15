@@ -15,7 +15,31 @@ export async function renderDutiesPage(container) {
   attachDutiesHandlers(container);
   await loadDutyTypeOptions(container);
   await loadScheduleKeyOptions(container);
+  await loadTrainOptions(container);
   await loadDuties(container);
+}
+
+async function loadTrainOptions(container) {
+  const select = container.querySelector('#duty-trains');
+
+  const { data, error } = await supabase
+    .from('trains')
+    .select('id, number, origin_station, destination_station')
+    .order('number', { ascending: true });
+
+  if (error) {
+    showToast(getFriendlySupabaseErrorMessage(error), 'error');
+    return;
+  }
+
+  const options = (data || [])
+    .map((item) => {
+      const route = `${item.origin_station || '-'} - ${item.destination_station || '-'}`;
+      return `<option value="${item.id}">${escapeHtml(item.number || '-')} (${escapeHtml(route)})</option>`;
+    })
+    .join('');
+
+  select.innerHTML = options;
 }
 
 async function loadDutyTypeOptions(container) {
@@ -45,9 +69,13 @@ function attachDutiesHandlers(container) {
   const tableBody = container.querySelector('#duties-table-body');
   const dutyModal = container.querySelector('#duty-modal');
   const deleteModal = container.querySelector('#duty-delete-modal');
+  const profileModal = container.querySelector('#duty-profile-modal');
   const modalCloseButton = container.querySelector('#duty-modal-close');
   const deleteConfirmButton = container.querySelector('#duty-delete-confirm');
   const deleteCancelButton = container.querySelector('#duty-delete-cancel');
+  const profileCloseButton = container.querySelector('#duty-profile-close');
+  const profileCloseSecondaryButton = container.querySelector('#duty-profile-close-secondary');
+  const profileEditButton = container.querySelector('#duty-profile-edit');
   const searchInput = container.querySelector('#duties-search');
   const prevPageButton = container.querySelector('#duties-prev-page');
   const nextPageButton = container.querySelector('#duties-next-page');
@@ -74,6 +102,24 @@ function attachDutiesHandlers(container) {
     closeModal(deleteModal);
   });
 
+  profileCloseButton?.addEventListener('click', () => {
+    closeModal(profileModal);
+  });
+
+  profileCloseSecondaryButton?.addEventListener('click', () => {
+    closeModal(profileModal);
+  });
+
+  profileEditButton?.addEventListener('click', () => {
+    const dutyId = profileModal?.dataset?.dutyId || '';
+    if (!dutyId) {
+      return;
+    }
+
+    closeModal(profileModal);
+    openDutyEditModal(container, dutyId);
+  });
+
   searchInput?.addEventListener('input', (event) => {
     dutiesState.searchQuery = event.target.value.trim().toLowerCase();
     dutiesState.currentPage = 1;
@@ -91,6 +137,7 @@ function attachDutiesHandlers(container) {
   });
 
   setupModalEscapeHandler('duties', [
+    profileModal,
     deleteModal,
     dutyModal
   ]);
@@ -107,24 +154,15 @@ function attachDutiesHandlers(container) {
     }
 
     const action = actionButton.getAttribute('data-action');
-    if (action === 'edit') {
-      const scheduleKeyIds = (actionButton.getAttribute('data-schedule-key-ids') || '')
-        .split(',')
-        .map((value) => value.trim())
-        .filter(Boolean);
+    if (action === 'profile') {
+      const id = actionButton.getAttribute('data-id');
+      openDutyProfileModal(container, id);
+      return;
+    }
 
-      populateDutyForm(container, {
-        id: actionButton.getAttribute('data-id'),
-        name: actionButton.getAttribute('data-name'),
-        dutyTypeId: actionButton.getAttribute('data-duty-type-id'),
-        scheduleKeyIds,
-        startTime: actionButton.getAttribute('data-start-time'),
-        endTime: actionButton.getAttribute('data-end-time'),
-        secondDay: actionButton.getAttribute('data-second-day') === 'true',
-        breakStartTime: actionButton.getAttribute('data-break-start-time'),
-        breakEndTime: actionButton.getAttribute('data-break-end-time')
-      });
-      openModal(dutyModal);
+    if (action === 'edit') {
+      const id = actionButton.getAttribute('data-id');
+      openDutyEditModal(container, id);
       return;
     }
 
@@ -217,6 +255,7 @@ async function saveDuty(container) {
   const nameInput = container.querySelector('#duty-name');
   const dutyTypeInput = container.querySelector('#duty-type');
   const scheduleKeysInput = container.querySelector('#duty-schedule-keys');
+  const trainsInput = container.querySelector('#duty-trains');
   const startTimeInput = container.querySelector('#duty-start-time');
   const endTimeInput = container.querySelector('#duty-end-time');
   const secondDayInput = container.querySelector('#duty-second-day');
@@ -227,6 +266,9 @@ async function saveDuty(container) {
   const name = nameInput.value.trim();
   const dutyTypeId = dutyTypeInput.value || null;
   const selectedScheduleKeyIds = Array.from(scheduleKeysInput.selectedOptions || [])
+    .map((option) => option.value)
+    .filter(Boolean);
+  const selectedTrainIds = Array.from(trainsInput.selectedOptions || [])
     .map((option) => option.value)
     .filter(Boolean);
   const primaryScheduleKeyId = selectedScheduleKeyIds[0] || null;
@@ -295,6 +337,10 @@ async function saveDuty(container) {
     error = await syncDutyScheduleKeys(dutyId, selectedScheduleKeyIds);
   }
 
+  if (!error && dutyId) {
+    error = await syncDutyTrains(dutyId, selectedTrainIds);
+  }
+
   saveButton.disabled = false;
   saveButton.innerHTML = originalText;
 
@@ -318,6 +364,11 @@ function populateDutyForm(container, duty) {
   Array.from(scheduleKeysSelect.options).forEach((option) => {
     option.selected = selectedScheduleKeyIds.includes(option.value);
   });
+  const trainsSelect = container.querySelector('#duty-trains');
+  const selectedTrainIds = duty.trainIds || [];
+  Array.from(trainsSelect.options).forEach((option) => {
+    option.selected = selectedTrainIds.includes(option.value);
+  });
   container.querySelector('#duty-start-time').value = duty.startTime ?? '';
   container.querySelector('#duty-end-time').value = duty.endTime ?? '';
   container.querySelector('#duty-second-day').checked = Boolean(duty.secondDay);
@@ -334,6 +385,10 @@ function resetDutyForm(container) {
   container.querySelector('#duty-type').value = '';
   const scheduleKeysSelect = container.querySelector('#duty-schedule-keys');
   Array.from(scheduleKeysSelect.options).forEach((option) => {
+    option.selected = false;
+  });
+  const trainsSelect = container.querySelector('#duty-trains');
+  Array.from(trainsSelect.options).forEach((option) => {
     option.selected = false;
   });
   container.querySelector('#duty-start-time').value = '';
@@ -384,4 +439,257 @@ async function syncDutyScheduleKeys(dutyId, scheduleKeyIds) {
 
   const { error: insertError } = await supabase.from('schedule_key_duties').insert(payload);
   return insertError;
+}
+
+async function syncDutyTrains(dutyId, trainIds) {
+  const { error: clearError } = await supabase
+    .from('duty_trains')
+    .delete()
+    .eq('duty_id', dutyId);
+
+  if (clearError) {
+    return clearError;
+  }
+
+  if (!trainIds.length) {
+    return null;
+  }
+
+  const payload = trainIds.map((trainId, index) => ({
+    duty_id: dutyId,
+    train_id: trainId,
+    sequence_order: index + 1
+  }));
+
+  const { error: insertError } = await supabase.from('duty_trains').insert(payload);
+  return insertError;
+}
+
+function getFriendlySupabaseErrorMessage(error) {
+  const rawMessage = String(error?.message || '').trim();
+  const normalized = rawMessage.toLowerCase();
+
+  const isRlsError =
+    normalized.includes('row-level security') ||
+    normalized.includes('violates row-level security policy') ||
+    String(error?.code || '') === '42501';
+
+  if (isRlsError && normalized.includes('duty_trains')) {
+    return 'Нямаш права да свързваш влакове към повески. Свържи се с администратор.';
+  }
+
+  if (isRlsError && normalized.includes('duties')) {
+    return 'Нямаш права да създаваш или редактираш повески. Свържи се с администратор.';
+  }
+
+  if (isRlsError) {
+    return 'Достъпът е ограничен от права за сигурност (RLS).';
+  }
+
+  return rawMessage || 'Възникна неочаквана грешка.';
+}
+
+function openDutyProfileModal(container, dutyId) {
+  const duty = dutiesState.allDuties.find((item) => item.id === dutyId);
+  const content = container.querySelector('#duty-profile-content');
+  const profileModal = container.querySelector('#duty-profile-modal');
+  const profileEditButton = container.querySelector('#duty-profile-edit');
+
+  if (!content || !profileModal) {
+    return;
+  }
+
+  if (!duty) {
+    profileModal.dataset.dutyId = '';
+    if (profileEditButton) {
+      profileEditButton.disabled = true;
+    }
+    content.innerHTML = '<p class="text-secondary mb-0">Няма данни за тази повеска.</p>';
+    openModal(profileModal);
+    return;
+  }
+
+  profileModal.dataset.dutyId = duty.id;
+  if (profileEditButton) {
+    profileEditButton.disabled = false;
+  }
+
+  const scheduleKeyNames = getScheduleKeyNames(duty);
+  const trainNumbers = getTrainNumbersOrdered(duty);
+
+  content.innerHTML = `
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Наименование</div>
+          <div class="fw-semibold">${escapeHtml(duty.name || '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Тип</div>
+          <div class="fw-semibold">${escapeHtml(duty?.duty_types?.name || '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Ключ-графици</div>
+          <div class="fw-semibold">${escapeHtml(scheduleKeyNames.length ? scheduleKeyNames.join(', ') : '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Влакове</div>
+          <div class="fw-semibold">${escapeHtml(trainNumbers.length ? trainNumbers.join(', ') : '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Начало</div>
+          <div class="fw-semibold">${escapeHtml((duty.start_time || '-').slice(0, 5) || '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Край</div>
+          <div class="fw-semibold">${escapeHtml((duty.end_time || '-').slice(0, 5) || '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Втори ден</div>
+          <div class="fw-semibold">${duty.second_day ? 'Да' : 'Не'}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Начало на прекъсване</div>
+          <div class="fw-semibold">${escapeHtml((intervalToTimeInput(duty.break_start_time || '00:00:00') || '-').slice(0, 5) || '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Край на прекъсване</div>
+          <div class="fw-semibold">${escapeHtml((intervalToTimeInput(duty.break_end_time || '00:00:00') || '-').slice(0, 5) || '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Прекъсване</div>
+          <div class="fw-semibold">${escapeHtml(formatInterval(duty.break_duration_interval))}</div>
+        </div>
+      </div>
+      <div class="col-md-12">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Времетраене</div>
+          <div class="fw-semibold">${escapeHtml(formatInterval(duty.duration_interval))}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  openModal(profileModal);
+}
+
+function openDutyEditModal(container, dutyId) {
+  const duty = dutiesState.allDuties.find((item) => item.id === dutyId);
+  if (!duty) {
+    showToast('Не е намерена повеска за редакция.', 'warning');
+    return;
+  }
+
+  populateDutyForm(container, {
+    id: duty.id,
+    name: duty.name || '',
+    dutyTypeId: duty.duty_type_id || '',
+    scheduleKeyIds: getScheduleKeyIds(duty),
+    trainIds: getTrainIdsOrdered(duty),
+    startTime: normalizeTime(duty.start_time),
+    endTime: normalizeTime(duty.end_time),
+    secondDay: Boolean(duty.second_day),
+    breakStartTime: duty.break_start_time || '00:00:00',
+    breakEndTime: duty.break_end_time || '00:00:00'
+  });
+
+  openModal(container.querySelector('#duty-modal'));
+}
+
+function getScheduleKeyNames(duty) {
+  const rows = Array.isArray(duty?.schedule_key_duties)
+    ? duty.schedule_key_duties
+    : duty?.schedule_key_duties
+      ? [duty.schedule_key_duties]
+      : [];
+
+  const names = rows
+    .map((row) => row?.schedule_keys?.name)
+    .filter(Boolean);
+
+  return [...new Set(names)];
+}
+
+function getScheduleKeyIds(duty) {
+  const rows = Array.isArray(duty?.schedule_key_duties)
+    ? duty.schedule_key_duties
+    : duty?.schedule_key_duties
+      ? [duty.schedule_key_duties]
+      : [];
+
+  const ids = rows
+    .map((row) => row?.schedule_key_id)
+    .filter(Boolean);
+
+  return [...new Set(ids)];
+}
+
+function getTrainNumbersOrdered(duty) {
+  const rows = Array.isArray(duty?.duty_trains)
+    ? duty.duty_trains
+    : duty?.duty_trains
+      ? [duty.duty_trains]
+      : [];
+
+  return rows
+    .map((row) => ({
+      number: row?.trains?.number,
+      sequenceOrder: Number.isFinite(Number(row?.sequence_order)) ? Number(row.sequence_order) : Number.MAX_SAFE_INTEGER
+    }))
+    .filter((row) => Boolean(row.number))
+    .sort((left, right) => left.sequenceOrder - right.sequenceOrder)
+    .map((row) => row.number)
+    .filter((value, index, all) => all.indexOf(value) === index);
+}
+
+function getTrainIdsOrdered(duty) {
+  const rows = Array.isArray(duty?.duty_trains)
+    ? duty.duty_trains
+    : duty?.duty_trains
+      ? [duty.duty_trains]
+      : [];
+
+  return rows
+    .map((row) => ({
+      id: row?.train_id,
+      sequenceOrder: Number.isFinite(Number(row?.sequence_order)) ? Number(row.sequence_order) : Number.MAX_SAFE_INTEGER
+    }))
+    .filter((row) => Boolean(row.id))
+    .sort((left, right) => left.sequenceOrder - right.sequenceOrder)
+    .map((row) => row.id)
+    .filter((value, index, all) => all.indexOf(value) === index);
+}
+
+function normalizeTime(value) {
+  if (!value) {
+    return '';
+  }
+
+  return String(value).slice(0, 5);
+}
+
+function formatInterval(value) {
+  if (!value) {
+    return '-';
+  }
+
+  return String(value).replace('.000000', '');
 }
