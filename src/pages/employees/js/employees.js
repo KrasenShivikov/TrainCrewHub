@@ -31,6 +31,9 @@ function attachEmployeesHandlers(container) {
   const deleteConfirmButton = container.querySelector('#employee-delete-confirm');
   const deleteCancelButton = container.querySelector('#employee-delete-cancel');
   const searchInput = container.querySelector('#employees-search');
+  const positionFilterInput = container.querySelector('#employees-position-filter');
+  const activeFilterInput = container.querySelector('#employees-active-filter');
+  const filterResetButton = container.querySelector('#employees-filter-reset');
   const photoFileInput = container.querySelector('#employee-photo-file');
   const photoRemoveButton = container.querySelector('#employee-photo-remove-btn');
 
@@ -66,6 +69,28 @@ function attachEmployeesHandlers(container) {
 
   searchInput?.addEventListener('input', (event) => {
     employeesState.searchQuery = event.target.value.trim().toLowerCase();
+    renderEmployeesTable(container);
+  });
+
+  positionFilterInput?.addEventListener('change', (event) => {
+    employeesState.positionFilter = event.target.value || '';
+    renderEmployeesTable(container);
+  });
+
+  activeFilterInput?.addEventListener('change', (event) => {
+    employeesState.activeFilter = event.target.value || '';
+    renderEmployeesTable(container);
+  });
+
+  filterResetButton?.addEventListener('click', () => {
+    employeesState.searchQuery = '';
+    employeesState.positionFilter = '';
+    employeesState.activeFilter = '';
+
+    if (searchInput) searchInput.value = '';
+    if (positionFilterInput) positionFilterInput.value = '';
+    if (activeFilterInput) activeFilterInput.value = '';
+
     renderEmployeesTable(container);
   });
 

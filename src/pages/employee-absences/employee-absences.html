@@ -7,23 +7,27 @@
 
     <p class="text-secondary">Управление на отсъствия на служители.</p>
 
-    <div class="row g-3 align-items-end mb-3">
-      <div class="col-md-6">
-        <label for="employee-absences-search" class="form-label">Търсене</label>
-        <input id="employee-absences-search" type="text" class="form-control" placeholder="Търси по служител, причина, период или бележки" />
+    <section class="search-panel mb-4" aria-label="Панел за търсене">
+      <div class="search-panel-header">
+        <h2 class="h6 mb-0">Панел за търсене</h2>
+        <button id="employee-absences-filter-reset" type="button" class="btn btn-sm btn-outline-secondary">Изчисти филтрите</button>
       </div>
-      <div class="col-md-2">
-        <label for="employee-absences-date-from" class="form-label">От дата</label>
-        <input id="employee-absences-date-from" type="date" class="form-control" />
+
+      <div class="row g-3 align-items-end">
+        <div class="col-md-6">
+          <label for="employee-absences-search" class="form-label">Търсене</label>
+          <input id="employee-absences-search" type="text" class="form-control" placeholder="Търси по служител, причина, период или бележки" />
+        </div>
+        <div class="col-md-3">
+          <label for="employee-absences-date-from" class="form-label">От дата</label>
+          <input id="employee-absences-date-from" type="date" class="form-control" />
+        </div>
+        <div class="col-md-3">
+          <label for="employee-absences-date-to" class="form-label">До дата</label>
+          <input id="employee-absences-date-to" type="date" class="form-control" />
+        </div>
       </div>
-      <div class="col-md-2">
-        <label for="employee-absences-date-to" class="form-label">До дата</label>
-        <input id="employee-absences-date-to" type="date" class="form-control" />
-      </div>
-      <div class="col-md-2">
-        <button id="employee-absences-filter-reset" type="button" class="btn btn-outline-secondary w-100">Изчисти филтрите</button>
-      </div>
-    </div>
+    </section>
 
     <div class="table-responsive">
       <table class="table align-middle">

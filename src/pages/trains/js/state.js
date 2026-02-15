@@ -1,4 +1,6 @@
 export const trainsState = {
   rows: [],
-  searchQuery: ''
+  searchQuery: '',
+  originFilter: '',
+  destinationFilter: ''
 };

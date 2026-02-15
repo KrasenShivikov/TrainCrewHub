@@ -11,27 +11,31 @@
 
     <p class="text-secondary">Служители по повески - реално изпълнение.</p>
 
-    <div class="row g-3 align-items-end mb-3">
-      <div class="col-md-4">
-        <label for="actual-duties-search" class="form-label">Търсене</label>
-        <input id="actual-duties-search" type="text" class="form-control" placeholder="Търси по служител, повеска или дата" />
+    <section class="search-panel mb-4" aria-label="Панел за търсене">
+      <div class="search-panel-header">
+        <h2 class="h6 mb-0">Панел за търсене</h2>
+        <button id="actual-duties-filter-reset" type="button" class="btn btn-sm btn-outline-secondary">Изчисти филтрите</button>
       </div>
-      <div class="col-md-3">
-        <label for="actual-duties-date-filter" class="form-label">Филтър по дата</label>
-        <input id="actual-duties-date-filter" type="date" class="form-control" />
+
+      <div class="row g-3 align-items-end">
+        <div class="col-md-5">
+          <label for="actual-duties-search" class="form-label">Търсене</label>
+          <input id="actual-duties-search" type="text" class="form-control" placeholder="Търси по служител, повеска или дата" />
+        </div>
+        <div class="col-md-4">
+          <label for="actual-duties-date-filter" class="form-label">Филтър по дата</label>
+          <input id="actual-duties-date-filter" type="date" class="form-control" />
+        </div>
+        <div class="col-md-3">
+          <label for="actual-duties-role-filter" class="form-label">Роля</label>
+          <select id="actual-duties-role-filter" class="form-select">
+            <option value="">Всички</option>
+            <option value="conductor">Кондуктор</option>
+            <option value="chief">Началник влак</option>
+          </select>
+        </div>
       </div>
-      <div class="col-md-2">
-        <label for="actual-duties-role-filter" class="form-label">Роля</label>
-        <select id="actual-duties-role-filter" class="form-select">
-          <option value="">Всички</option>
-          <option value="conductor">Кондуктор</option>
-          <option value="chief">Началник влак</option>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <button id="actual-duties-filter-reset" type="button" class="btn btn-outline-secondary w-100">Изчисти филтрите</button>
-      </div>
-    </div>
+    </section>
 
     <div class="table-responsive">
       <table class="table align-middle">
@@ -153,19 +157,23 @@
           <button id="actual-duty-bulk-add-modal-close" type="button" class="btn-close" aria-label="Close"></button>
         </div>
 
-        <div class="row g-3 align-items-end mb-3">
-          <div class="col-md-6">
-            <label for="actual-duty-bulk-add-search" class="form-label">Търсене</label>
-            <input id="actual-duty-bulk-add-search" type="text" class="form-control" placeholder="Търси по служител, повеска или дата" />
+        <section class="search-panel mb-3" aria-label="Панел за търсене">
+          <div class="search-panel-header">
+            <h2 class="h6 mb-0">Панел за търсене</h2>
+            <button id="actual-duty-bulk-add-filter-reset" type="button" class="btn btn-sm btn-outline-secondary">Изчисти филтрите</button>
           </div>
-          <div class="col-md-3">
-            <label for="actual-duty-bulk-add-date-filter" class="form-label">Филтър по дата</label>
-            <input id="actual-duty-bulk-add-date-filter" type="date" class="form-control" />
+
+          <div class="row g-3 align-items-end">
+            <div class="col-md-7">
+              <label for="actual-duty-bulk-add-search" class="form-label">Търсене</label>
+              <input id="actual-duty-bulk-add-search" type="text" class="form-control" placeholder="Търси по служител, повеска или дата" />
+            </div>
+            <div class="col-md-5">
+              <label for="actual-duty-bulk-add-date-filter" class="form-label">Филтър по дата</label>
+              <input id="actual-duty-bulk-add-date-filter" type="date" class="form-control" />
+            </div>
           </div>
-          <div class="col-md-3">
-            <button id="actual-duty-bulk-add-filter-reset" type="button" class="btn btn-outline-secondary w-100">Изчисти филтрите</button>
-          </div>
-        </div>
+        </section>
 
         <div class="table-responsive">
           <table class="table align-middle">

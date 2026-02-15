@@ -26,6 +26,7 @@ export async function renderScheduleKeyDutiesPage(container) {
   attachScheduleKeyDutiesHandlers(container);
   await loadDutyTypeOptions(container);
   await loadScheduleKeyOptions(container);
+  await loadTrainOptions(container);
   await initScheduleKeyContext(container);
 }
 
@@ -43,6 +44,9 @@ function attachScheduleKeyDutiesHandlers(container) {
   const editCancelButton = container.querySelector('#schedule-key-duty-edit-cancel');
   const deleteCancelButton = container.querySelector('#schedule-key-duty-delete-cancel');
   const deleteConfirmButton = container.querySelector('#schedule-key-duty-delete-confirm');
+  const profileModal = container.querySelector('#schedule-key-duty-profile-modal');
+  const profileCloseButton = container.querySelector('#schedule-key-duty-profile-close');
+  const profileCloseSecondaryButton = container.querySelector('#schedule-key-duty-profile-close-secondary');
 
   openCreateButton?.addEventListener('click', () => {
     resetCreateDutyForm(container);
@@ -84,7 +88,16 @@ function attachScheduleKeyDutiesHandlers(container) {
     await confirmDeleteDutyForScheduleKey(container, dutyId);
   });
 
+  profileCloseButton?.addEventListener('click', () => {
+    closeModal(profileModal);
+  });
+
+  profileCloseSecondaryButton?.addEventListener('click', () => {
+    closeModal(profileModal);
+  });
+
   setupModalEscapeHandler('schedule-key-duties', [
+    profileModal,
     deleteModal,
     editModal,
     createModal
@@ -152,21 +165,15 @@ function attachScheduleKeyDutiesHandlers(container) {
     }
 
     const action = actionButton.getAttribute('data-duty-action');
+    if (action === 'profile') {
+      const dutyId = actionButton.getAttribute('data-id');
+      openDutyProfileModal(container, dutyId);
+      return;
+    }
+
     if (action === 'edit') {
-      openEditDutyModal(container, {
-        id: actionButton.getAttribute('data-id'),
-        name: actionButton.getAttribute('data-name'),
-        dutyTypeId: actionButton.getAttribute('data-duty-type-id'),
-        scheduleKeyIds: (actionButton.getAttribute('data-schedule-key-ids') || '')
-          .split(',')
-          .map((value) => value.trim())
-          .filter(Boolean),
-        startTime: actionButton.getAttribute('data-start-time'),
-        endTime: actionButton.getAttribute('data-end-time'),
-        secondDay: actionButton.getAttribute('data-second-day') === 'true',
-        breakStartTime: actionButton.getAttribute('data-break-start-time'),
-        breakEndTime: actionButton.getAttribute('data-break-end-time')
-      });
+      const dutyId = actionButton.getAttribute('data-id');
+      openEditDutyModal(container, dutyId);
       return;
     }
 
@@ -250,6 +257,31 @@ async function loadScheduleKeyOptions(container) {
   editSelect.innerHTML = options;
 }
 
+async function loadTrainOptions(container) {
+  const createSelect = container.querySelector('#schedule-key-duty-create-trains');
+  const editSelect = container.querySelector('#schedule-key-duty-edit-trains');
+
+  const { data, error } = await supabase
+    .from('trains')
+    .select('id, number, origin_station, destination_station')
+    .order('number', { ascending: true });
+
+  if (error) {
+    showToast(error.message, 'error');
+    return;
+  }
+
+  const options = (data || [])
+    .map((item) => {
+      const route = `${item.origin_station || '-'} - ${item.destination_station || '-'}`;
+      return `<option value="${item.id}">${escapeHtml(item.number || '-')} (${escapeHtml(route)})</option>`;
+    })
+    .join('');
+
+  if (createSelect) createSelect.innerHTML = options;
+  if (editSelect) editSelect.innerHTML = options;
+}
+
 async function saveDutyForScheduleKey(container) {
   const nameInput = container.querySelector('#schedule-key-duty-create-name');
   const dutyTypeInput = container.querySelector('#schedule-key-duty-create-type');
@@ -259,6 +291,7 @@ async function saveDutyForScheduleKey(container) {
   const secondDayInput = container.querySelector('#schedule-key-duty-create-second-day');
   const breakStartInput = container.querySelector('#schedule-key-duty-create-break-start');
   const breakEndInput = container.querySelector('#schedule-key-duty-create-break-end');
+  const trainsInput = container.querySelector('#schedule-key-duty-create-trains');
   const saveButton = container.querySelector('#schedule-key-duty-create-save');
 
   const name = nameInput.value.trim();
@@ -272,6 +305,9 @@ async function saveDutyForScheduleKey(container) {
   const secondDay = secondDayInput.checked;
   const breakStartTime = breakStartInput.value;
   const breakEndTime = breakEndInput.value;
+  const selectedTrainIds = Array.from(trainsInput.selectedOptions || [])
+    .map((option) => option.value)
+    .filter(Boolean);
 
   if (!scheduleKeyDutiesState.scheduleKeyId || !name || !dutyTypeId || !startTime || !endTime) {
     showToast('Моля, попълни всички полета за повеската.', 'warning');
@@ -321,12 +357,15 @@ async function saveDutyForScheduleKey(container) {
   const mappingError = error
     ? null
     : await syncDutyScheduleKeys(insertedDuty?.id, selectedScheduleKeyIds);
+  const trainMappingError = error || mappingError
+    ? null
+    : await syncDutyTrains(insertedDuty?.id, selectedTrainIds);
 
   saveButton.disabled = false;
   saveButton.innerHTML = originalButtonText;
 
-  if (error || mappingError) {
-    showToast((error || mappingError).message, 'error');
+  if (error || mappingError || trainMappingError) {
+    showToast((error || mappingError || trainMappingError).message, 'error');
     return;
   }
 
@@ -339,20 +378,31 @@ async function saveDutyForScheduleKey(container) {
   await loadDutiesForScheduleKey(container);
 }
 
-function openEditDutyModal(container, duty) {
+function openEditDutyModal(container, dutyId) {
+  const duty = scheduleKeyDutiesState.duties.find((item) => item.id === dutyId);
+  if (!duty) {
+    showToast('Повеската не е намерена.', 'warning');
+    return;
+  }
+
   container.querySelector('#schedule-key-duty-edit-id').value = duty.id;
   container.querySelector('#schedule-key-duty-edit-name').value = duty.name ?? '';
-  container.querySelector('#schedule-key-duty-edit-type').value = duty.dutyTypeId ?? '';
+  container.querySelector('#schedule-key-duty-edit-type').value = duty.duty_type_id ?? '';
   const scheduleKeysSelect = container.querySelector('#schedule-key-duty-edit-schedule-keys');
-  const selectedScheduleKeyIds = duty.scheduleKeyIds || [];
+  const selectedScheduleKeyIds = getScheduleKeyIds(duty);
   Array.from(scheduleKeysSelect.options).forEach((option) => {
     option.selected = selectedScheduleKeyIds.includes(option.value);
   });
-  container.querySelector('#schedule-key-duty-edit-start').value = duty.startTime ?? '';
-  container.querySelector('#schedule-key-duty-edit-end').value = duty.endTime ?? '';
-  container.querySelector('#schedule-key-duty-edit-second-day').checked = Boolean(duty.secondDay);
-  container.querySelector('#schedule-key-duty-edit-break-start').value = intervalToTimeInput(duty.breakStartTime);
-  container.querySelector('#schedule-key-duty-edit-break-end').value = intervalToTimeInput(duty.breakEndTime);
+  const trainsSelect = container.querySelector('#schedule-key-duty-edit-trains');
+  const selectedTrainIds = getTrainIdsOrdered(duty);
+  Array.from(trainsSelect.options).forEach((option) => {
+    option.selected = selectedTrainIds.includes(option.value);
+  });
+  container.querySelector('#schedule-key-duty-edit-start').value = (duty.start_time || '').slice(0, 5);
+  container.querySelector('#schedule-key-duty-edit-end').value = (duty.end_time || '').slice(0, 5);
+  container.querySelector('#schedule-key-duty-edit-second-day').checked = Boolean(duty.second_day);
+  container.querySelector('#schedule-key-duty-edit-break-start').value = intervalToTimeInput(duty.break_start_time);
+  container.querySelector('#schedule-key-duty-edit-break-end').value = intervalToTimeInput(duty.break_end_time);
   openModal(container.querySelector('#schedule-key-duty-edit-modal'));
 }
 
@@ -375,6 +425,10 @@ function resetCreateDutyForm(container) {
   container.querySelector('#schedule-key-duty-create-second-day').checked = false;
   container.querySelector('#schedule-key-duty-create-break-start').value = '00:00';
   container.querySelector('#schedule-key-duty-create-break-end').value = '00:00';
+  const trainsSelect = container.querySelector('#schedule-key-duty-create-trains');
+  Array.from(trainsSelect.options).forEach((option) => {
+    option.selected = false;
+  });
 }
 
 async function saveEditedDutyForScheduleKey(container) {
@@ -392,6 +446,11 @@ async function saveEditedDutyForScheduleKey(container) {
   const secondDay = container.querySelector('#schedule-key-duty-edit-second-day').checked;
   const breakStartTime = container.querySelector('#schedule-key-duty-edit-break-start').value;
   const breakEndTime = container.querySelector('#schedule-key-duty-edit-break-end').value;
+  const selectedTrainIds = Array.from(
+    container.querySelector('#schedule-key-duty-edit-trains').selectedOptions || []
+  )
+    .map((option) => option.value)
+    .filter(Boolean);
   const saveButton = container.querySelector('#schedule-key-duty-edit-save');
 
   if (!dutyId || !name || !dutyTypeId || !startTime || !endTime) {
@@ -431,12 +490,13 @@ async function saveEditedDutyForScheduleKey(container) {
     .eq('schedule_key_id', scheduleKeyDutiesState.scheduleKeyId);
 
   const mappingError = error ? null : await syncDutyScheduleKeys(dutyId, selectedScheduleKeyIds);
+  const trainMappingError = error || mappingError ? null : await syncDutyTrains(dutyId, selectedTrainIds);
 
   saveButton.disabled = false;
   saveButton.innerHTML = originalText;
 
-  if (error || mappingError) {
-    showToast((error || mappingError).message, 'error');
+  if (error || mappingError || trainMappingError) {
+    showToast((error || mappingError || trainMappingError).message, 'error');
     return;
   }
 
@@ -466,6 +526,191 @@ async function syncDutyScheduleKeys(dutyId, scheduleKeyIds) {
 
   const { error: insertError } = await supabase.from('schedule_key_duties').insert(payload);
   return insertError;
+}
+
+async function syncDutyTrains(dutyId, trainIds) {
+  if (!dutyId) {
+    return { message: 'Липсва идентификатор на повеска за запис на влакове.' };
+  }
+
+  const { error: clearError } = await supabase
+    .from('duty_trains')
+    .delete()
+    .eq('duty_id', dutyId);
+
+  if (clearError) {
+    return clearError;
+  }
+
+  if (!trainIds.length) {
+    return null;
+  }
+
+  const payload = trainIds.map((trainId, index) => ({
+    duty_id: dutyId,
+    train_id: trainId,
+    sequence_order: index + 1
+  }));
+
+  const { error: insertError } = await supabase.from('duty_trains').insert(payload);
+  return insertError;
+}
+
+function openDutyProfileModal(container, dutyId) {
+  const duty = scheduleKeyDutiesState.duties.find((item) => item.id === dutyId);
+  const content = container.querySelector('#schedule-key-duty-profile-content');
+  const modal = container.querySelector('#schedule-key-duty-profile-modal');
+
+  if (!content || !modal) {
+    return;
+  }
+
+  if (!duty) {
+    content.innerHTML = '<p class="text-secondary mb-0">Няма данни за тази повеска.</p>';
+    openModal(modal);
+    return;
+  }
+
+  const scheduleKeyNames = getScheduleKeyNames(duty);
+  const trainNumbers = getTrainNumbersOrdered(duty);
+
+  content.innerHTML = `
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Наименование</div>
+          <div class="fw-semibold">${escapeHtml(duty.name || '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Тип</div>
+          <div class="fw-semibold">${escapeHtml(duty?.duty_types?.name || '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Ключ-графици</div>
+          <div class="fw-semibold">${escapeHtml(scheduleKeyNames.length ? scheduleKeyNames.join(', ') : '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Влакове</div>
+          <div class="fw-semibold">${escapeHtml(trainNumbers.length ? trainNumbers.join(', ') : '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Начало</div>
+          <div class="fw-semibold">${escapeHtml((duty.start_time || '-').slice(0, 5) || '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Край</div>
+          <div class="fw-semibold">${escapeHtml((duty.end_time || '-').slice(0, 5) || '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Втори ден</div>
+          <div class="fw-semibold">${duty.second_day ? 'Да' : 'Не'}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Начало на прекъсване</div>
+          <div class="fw-semibold">${escapeHtml((intervalToTimeInput(duty.break_start_time || '00:00:00') || '-').slice(0, 5) || '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Край на прекъсване</div>
+          <div class="fw-semibold">${escapeHtml((intervalToTimeInput(duty.break_end_time || '00:00:00') || '-').slice(0, 5) || '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Прекъсване</div>
+          <div class="fw-semibold">${escapeHtml(formatIntervalValue(duty.break_duration_interval))}</div>
+        </div>
+      </div>
+      <div class="col-md-12">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Времетраене</div>
+          <div class="fw-semibold">${escapeHtml(formatIntervalValue(duty.duration_interval))}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  openModal(modal);
+}
+
+function formatIntervalValue(value) {
+  if (!value) {
+    return '-';
+  }
+
+  return String(value).replace('.000000', '');
+}
+
+function getScheduleKeyRows(duty) {
+  return Array.isArray(duty?.schedule_key_duties)
+    ? duty.schedule_key_duties
+    : duty?.schedule_key_duties
+      ? [duty.schedule_key_duties]
+      : [];
+}
+
+function getScheduleKeyIds(duty) {
+  const mappedIds = getScheduleKeyRows(duty)
+    .map((row) => row?.schedule_key_id)
+    .filter(Boolean);
+
+  const ids = mappedIds.length ? mappedIds : duty?.schedule_key_id ? [duty.schedule_key_id] : [];
+  return [...new Set(ids)];
+}
+
+function getScheduleKeyNames(duty) {
+  const names = getScheduleKeyRows(duty)
+    .map((row) => row?.schedule_keys?.name)
+    .filter(Boolean);
+
+  return [...new Set(names)];
+}
+
+function getTrainRows(duty) {
+  return Array.isArray(duty?.duty_trains)
+    ? duty.duty_trains
+    : duty?.duty_trains
+      ? [duty.duty_trains]
+      : [];
+}
+
+function getTrainIdsOrdered(duty) {
+  return getTrainRows(duty)
+    .map((row) => ({
+      id: row?.train_id,
+      sequenceOrder: Number.isFinite(Number(row?.sequence_order)) ? Number(row.sequence_order) : Number.MAX_SAFE_INTEGER
+    }))
+    .filter((row) => Boolean(row.id))
+    .sort((left, right) => left.sequenceOrder - right.sequenceOrder)
+    .map((row) => row.id)
+    .filter((value, index, all) => all.indexOf(value) === index);
+}
+
+function getTrainNumbersOrdered(duty) {
+  return getTrainRows(duty)
+    .map((row) => ({
+      number: row?.trains?.number,
+      sequenceOrder: Number.isFinite(Number(row?.sequence_order)) ? Number(row.sequence_order) : Number.MAX_SAFE_INTEGER
+    }))
+    .filter((row) => Boolean(row.number))
+    .sort((left, right) => left.sequenceOrder - right.sequenceOrder)
+    .map((row) => row.number)
+    .filter((value, index, all) => all.indexOf(value) === index);
 }
 
 function openDeleteDutyModal(container, dutyId) {

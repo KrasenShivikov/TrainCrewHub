@@ -29,6 +29,9 @@ function attachTrainsHandlers(container) {
   const deleteCancelButton = container.querySelector('#train-delete-cancel');
   const previewCloseButton = container.querySelector('#train-timetable-preview-close');
   const searchInput = container.querySelector('#trains-search');
+  const originFilterInput = container.querySelector('#trains-origin-filter');
+  const destinationFilterInput = container.querySelector('#trains-destination-filter');
+  const filterResetButton = container.querySelector('#trains-filter-reset');
   const timetableUrlInput = container.querySelector('#train-timetable-url');
   const timetableLabelInput = container.querySelector('#train-timetable-label');
   const timetableFileInput = container.querySelector('#train-timetable-file');
@@ -62,6 +65,28 @@ function attachTrainsHandlers(container) {
 
   searchInput?.addEventListener('input', (event) => {
     trainsState.searchQuery = event.target.value.trim().toLowerCase();
+    renderTrainsTable(container);
+  });
+
+  originFilterInput?.addEventListener('change', (event) => {
+    trainsState.originFilter = event.target.value || '';
+    renderTrainsTable(container);
+  });
+
+  destinationFilterInput?.addEventListener('change', (event) => {
+    trainsState.destinationFilter = event.target.value || '';
+    renderTrainsTable(container);
+  });
+
+  filterResetButton?.addEventListener('click', () => {
+    trainsState.searchQuery = '';
+    trainsState.originFilter = '';
+    trainsState.destinationFilter = '';
+
+    if (searchInput) searchInput.value = '';
+    if (originFilterInput) originFilterInput.value = '';
+    if (destinationFilterInput) destinationFilterInput.value = '';
+
     renderTrainsTable(container);
   });
 

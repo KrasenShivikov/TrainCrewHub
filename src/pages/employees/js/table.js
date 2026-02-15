@@ -25,6 +25,7 @@ export function renderEmployeesTable(container, explicitEmptyMessage) {
   const tableBody = container.querySelector('#employees-table-body');
   const emptyState = container.querySelector('#employees-empty');
   const profileStatus = container.querySelector('#employees-profile-link-status');
+  syncEmployeesFilterOptions(container);
 
   if (profileStatus) {
     profileStatus.className = 'small text-secondary mb-3';
@@ -32,14 +33,15 @@ export function renderEmployeesTable(container, explicitEmptyMessage) {
   }
 
   const filteredRows = employeesState.rows.filter((item) => {
-    if (!employeesState.searchQuery) {
-      return true;
-    }
-
     const fullName = `${item.first_name || ''} ${item.last_name || ''}`.toLowerCase();
     const positionTitle = (item.positions?.title || '').toLowerCase();
+    const matchesSearch = !employeesState.searchQuery ||
+      fullName.includes(employeesState.searchQuery) ||
+      positionTitle.includes(employeesState.searchQuery);
+    const matchesPosition = !employeesState.positionFilter || positionTitle === employeesState.positionFilter;
+    const matchesActive = !employeesState.activeFilter || String(Boolean(item.is_active)) === employeesState.activeFilter;
 
-    return fullName.includes(employeesState.searchQuery) || positionTitle.includes(employeesState.searchQuery);
+    return matchesSearch && matchesPosition && matchesActive;
   });
 
   if (!filteredRows.length) {
@@ -148,4 +150,25 @@ export function renderEmployeesTable(container, explicitEmptyMessage) {
       `;
     })
     .join('');
+}
+
+function syncEmployeesFilterOptions(container) {
+  const positionFilter = container.querySelector('#employees-position-filter');
+  if (!positionFilter) {
+    return;
+  }
+
+  const selectedValue = employeesState.positionFilter || '';
+  const positionTitles = [...new Set(
+    employeesState.rows
+      .map((item) => String(item?.positions?.title || '').trim())
+      .filter(Boolean)
+  )].sort((left, right) => left.localeCompare(right, 'bg'));
+
+  positionFilter.innerHTML = `
+    <option value="">Всички</option>
+    ${positionTitles.map((title) => `<option value="${escapeHtml(title.toLowerCase())}">${escapeHtml(title)}</option>`).join('')}
+  `;
+
+  positionFilter.value = selectedValue;
 }

@@ -80,6 +80,11 @@
               <label for="schedule-key-duty-create-break-end" class="form-label">Край на прекъсването</label>
               <input id="schedule-key-duty-create-break-end" class="form-control" type="time" value="00:00" required />
             </div>
+            <div class="col-md-4">
+              <label for="schedule-key-duty-create-trains" class="form-label">Влакове</label>
+              <select id="schedule-key-duty-create-trains" class="form-select" multiple size="4"></select>
+              <div class="form-text">Избери един или повече влака за тази повеска.</div>
+            </div>
           </div>
 
           <div class="d-flex justify-content-end gap-2 mt-4">
@@ -141,6 +146,11 @@
               <label for="schedule-key-duty-edit-break-end" class="form-label">Край на прекъсването</label>
               <input id="schedule-key-duty-edit-break-end" class="form-control" type="time" value="00:00" required />
             </div>
+            <div class="col-md-4">
+              <label for="schedule-key-duty-edit-trains" class="form-label">Влакове</label>
+              <select id="schedule-key-duty-edit-trains" class="form-select" multiple size="4"></select>
+              <div class="form-text">Избери един или повече влака за тази повеска.</div>
+            </div>
           </div>
 
           <div class="d-flex justify-content-end gap-2 mt-4">
@@ -163,6 +173,23 @@
         <div class="d-flex justify-content-end gap-2">
           <button id="schedule-key-duty-delete-cancel" type="button" class="btn btn-outline-secondary">Отказ</button>
           <button id="schedule-key-duty-delete-confirm" type="button" class="btn btn-danger">Изтрий</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="schedule-key-duty-profile-modal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50" style="z-index: 1060;">
+  <div class="d-flex align-items-start justify-content-center h-100 p-3 p-md-4" style="overflow: auto;">
+    <div class="card w-100" style="max-width: 960px;">
+      <div class="card-body p-4" style="max-height: calc(100vh - 64px); overflow: auto;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">Профил на повеска</h2>
+          <button id="schedule-key-duty-profile-close" type="button" class="btn-close" aria-label="Close"></button>
+        </div>
+        <div id="schedule-key-duty-profile-content"></div>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button id="schedule-key-duty-profile-close-secondary" type="button" class="btn btn-outline-secondary">Затвори</button>
         </div>
       </div>
     </div>

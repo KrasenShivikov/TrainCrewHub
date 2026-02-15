@@ -6,7 +6,7 @@ import { scheduleKeyDutiesState } from './state.js';
 export async function loadDutiesForScheduleKey(container) {
   const { data, error } = await supabase
     .from('duties')
-    .select('id, name, duty_type_id, schedule_key_id, start_time, end_time, second_day, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, schedule_key_duties(schedule_key_id)')
+    .select('id, name, duty_type_id, schedule_key_id, start_time, end_time, second_day, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, duty_types(name), schedule_key_duties(schedule_key_id, schedule_keys(name)), duty_trains(train_id, sequence_order, trains(number))')
     .eq('schedule_key_id', scheduleKeyDutiesState.scheduleKeyId)
     .order('display_order', { ascending: true })
     .order('name', { ascending: true });
@@ -37,8 +37,6 @@ export function renderScheduleKeyDutiesTable(container, explicitEmptyMessage) {
   dutiesBody.innerHTML = scheduleKeyDutiesState.duties
     .map(
       (item) => {
-        const scheduleKeyIds = getScheduleKeyIds(item);
-
         return `
         <tr data-duty-id="${item.id}" draggable="true">
           <td class="text-secondary">↕</td>
@@ -52,17 +50,17 @@ export function renderScheduleKeyDutiesTable(container, explicitEmptyMessage) {
             <div class="d-inline-flex gap-2">
               <button
                 type="button"
+                class="btn btn-sm btn-outline-secondary"
+                data-duty-action="profile"
+                data-id="${item.id}"
+              >
+                Профил
+              </button>
+              <button
+                type="button"
                 class="btn btn-sm btn-outline-primary"
                 data-duty-action="edit"
                 data-id="${item.id}"
-                data-name="${escapeHtml(item.name ?? '')}"
-                data-duty-type-id="${item.duty_type_id ?? ''}"
-                data-schedule-key-ids="${escapeHtml(scheduleKeyIds.join(','))}"
-                data-start-time="${escapeHtml(item.start_time ?? '')}"
-                data-end-time="${escapeHtml(item.end_time ?? '')}"
-                data-second-day="${item.second_day ? 'true' : 'false'}"
-                data-break-start-time="${escapeHtml(item.break_start_time ?? '00:00:00')}"
-                data-break-end-time="${escapeHtml(item.break_end_time ?? '00:00:00')}"
               >
                 Редакция
               </button>

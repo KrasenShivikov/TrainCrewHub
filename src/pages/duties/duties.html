@@ -7,19 +7,38 @@
 
     <p class="text-secondary">Списък с повески и тяхното времетраене.</p>
 
-    <div class="row g-3 align-items-end mb-3">
-      <div class="col-md-6">
-        <label for="duties-search" class="form-label">Търсене</label>
-        <input id="duties-search" type="text" class="form-control" placeholder="Търси по наименование или ключ-график" />
+        <section class="search-panel mb-4" aria-label="Панел за търсене">
+          <div class="search-panel-header">
+        <h2 class="h6 mb-0">Панел за търсене</h2>
+            <button id="duties-filter-reset" type="button" class="btn btn-sm btn-outline-secondary">Изчисти филтрите</button>
       </div>
-    </div>
+
+      <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label for="duties-search" class="form-label">Име</label>
+          <input id="duties-search" type="text" class="form-control" placeholder="Търси по наименование" />
+        </div>
+        <div class="col-md-4">
+          <label for="duties-schedule-key-filter" class="form-label">Ключ-график</label>
+          <select id="duties-schedule-key-filter" class="form-select">
+            <option value="">Всички</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+              <label for="duties-type-filter" class="form-label">Тип</label>
+              <select id="duties-type-filter" class="form-select">
+                <option value="">Всички</option>
+              </select>
+            </div>
+      </div>
+    </section>
 
     <div class="table-responsive">
       <table class="table align-middle">
         <thead>
           <tr>
             <th style="width: 44px;">↕</th>
-            <th>Наименование</th>
+            <th class="duties-name-col">Наименование</th>
             <th>Тип</th>
             <th>Ключ-График</th>
             <th>Начало</th>

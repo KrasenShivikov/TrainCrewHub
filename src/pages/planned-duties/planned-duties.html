@@ -13,27 +13,31 @@
 
     <p class="text-secondary">Планиране на служители по повески за конкретна дата.</p>
 
-    <div class="row g-3 align-items-end mb-3">
-      <div class="col-md-5">
-        <label for="planned-duties-search" class="form-label">Търсене</label>
-        <input id="planned-duties-search" type="text" class="form-control" placeholder="Търси по служител, повеска или дата" />
+    <section class="search-panel mb-4" aria-label="Панел за търсене">
+      <div class="search-panel-header">
+        <h2 class="h6 mb-0">Панел за търсене</h2>
+        <button id="planned-duties-filter-reset" type="button" class="btn btn-sm btn-outline-secondary">Изчисти филтрите</button>
       </div>
-      <div class="col-md-3">
-        <label for="planned-duties-date-filter" class="form-label">Филтър по дата</label>
-        <input id="planned-duties-date-filter" type="date" class="form-control" />
+
+      <div class="row g-3 align-items-end">
+        <div class="col-md-5">
+          <label for="planned-duties-search" class="form-label">Търсене</label>
+          <input id="planned-duties-search" type="text" class="form-control" placeholder="Търси по служител, повеска или дата" />
+        </div>
+        <div class="col-md-4">
+          <label for="planned-duties-date-filter" class="form-label">Филтър по дата</label>
+          <input id="planned-duties-date-filter" type="date" class="form-control" />
+        </div>
+        <div class="col-md-3">
+          <label for="planned-duties-role-filter" class="form-label">Роля</label>
+          <select id="planned-duties-role-filter" class="form-select">
+            <option value="">Всички</option>
+            <option value="conductor">Кондуктор</option>
+            <option value="chief">Началник влак</option>
+          </select>
+        </div>
       </div>
-      <div class="col-md-2">
-        <label for="planned-duties-role-filter" class="form-label">Роля</label>
-        <select id="planned-duties-role-filter" class="form-select">
-          <option value="">Всички</option>
-          <option value="conductor">Кондуктор</option>
-          <option value="chief">Началник влак</option>
-        </select>
-      </div>
-      <div class="col-md-2">
-        <button id="planned-duties-filter-reset" type="button" class="btn btn-outline-secondary w-100">Изчисти филтрите</button>
-      </div>
-    </div>
+    </section>
 
     <div class="table-responsive">
       <table class="table align-middle">

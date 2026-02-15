@@ -7,12 +7,31 @@
 
     <p class="text-secondary">Управление на влаковете, използвани в повеските.</p>
 
-    <div class="row g-3 align-items-end mb-3">
-      <div class="col-md-6">
-        <label for="trains-search" class="form-label">Търсене</label>
-        <input id="trains-search" type="text" class="form-control" placeholder="Търси по номер, начална или крайна гара" />
+    <section class="search-panel mb-4" aria-label="Панел за търсене">
+      <div class="search-panel-header">
+        <h2 class="h6 mb-0">Панел за търсене</h2>
+        <button id="trains-filter-reset" type="button" class="btn btn-sm btn-outline-secondary">Изчисти филтрите</button>
       </div>
-    </div>
+
+      <div class="row g-3 align-items-end">
+        <div class="col-md-6">
+          <label for="trains-search" class="form-label">Търсене</label>
+          <input id="trains-search" type="text" class="form-control" placeholder="Търси по номер, начална или крайна гара" />
+        </div>
+        <div class="col-md-3">
+          <label for="trains-origin-filter" class="form-label">Начална гара</label>
+          <select id="trains-origin-filter" class="form-select">
+            <option value="">Всички</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="trains-destination-filter" class="form-label">Крайна гара</label>
+          <select id="trains-destination-filter" class="form-select">
+            <option value="">Всички</option>
+          </select>
+        </div>
+      </div>
+    </section>
 
     <div class="table-responsive">
       <table class="table align-middle">

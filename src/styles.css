@@ -50,6 +50,35 @@ body {
   margin-top: 0.5rem;
 }
 
+.search-panel {
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  background: var(--bs-light-bg-subtle);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.search-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.duties-name-col {
+  width: 220px;
+  max-width: 220px;
+}
+
+.duties-name-ellipsis {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
 .navbar {
   box-shadow: var(--app-nav-shadow);
 }
@@ -217,6 +246,12 @@ body {
 
   .table {
     font-size: 0.93rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .search-panel {
+    padding: 1.25rem;
   }
 }
 

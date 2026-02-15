@@ -7,12 +7,33 @@
 
     <p class="text-secondary">Управление на служители и срокове на документи.</p>
 
-    <div class="row g-3 align-items-end mb-3">
-      <div class="col-md-6">
-        <label for="employees-search" class="form-label">Търсене</label>
-        <input id="employees-search" type="text" class="form-control" placeholder="Търси по име или позиция" />
+    <section class="search-panel mb-4" aria-label="Панел за търсене">
+      <div class="search-panel-header">
+        <h2 class="h6 mb-0">Панел за търсене</h2>
+        <button id="employees-filter-reset" type="button" class="btn btn-sm btn-outline-secondary">Изчисти филтрите</button>
       </div>
-    </div>
+
+      <div class="row g-3 align-items-end">
+        <div class="col-md-6">
+          <label for="employees-search" class="form-label">Търсене</label>
+          <input id="employees-search" type="text" class="form-control" placeholder="Търси по име или позиция" />
+        </div>
+        <div class="col-md-3">
+          <label for="employees-position-filter" class="form-label">Позиция</label>
+          <select id="employees-position-filter" class="form-select">
+            <option value="">Всички</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="employees-active-filter" class="form-label">Активен</label>
+          <select id="employees-active-filter" class="form-select">
+            <option value="">Всички</option>
+            <option value="true">Да</option>
+            <option value="false">Не</option>
+          </select>
+        </div>
+      </div>
+    </section>
 
     <p id="employees-profile-link-status" class="small text-secondary mb-3"></p>
 

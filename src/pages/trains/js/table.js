@@ -23,14 +23,18 @@ export async function loadTrains(container) {
 export function renderTrainsTable(container, explicitEmptyMessage) {
   const tableBody = container.querySelector('#trains-table-body');
   const emptyState = container.querySelector('#trains-empty');
+  syncTrainFilterOptions(container);
 
   const filteredRows = trainsState.rows.filter((item) => {
-    if (!trainsState.searchQuery) {
-      return true;
-    }
-
     const searchable = `${item.number || ''} ${item.origin_station || ''} ${item.destination_station || ''}`.toLowerCase();
-    return searchable.includes(trainsState.searchQuery);
+    const origin = String(item.origin_station || '').trim().toLowerCase();
+    const destination = String(item.destination_station || '').trim().toLowerCase();
+
+    const matchesSearch = !trainsState.searchQuery || searchable.includes(trainsState.searchQuery);
+    const matchesOrigin = !trainsState.originFilter || origin === trainsState.originFilter;
+    const matchesDestination = !trainsState.destinationFilter || destination === trainsState.destinationFilter;
+
+    return matchesSearch && matchesOrigin && matchesDestination;
   });
 
   if (!filteredRows.length) {
@@ -139,6 +143,43 @@ function parseTimetableEntries(value) {
     .split('\n')
     .map((item, index) => normalizeTimetableEntry(item, index))
     .filter((entry) => entry.url);
+}
+
+function syncTrainFilterOptions(container) {
+  const originFilter = container.querySelector('#trains-origin-filter');
+  const destinationFilter = container.querySelector('#trains-destination-filter');
+
+  if (!originFilter || !destinationFilter) {
+    return;
+  }
+
+  const selectedOrigin = trainsState.originFilter || '';
+  const selectedDestination = trainsState.destinationFilter || '';
+
+  const origins = [...new Set(
+    trainsState.rows
+      .map((item) => String(item?.origin_station || '').trim())
+      .filter(Boolean)
+  )].sort((left, right) => left.localeCompare(right, 'bg'));
+
+  const destinations = [...new Set(
+    trainsState.rows
+      .map((item) => String(item?.destination_station || '').trim())
+      .filter(Boolean)
+  )].sort((left, right) => left.localeCompare(right, 'bg'));
+
+  originFilter.innerHTML = `
+    <option value="">Всички</option>
+    ${origins.map((value) => `<option value="${escapeHtml(value.toLowerCase())}">${escapeHtml(value)}</option>`).join('')}
+  `;
+
+  destinationFilter.innerHTML = `
+    <option value="">Всички</option>
+    ${destinations.map((value) => `<option value="${escapeHtml(value.toLowerCase())}">${escapeHtml(value)}</option>`).join('')}
+  `;
+
+  originFilter.value = selectedOrigin;
+  destinationFilter.value = selectedDestination;
 }
 
 function normalizeTimetableEntry(item, index) {

@@ -51,22 +51,22 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
   const pageInfo = container.querySelector('#duties-page-info');
   const prevPageButton = container.querySelector('#duties-prev-page');
   const nextPageButton = container.querySelector('#duties-next-page');
+  syncDutyTypeFilterOptions(container);
+  syncScheduleKeyFilterOptions(container);
 
   const filteredDuties = dutiesState.allDuties.filter((item) => {
-    if (!dutiesState.searchQuery) {
-      return true;
-    }
-
     const name = (item.name || '').toLowerCase();
     const typeName = (item.duty_types?.name || '').toLowerCase();
-    const scheduleKeyNames = getScheduleKeyNames(item).join(' ').toLowerCase();
+    const scheduleKeyNames = getScheduleKeyNames(item).map((value) => value.toLowerCase());
     const trainNames = getTrainNames(item).join(' ').toLowerCase();
-    return (
+    const matchesSearch = !dutiesState.searchQuery ||
       name.includes(dutiesState.searchQuery) ||
-      typeName.includes(dutiesState.searchQuery) ||
-      scheduleKeyNames.includes(dutiesState.searchQuery) ||
-      trainNames.includes(dutiesState.searchQuery)
-    );
+      trainNames.includes(dutiesState.searchQuery);
+    const matchesScheduleKey = !dutiesState.scheduleKeyFilter ||
+      scheduleKeyNames.includes(dutiesState.scheduleKeyFilter);
+    const matchesType = !dutiesState.dutyTypeFilter || typeName === dutiesState.dutyTypeFilter;
+
+    return matchesSearch && matchesScheduleKey && matchesType;
   });
 
   if (!filteredDuties.length) {
@@ -100,7 +100,9 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
         return `
         <tr data-duty-id="${item.id}" draggable="true">
           <td class="text-secondary">↕</td>
-          <td>${escapeHtml(item.name ?? '-')}</td>
+          <td class="duties-name-col">
+            <span class="duties-name-ellipsis" title="${escapeHtml(item.name ?? '-')}">${escapeHtml(item.name ?? '-')}</span>
+          </td>
           <td>${escapeHtml(item.duty_types?.name ?? '-')}</td>
           <td>${escapeHtml(scheduleKeyNames.length ? scheduleKeyNames.join(', ') : '-')}</td>
           <td>${escapeHtml(item.start_time ?? '-')}</td>
@@ -214,4 +216,47 @@ function getTrainIds(item) {
     .sort((left, right) => left.sequenceOrder - right.sequenceOrder);
 
   return [...new Set(rows.map((row) => row.trainId))];
+}
+
+function syncDutyTypeFilterOptions(container) {
+  const filter = container.querySelector('#duties-type-filter');
+  if (!filter) {
+    return;
+  }
+
+  const selectedValue = dutiesState.dutyTypeFilter || '';
+  const typeNames = [...new Set(
+    dutiesState.allDuties
+      .map((item) => String(item?.duty_types?.name || '').trim())
+      .filter(Boolean)
+  )].sort((left, right) => left.localeCompare(right, 'bg'));
+
+  filter.innerHTML = `
+    <option value="">Всички</option>
+    ${typeNames.map((name) => `<option value="${escapeHtml(name.toLowerCase())}">${escapeHtml(name)}</option>`).join('')}
+  `;
+
+  filter.value = selectedValue;
+}
+
+function syncScheduleKeyFilterOptions(container) {
+  const filter = container.querySelector('#duties-schedule-key-filter');
+  if (!filter) {
+    return;
+  }
+
+  const selectedValue = dutiesState.scheduleKeyFilter || '';
+  const scheduleKeyNames = [...new Set(
+    dutiesState.allDuties
+      .flatMap((item) => getScheduleKeyNames(item))
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+  )].sort((left, right) => left.localeCompare(right, 'bg'));
+
+  filter.innerHTML = `
+    <option value="">Всички</option>
+    ${scheduleKeyNames.map((name) => `<option value="${escapeHtml(name.toLowerCase())}">${escapeHtml(name)}</option>`).join('')}
+  `;
+
+  filter.value = selectedValue;
 }

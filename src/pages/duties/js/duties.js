@@ -77,6 +77,9 @@ function attachDutiesHandlers(container) {
   const profileCloseSecondaryButton = container.querySelector('#duty-profile-close-secondary');
   const profileEditButton = container.querySelector('#duty-profile-edit');
   const searchInput = container.querySelector('#duties-search');
+  const scheduleKeyFilterInput = container.querySelector('#duties-schedule-key-filter');
+  const dutyTypeFilterInput = container.querySelector('#duties-type-filter');
+  const filterResetButton = container.querySelector('#duties-filter-reset');
   const prevPageButton = container.querySelector('#duties-prev-page');
   const nextPageButton = container.querySelector('#duties-next-page');
 
@@ -123,6 +126,31 @@ function attachDutiesHandlers(container) {
   searchInput?.addEventListener('input', (event) => {
     dutiesState.searchQuery = event.target.value.trim().toLowerCase();
     dutiesState.currentPage = 1;
+    renderDutiesTable(container);
+  });
+
+  dutyTypeFilterInput?.addEventListener('change', (event) => {
+    dutiesState.dutyTypeFilter = event.target.value || '';
+    dutiesState.currentPage = 1;
+    renderDutiesTable(container);
+  });
+
+  scheduleKeyFilterInput?.addEventListener('change', (event) => {
+    dutiesState.scheduleKeyFilter = event.target.value || '';
+    dutiesState.currentPage = 1;
+    renderDutiesTable(container);
+  });
+
+  filterResetButton?.addEventListener('click', () => {
+    dutiesState.searchQuery = '';
+    dutiesState.scheduleKeyFilter = '';
+    dutiesState.dutyTypeFilter = '';
+    dutiesState.currentPage = 1;
+
+    if (searchInput) searchInput.value = '';
+    if (scheduleKeyFilterInput) scheduleKeyFilterInput.value = '';
+    if (dutyTypeFilterInput) dutyTypeFilterInput.value = '';
+
     renderDutiesTable(container);
   });
 

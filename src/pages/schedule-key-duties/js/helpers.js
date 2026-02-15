@@ -71,8 +71,11 @@ export function closeModal(modalElement) {
   const deleteModalHidden = document
     .querySelector('#schedule-key-duty-delete-modal')
     ?.classList.contains('d-none');
+  const profileModalHidden = document
+    .querySelector('#schedule-key-duty-profile-modal')
+    ?.classList.contains('d-none');
 
-  if (createModalHidden && editModalHidden && deleteModalHidden) {
+  if (createModalHidden && editModalHidden && deleteModalHidden && profileModalHidden) {
     document.body.classList.remove('overflow-hidden');
   }
 }
