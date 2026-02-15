@@ -279,7 +279,11 @@ function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
         .map((duty) => {
           const classAttr = getDutyCellClassAttr(duty, 'text-center');
           const label = isSeparatorDuty(duty) ? '' : (duty?.name ?? '');
-          return `<th scope="col"${classAttr}>${escapeHtml(label)}</th>`;
+          if (!label) {
+            return `<th scope="col"${classAttr}></th>`;
+          }
+
+          return `<th scope="col"${classAttr}>${renderCellKeyBadge('Влак', 'train')}${escapeHtml(label)}</th>`;
         })
         .join('');
 
@@ -287,7 +291,11 @@ function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
         .map((duty) => {
           const classAttr = getDutyCellClassAttr(duty);
           const value = duty && !isSeparatorDuty(duty) ? formatDutyTimeRange(duty) : '';
-          return `<td${classAttr}>${escapeHtml(value)}</td>`;
+          if (!duty || isSeparatorDuty(duty)) {
+            return `<td${classAttr}></td>`;
+          }
+
+          return `<td${classAttr}>${renderCellKeyBadge('Час', 'hours')}${escapeHtml(value)}</td>`;
         })
         .join('');
 
@@ -304,7 +312,7 @@ function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
 
           const assignment = assignmentsByDuty.get(duty.id) || { chiefs: [] };
           const value = assignment.chiefs.length ? assignment.chiefs.join(', ') : '';
-          return `<td${classAttr}>${escapeHtml(value)}</td>`;
+          return `<td${classAttr}>${renderCellKeyBadge('НВ', 'chief')}${escapeHtml(value)}</td>`;
         })
         .join('');
 
@@ -338,13 +346,12 @@ function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
 
               const assignment = assignmentsByDuty.get(duty.id) || { conductors: [] };
               const value = assignment.conductors[rowIndex] || '';
-              return `<td${classAttr}>${escapeHtml(value)}</td>`;
+              return `<td${classAttr}>${renderCellKeyBadge('К-р', 'conductor')}${escapeHtml(value)}</td>`;
             })
             .join('');
 
           return `
             <tr>
-              <th scope="row">К-р</th>
               ${conductorCells}
             </tr>
           `;
@@ -355,7 +362,6 @@ function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
         ? ''
         : `
             <tr>
-              <th scope="row">Час</th>
               ${hoursCells}
             </tr>
           `;
@@ -364,14 +370,12 @@ function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
         <table class="table table-bordered align-middle mb-3 plan-schedule-table">
           <thead>
             <tr>
-              <th scope="col">Влак</th>
               ${headerCells}
             </tr>
           </thead>
           <tbody>
             ${hoursRow}
             <tr>
-              <th scope="row">НВ</th>
               ${chiefsCells}
             </tr>
             ${conductorRowsHtml}
@@ -486,6 +490,14 @@ function formatDutyTimeRange(duty) {
   }
 
   return start || end;
+}
+
+function renderCellKeyBadge(label, variant) {
+  const cssClass = variant
+    ? `schedule-cell-key-badge schedule-cell-key-badge-${variant}`
+    : 'schedule-cell-key-badge';
+
+  return `<span class="${cssClass}">${escapeHtml(label)}</span>`;
 }
 
 function compareByScheduleKeyOrder(left, right) {

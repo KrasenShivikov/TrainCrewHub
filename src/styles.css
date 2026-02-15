@@ -249,15 +249,47 @@ body {
   width: 100%;
 }
 
-.plan-schedule-sheet .plan-schedule-table th:first-child,
-.plan-schedule-sheet .plan-schedule-table td:first-child {
-  width: 180px;
-}
-
 .plan-schedule-sheet .plan-schedule-table tbody th,
 .plan-schedule-sheet .plan-schedule-table tbody td {
   height: 40px;
   vertical-align: middle;
+}
+
+.schedule-cell-key-badge {
+  display: inline-block;
+  min-width: 2.05rem;
+  text-align: center;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.2rem 0.38rem;
+  margin-right: 0.32rem;
+  border-radius: 999px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.schedule-cell-key-badge-train {
+  background: rgba(var(--bs-info-rgb), 0.16);
+  color: var(--bs-info-text-emphasis, var(--bs-info));
+}
+
+.schedule-cell-key-badge-hours {
+  background: rgba(var(--bs-dark-rgb), 0.1);
+  color: var(--bs-emphasis-color);
+}
+
+.schedule-cell-key-badge-chief {
+  background: rgba(var(--bs-primary-rgb), 0.16);
+  color: var(--bs-primary-text-emphasis, var(--bs-primary));
+}
+
+.schedule-cell-key-badge-conductor {
+  background: rgba(var(--bs-secondary-rgb), 0.18);
+  color: var(--bs-secondary-text-emphasis, var(--bs-secondary-color));
+}
+
+.schedule-print-left-label {
+  display: none;
 }
 
 .plan-schedule-sheet .plan-schedule-table td.schedule-drop-target {
@@ -417,6 +449,27 @@ html.print-preparing.print-hide-second-day .plan-schedule-sheet .second-day-col 
 
   .plan-schedule-sheet .print-as-cards .print-only-duty-cards {
     display: block !important;
+  }
+
+  .plan-schedule-sheet .schedule-sheet-header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: end;
+  }
+
+  .plan-schedule-sheet .schedule-sheet-title-wrap {
+    grid-column: 2;
+    text-align: center;
+  }
+
+  .plan-schedule-sheet .schedule-print-left-label {
+    display: block;
+    grid-column: 1;
+    justify-self: start;
+    align-self: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #111827;
   }
 
   .plan-schedule-sheet .print-duty-cards-grid {

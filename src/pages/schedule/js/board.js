@@ -200,7 +200,11 @@ function renderDutyBoard(root, duties, assignmentsByDuty, selectedDate, options 
         .map((duty) => {
           const classAttr = getDutyCellClassAttr(duty, 'text-center');
           const label = isSeparatorDuty(duty) ? '' : (duty?.name ?? '');
-          return `<th scope="col"${classAttr}>${escapeHtml(label)}</th>`;
+          if (!label) {
+            return `<th scope="col"${classAttr}></th>`;
+          }
+
+          return `<th scope="col"${classAttr}>${renderCellKeyBadge('Влак', 'train')}${escapeHtml(label)}</th>`;
         })
         .join('');
 
@@ -208,7 +212,11 @@ function renderDutyBoard(root, duties, assignmentsByDuty, selectedDate, options 
         .map((duty) => {
           const classAttr = getDutyCellClassAttr(duty);
           const value = duty && !isSeparatorDuty(duty) ? formatDutyTimeRange(duty) : '';
-          return `<td${classAttr}>${escapeHtml(value)}</td>`;
+          if (!duty || isSeparatorDuty(duty)) {
+            return `<td${classAttr}></td>`;
+          }
+
+          return `<td${classAttr}>${renderCellKeyBadge('Час', 'hours')}${escapeHtml(value)}</td>`;
         })
         .join('');
 
@@ -225,7 +233,7 @@ function renderDutyBoard(root, duties, assignmentsByDuty, selectedDate, options 
 
           const assignment = assignmentsByDuty.get(duty.id) || { chiefs: [] };
           const dutyTypeName = getDutyTypeName(duty).toLowerCase();
-          return `<td${classAttr} data-drop-duty-id="${duty.id}" data-drop-date="${selectedDate}" data-drop-role="chief" data-drop-duty-type="${escapeHtml(dutyTypeName)}">${renderAssignmentList(assignment.chiefs, duty, selectedDate, options)}</td>`;
+          return `<td${classAttr} data-drop-duty-id="${duty.id}" data-drop-date="${selectedDate}" data-drop-role="chief" data-drop-duty-type="${escapeHtml(dutyTypeName)}">${renderCellKeyBadge('НВ', 'chief')}${renderAssignmentList(assignment.chiefs, duty, selectedDate, options)}</td>`;
         })
         .join('');
 
@@ -266,13 +274,12 @@ function renderDutyBoard(root, duties, assignmentsByDuty, selectedDate, options 
                 ? assignment.conductors[sourceIndex]
                 : undefined;
               const dutyTypeName = getDutyTypeName(duty).toLowerCase();
-              return `<td${classAttr} data-drop-duty-id="${duty.id}" data-drop-date="${selectedDate}" data-drop-role="conductor" data-drop-duty-type="${escapeHtml(dutyTypeName)}">${renderAssignmentItem(conductorItem, duty, selectedDate, options)}</td>`;
+              return `<td${classAttr} data-drop-duty-id="${duty.id}" data-drop-date="${selectedDate}" data-drop-role="conductor" data-drop-duty-type="${escapeHtml(dutyTypeName)}">${renderCellKeyBadge('К-р', 'conductor')}${renderAssignmentItem(conductorItem, duty, selectedDate, options)}</td>`;
             })
             .join('');
 
           return `
           <tr>
-            <th scope="row">К-р</th>
             ${conductorCells}
           </tr>
         `;
@@ -283,7 +290,6 @@ function renderDutyBoard(root, duties, assignmentsByDuty, selectedDate, options 
         ? ''
         : `
             <tr>
-              <th scope="row">Час</th>
               ${hoursCells}
             </tr>
           `;
@@ -292,14 +298,12 @@ function renderDutyBoard(root, duties, assignmentsByDuty, selectedDate, options 
         <table class="table table-bordered align-middle mb-3 plan-schedule-table">
           <thead>
             <tr>
-              <th scope="col">Влак</th>
               ${headerCells}
             </tr>
           </thead>
           <tbody>
             ${hoursRow}
             <tr>
-              <th scope="row">НВ</th>
               ${chiefsCells}
             </tr>
             ${conductorRowsHtml}
@@ -422,12 +426,11 @@ function renderAssignmentItem(assignment, duty, selectedDate, options = {}) {
   }
 
   const allowEdit = options.allowEdit !== false;
-  const roleBadge = renderAssignmentRoleBadge(assignment?.role);
   if (!allowEdit) {
-    return `${roleBadge}${escapeHtml(assignment.name || '')}`;
+    return escapeHtml(assignment.name || '');
   }
 
-  return `<button type="button" class="btn btn-link p-0 text-decoration-none align-baseline" draggable="true" data-actual-edit-id="${assignment.id}" data-actual-drag-id="${assignment.id}">${roleBadge}${escapeHtml(assignment.name || '')}</button>`;
+  return `<button type="button" class="btn btn-link p-0 text-decoration-none align-baseline" draggable="true" data-actual-edit-id="${assignment.id}" data-actual-drag-id="${assignment.id}">${escapeHtml(assignment.name || '')}</button>`;
 }
 
 function renderAddAssignmentButton(duty, selectedDate, options = {}) {
@@ -439,18 +442,12 @@ function renderAddAssignmentButton(duty, selectedDate, options = {}) {
   return `<button type="button" class="btn btn-link p-0 text-decoration-none no-print" data-actual-add-duty-id="${duty.id}" data-actual-add-date="${selectedDate}" data-actual-add-duty-name="${escapeHtml(duty.name || '')}">Добави</button>`;
 }
 
-function renderAssignmentRoleBadge(role) {
-  const normalizedRole = String(role || '').toLowerCase();
-  if (normalizedRole !== 'chief' && normalizedRole !== 'conductor') {
-    return '';
-  }
+function renderCellKeyBadge(label, variant) {
+  const cssClass = variant
+    ? `schedule-cell-key-badge schedule-cell-key-badge-${variant}`
+    : 'schedule-cell-key-badge';
 
-  const label = normalizedRole === 'chief' ? 'НВ' : 'К-р';
-  const cssClass = normalizedRole === 'chief'
-    ? 'schedule-role-badge schedule-role-badge-chief'
-    : 'schedule-role-badge schedule-role-badge-conductor';
-
-  return `<span class="${cssClass}">${label}</span>`;
+  return `<span class="${cssClass}">${escapeHtml(label)}</span>`;
 }
 
 function formatDutyTimeRange(duty) {

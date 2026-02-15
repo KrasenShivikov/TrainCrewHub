@@ -1,4 +1,5 @@
 import { loadHtml } from '../../../utils/loadHtml.js';
+import { applyPrintDepotLabel } from '../../../utils/printConfig.js';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { getDateFromQuery } from './helpers.js';
@@ -16,6 +17,7 @@ import {
 export async function renderPlanSchedulePage(container) {
   const pageHtml = await loadHtml('../plan-schedule.html', import.meta.url);
   container.innerHTML = pageHtml;
+  applyPrintDepotLabel(container, '#plan-schedule-print-left-label');
 
   const dateInput = container.querySelector('#plan-schedule-date');
   const printButton = container.querySelector('#plan-schedule-print');

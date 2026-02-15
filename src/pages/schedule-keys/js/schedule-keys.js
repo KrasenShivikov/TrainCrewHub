@@ -214,7 +214,7 @@ async function saveScheduleKey(container) {
   saveButton.innerHTML = originalText;
 
   if (error) {
-    showToast(error.message, 'error');
+    showToast(getFriendlyScheduleKeyErrorMessage(error), 'error');
     return;
   }
 
@@ -263,7 +263,7 @@ async function deleteScheduleKey(id, container) {
   deleteButton.innerHTML = originalDeleteText;
 
   if (error) {
-    showToast(error.message, 'error');
+    showToast(getFriendlyScheduleKeyErrorMessage(error), 'error');
     return;
   }
 
@@ -271,4 +271,21 @@ async function deleteScheduleKey(id, container) {
   closeModal(container.querySelector('#schedule-key-delete-modal'));
   resetScheduleKeyForm(container);
   await loadScheduleKeys(container);
+}
+
+function getFriendlyScheduleKeyErrorMessage(error) {
+  const rawMessage = String(error?.message || '').trim();
+  const normalized = rawMessage.toLowerCase();
+  const errorCode = String(error?.code || '').trim();
+
+  const isForeignKeyError =
+    errorCode === '23503' ||
+    normalized.includes('foreign key constraint') ||
+    normalized.includes('duties_schedule_key_id_fkey');
+
+  if (isForeignKeyError) {
+    return 'Този ключ-график не може да бъде изтрит или променен, защото се използва в повески.';
+  }
+
+  return rawMessage || 'Възникна неочаквана грешка.';
 }

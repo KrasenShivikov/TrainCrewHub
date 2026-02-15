@@ -1,4 +1,5 @@
 import { loadHtml } from '../../../utils/loadHtml.js';
+import { applyPrintDepotLabel } from '../../../utils/printConfig.js';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import {
@@ -29,6 +30,7 @@ let draggedActualDutyId = '';
 export async function renderSchedulePage(container) {
   const pageHtml = await loadHtml('../schedule.html', import.meta.url);
   container.innerHTML = pageHtml;
+  applyPrintDepotLabel(container, '#schedule-print-left-label');
 
   const dateInput = container.querySelector('#schedule-date');
   const goToActualButton = container.querySelector('#schedule-go-to-actual');
