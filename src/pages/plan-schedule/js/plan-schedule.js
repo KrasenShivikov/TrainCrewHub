@@ -9,7 +9,6 @@ export async function renderPlanSchedulePage(container) {
   container.innerHTML = pageHtml;
 
   const dateInput = container.querySelector('#plan-schedule-date');
-  const refreshButton = container.querySelector('#plan-schedule-refresh');
   const printButton = container.querySelector('#plan-schedule-print');
   const orientationInput = container.querySelector('#plan-schedule-print-orientation');
   const compactInput = container.querySelector('#plan-schedule-print-compact');
@@ -23,10 +22,6 @@ export async function renderPlanSchedulePage(container) {
   }
 
   dateInput?.addEventListener('change', async () => {
-    await loadPlanScheduleData(container);
-  });
-
-  refreshButton?.addEventListener('click', async () => {
     await loadPlanScheduleData(container);
   });
 
@@ -52,6 +47,7 @@ function preparePrintLayout(container, { orientation, compact, fitOnePage }) {
   const root = document.documentElement;
   const sheet = container.querySelector('.plan-schedule-sheet');
 
+  root.classList.add('print-preparing');
   root.classList.toggle('print-compact', compact);
   root.classList.toggle('print-fit-one-page', fitOnePage);
 
@@ -82,7 +78,7 @@ function preparePrintLayout(container, { orientation, compact, fitOnePage }) {
 
 function cleanupPrintLayout() {
   const root = document.documentElement;
-  root.classList.remove('print-compact', 'print-fit-one-page');
+  root.classList.remove('print-preparing', 'print-compact', 'print-fit-one-page', 'print-hide-second-day');
   root.style.setProperty('--plan-print-scale', '1');
 
   document.querySelectorAll('.plan-schedule-sheet').forEach((sheet) => {
@@ -105,6 +101,7 @@ async function loadPlanScheduleData(container) {
       businessTrip: [],
       dayOff: []
     }, new Map());
+    renderAbsenceBoard(container.querySelector('#plan-schedule-absence'), []);
     setMessage(container, {
       hint: 'Избери дата.',
       error: '',
@@ -115,7 +112,7 @@ async function loadPlanScheduleData(container) {
 
   const { data: plannedRows, error: plannedError } = await supabase
     .from('planned_duties')
-    .select('duty_id, assignment_role, employees(first_name, last_name, positions(title)), duties(id, name, schedule_key_id, display_order, start_time, end_time, second_day, duty_types(name))')
+    .select('employee_id, duty_id, assignment_role, employees(first_name, last_name, positions(title)), duties(id, name, schedule_key_id, display_order, start_time, end_time, second_day, duty_types(name))')
     .eq('date', selectedDate);
 
   if (plannedError) {
@@ -125,6 +122,7 @@ async function loadPlanScheduleData(container) {
       businessTrip: [],
       dayOff: []
     }, new Map());
+    renderAbsenceBoard(container.querySelector('#plan-schedule-absence'), []);
     setMessage(container, {
       hint: '',
       error: 'Грешка при зареждане на планираните записи.',
@@ -132,6 +130,49 @@ async function loadPlanScheduleData(container) {
     });
     return;
   }
+
+  const { data: absenceRows, error: absenceError } = await supabase
+    .from('employee_absences')
+    .select('employee_id, start_date, end_date, employees(first_name, last_name), absence_reasons(name)')
+    .lte('start_date', selectedDate)
+    .gte('end_date', selectedDate);
+
+  if (absenceError) {
+    showToast(absenceError.message, 'error');
+    renderBoards(container, {
+      train: [],
+      businessTrip: [],
+      dayOff: []
+    }, new Map());
+    renderAbsenceBoard(container.querySelector('#plan-schedule-absence'), []);
+    setMessage(container, {
+      hint: '',
+      error: 'Грешка при зареждане на отсъствията.',
+      empty: ''
+    });
+    return;
+  }
+
+  const absenceByEmployeeId = new Map();
+  (absenceRows || []).forEach((row) => {
+    const employeeId = row?.employee_id;
+    if (!employeeId) {
+      return;
+    }
+
+    const existing = absenceByEmployeeId.get(employeeId) || {
+      employeeId,
+      employeeName: getEmployeeName(row.employees),
+      reasons: []
+    };
+
+    const reasonName = getAbsenceReasonName(row.absence_reasons);
+    if (reasonName && !existing.reasons.includes(reasonName)) {
+      existing.reasons.push(reasonName);
+    }
+
+    absenceByEmployeeId.set(employeeId, existing);
+  });
 
   const groupedDuties = {
     train: [],
@@ -173,22 +214,36 @@ async function loadPlanScheduleData(container) {
   groupedDuties.businessTrip.sort(compareByScheduleKeyOrder);
   groupedDuties.dayOff.sort(compareByScheduleKeyOrder);
 
-  const assignmentsByDuty = buildAssignmentsByDuty(plannedRows || []);
+  const { assignmentsByDuty, absentAssignments } = buildAssignmentsByDuty(plannedRows || [], absenceByEmployeeId);
   renderBoards(container, groupedDuties, assignmentsByDuty);
+  renderAbsenceBoard(container.querySelector('#plan-schedule-absence'), absentAssignments);
 
   const totalCount = groupedDuties.train.length + groupedDuties.businessTrip.length + groupedDuties.dayOff.length;
   setMessage(container, {
     hint: '',
     error: '',
-    empty: totalCount ? '' : 'Няма повески за показване по избраните типове.'
+    empty: totalCount || absentAssignments.length ? '' : 'Няма повески за показване по избраните типове.'
   });
 }
 
-function buildAssignmentsByDuty(rows) {
+function buildAssignmentsByDuty(rows, absenceByEmployeeId) {
   const map = new Map();
+  const absentAssignmentsByEmployeeId = new Map();
 
   rows.forEach((row) => {
     if (!row?.duty_id || !row?.employees) {
+      return;
+    }
+
+    if (row?.employee_id && absenceByEmployeeId?.has(row.employee_id)) {
+      const absentEntry = absenceByEmployeeId.get(row.employee_id);
+      if (absentEntry && !absentAssignmentsByEmployeeId.has(row.employee_id)) {
+        absentAssignmentsByEmployeeId.set(row.employee_id, {
+          employeeId: absentEntry.employeeId,
+          employeeName: absentEntry.employeeName,
+          reason: absentEntry.reasons.join(', ')
+        });
+      }
       return;
     }
 
@@ -231,7 +286,12 @@ function buildAssignmentsByDuty(rows) {
     map.set(row.duty_id, entry);
   });
 
-  return map;
+  return {
+    assignmentsByDuty: map,
+    absentAssignments: Array.from(absentAssignmentsByEmployeeId.values()).sort((left, right) =>
+      String(left?.employeeName || '').localeCompare(String(right?.employeeName || ''), 'bg')
+    )
+  };
 }
 
 function normalizeAssignmentRole(value) {
@@ -274,6 +334,18 @@ function getDutyTypeName(duty) {
   return '';
 }
 
+function getAbsenceReasonName(reason) {
+  if (Array.isArray(reason)) {
+    return reason[0]?.name ?? '';
+  }
+
+  if (reason && typeof reason === 'object') {
+    return reason.name ?? '';
+  }
+
+  return '';
+}
+
 function getDutyFromPlannedRow(row) {
   const duty = row?.duties;
   if (Array.isArray(duty)) {
@@ -289,9 +361,11 @@ function getDutyFromPlannedRow(row) {
 
 function renderBoards(container, groupedDuties, assignmentsByDuty) {
   renderDutyBoard(container.querySelector('#plan-schedule-train'), groupedDuties.train, assignmentsByDuty, {
-    conductorRows: 3,
+    conductorRows: 2,
     showHours: true,
-    separateSecondDay: true
+    separateSecondDay: true,
+    minPanels: 2,
+    printAsCards: true
   });
   renderDutyBoard(
     container.querySelector('#plan-schedule-business-trip'),
@@ -299,12 +373,18 @@ function renderBoards(container, groupedDuties, assignmentsByDuty) {
     assignmentsByDuty,
     {
       conductorRows: 3,
-      showHours: false
+      showHours: false,
+      minPanels: 1,
+      hideEmptyConductorRows: true,
+      printAsCards: true
     }
   );
   renderDutyBoard(container.querySelector('#plan-schedule-day-off'), groupedDuties.dayOff, assignmentsByDuty, {
     conductorRows: 3,
-    showHours: false
+    showHours: false,
+    minPanels: 1,
+    hideEmptyConductorRows: true,
+    printAsCards: true
   });
 }
 
@@ -319,12 +399,18 @@ function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
   }
 
   const normalizedDuties = options.separateSecondDay ? buildDutiesWithSecondDaySeparator(duties) : duties;
-  const conductorRowsCount = Number.isInteger(options.conductorRows) && options.conductorRows > 0
+  const configuredConductorRows = Number.isInteger(options.conductorRows) && options.conductorRows >= 0
     ? options.conductorRows
     : 3;
 
   const maxDutiesPerRow = 5;
   const chunks = chunkArray(normalizedDuties, maxDutiesPerRow);
+  const minPanels = Number.isInteger(options.minPanels) && options.minPanels > 0
+    ? options.minPanels
+    : 1;
+  while (chunks.length < minPanels) {
+    chunks.push([]);
+  }
 
   root.innerHTML = chunks
     .map((chunk) => {
@@ -334,13 +420,18 @@ function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
       }
 
       const headerCells = normalized
-        .map((duty) => `<th scope="col" class="text-center">${escapeHtml(duty?.name ?? '')}</th>`)
+        .map((duty) => {
+          const classAttr = getDutyCellClassAttr(duty, 'text-center');
+          const label = isSeparatorDuty(duty) ? '' : (duty?.name ?? '');
+          return `<th scope="col"${classAttr}>${escapeHtml(label)}</th>`;
+        })
         .join('');
 
       const hoursCells = normalized
         .map((duty) => {
-          const value = duty ? formatDutyTimeRange(duty) : '';
-          return `<td>${escapeHtml(value)}</td>`;
+          const classAttr = getDutyCellClassAttr(duty);
+          const value = duty && !isSeparatorDuty(duty) ? formatDutyTimeRange(duty) : '';
+          return `<td${classAttr}>${escapeHtml(value)}</td>`;
         })
         .join('');
 
@@ -350,22 +441,48 @@ function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
             return '<td></td>';
           }
 
+          const classAttr = getDutyCellClassAttr(duty);
+          if (isSeparatorDuty(duty)) {
+            return `<td${classAttr}></td>`;
+          }
+
           const assignment = assignmentsByDuty.get(duty.id) || { chiefs: [] };
           const value = assignment.chiefs.length ? assignment.chiefs.join(', ') : '';
-          return `<td>${escapeHtml(value)}</td>`;
+          return `<td${classAttr}>${escapeHtml(value)}</td>`;
         })
         .join('');
 
-      const conductorRowsHtml = Array.from({ length: conductorRowsCount }, (_, rowIndex) => {
+      let conductorRowsCount = configuredConductorRows;
+      if (options.hideEmptyConductorRows) {
+        const usedConductorRows = normalized.reduce((maxRows, duty) => {
+          if (!duty || isSeparatorDuty(duty)) {
+            return maxRows;
+          }
+
+          const assignment = assignmentsByDuty.get(duty.id) || { conductors: [] };
+          const conductorCount = Array.isArray(assignment.conductors) ? assignment.conductors.length : 0;
+          return Math.max(maxRows, conductorCount);
+        }, 0);
+
+        conductorRowsCount = Math.min(configuredConductorRows, usedConductorRows);
+      }
+
+      const conductorRowsHtml = conductorRowsCount > 0
+        ? Array.from({ length: conductorRowsCount }, (_, rowIndex) => {
         const conductorCells = normalized
           .map((duty) => {
             if (!duty) {
               return '<td></td>';
             }
 
+            const classAttr = getDutyCellClassAttr(duty);
+            if (isSeparatorDuty(duty)) {
+              return `<td${classAttr}></td>`;
+            }
+
             const assignment = assignmentsByDuty.get(duty.id) || { conductors: [] };
             const value = assignment.conductors[rowIndex] || '';
-            return `<td>${escapeHtml(value)}</td>`;
+            return `<td${classAttr}>${escapeHtml(value)}</td>`;
           })
           .join('');
 
@@ -375,7 +492,8 @@ function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
             ${conductorCells}
           </tr>
         `;
-      }).join('');
+        }).join('')
+        : '';
 
       const hoursRow = options.showHours === false
         ? ''
@@ -386,26 +504,143 @@ function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
             </tr>
           `;
 
-      return `
+      const tableHtml = `
         <table class="table table-bordered align-middle mb-3 plan-schedule-table">
           <thead>
             <tr>
-              <th scope="col">Позиция</th>
+              <th scope="col">Влак</th>
               ${headerCells}
             </tr>
           </thead>
           <tbody>
             ${hoursRow}
             <tr>
-              <th scope="row">Началник влак</th>
+              <th scope="row">НВ</th>
               ${chiefsCells}
             </tr>
             ${conductorRowsHtml}
           </tbody>
         </table>
       `;
+
+      if (!options.printAsCards) {
+        return tableHtml;
+      }
+
+      const cardsHtml = renderPrintableDutyCards(normalized, assignmentsByDuty, conductorRowsCount, options);
+
+      return `
+        <div class="print-as-cards">
+          ${tableHtml}
+          <div class="print-only-duty-cards mb-3">${cardsHtml}</div>
+        </div>
+      `;
     })
     .join('');
+}
+
+function renderPrintableDutyCards(duties, assignmentsByDuty, conductorRowsCount, options = {}) {
+  const cards = duties
+    .map((duty) => {
+      const showHours = options.showHours !== false;
+      const hoursLine = showHours
+        ? `
+            <div class="print-duty-card-line">
+              <span class="print-duty-card-key">Час</span>
+              <span class="print-duty-card-value"></span>
+            </div>
+          `
+        : '';
+
+      if (!duty || isSeparatorDuty(duty)) {
+        const emptyConductorRows = Array.from({ length: conductorRowsCount }, () => `
+          <div class="print-duty-card-line">
+            <span class="print-duty-card-key">К-р</span>
+            <span class="print-duty-card-value"></span>
+          </div>
+        `).join('');
+
+        return `
+          <article class="print-duty-card">
+            <div class="print-duty-card-title"></div>
+            ${hoursLine}
+            <div class="print-duty-card-line">
+              <span class="print-duty-card-key">НВ</span>
+              <span class="print-duty-card-value"></span>
+            </div>
+            ${emptyConductorRows}
+          </article>
+        `;
+      }
+
+      const assignment = assignmentsByDuty.get(duty.id) || { chiefs: [], conductors: [] };
+      const chiefValue = Array.isArray(assignment.chiefs) ? assignment.chiefs.join(', ') : '';
+      const conductorRows = Array.from({ length: conductorRowsCount }, (_, rowIndex) => {
+        const value = Array.isArray(assignment.conductors) ? (assignment.conductors[rowIndex] || '') : '';
+        return `
+          <div class="print-duty-card-line">
+            <span class="print-duty-card-key">К-р</span>
+            <span class="print-duty-card-value">${escapeHtml(value)}</span>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <article class="print-duty-card">
+          <div class="print-duty-card-title">${escapeHtml(duty.name || '')}</div>
+          ${showHours
+    ? `
+            <div class="print-duty-card-line">
+              <span class="print-duty-card-key">Час</span>
+              <span class="print-duty-card-value">${escapeHtml(formatDutyTimeRange(duty))}</span>
+            </div>
+          `
+    : ''}
+          <div class="print-duty-card-line">
+            <span class="print-duty-card-key">НВ</span>
+            <span class="print-duty-card-value">${escapeHtml(chiefValue)}</span>
+          </div>
+          ${conductorRows}
+        </article>
+      `;
+    })
+    .join('');
+
+  return `<div class="print-duty-cards-grid">${cards}</div>`;
+}
+
+function renderAbsenceBoard(root, absentAssignments) {
+  if (!root) {
+    return;
+  }
+
+  if (!absentAssignments.length) {
+    root.innerHTML = '<p class="text-secondary mb-0">Няма служители в разход.</p>';
+    return;
+  }
+
+  const rows = absentAssignments
+    .map((item) => `
+      <tr>
+        <td>${escapeHtml(item.employeeName || '')}</td>
+        <td>${escapeHtml(item.reason || '')}</td>
+      </tr>
+    `)
+    .join('');
+
+  root.innerHTML = `
+    <table class="table table-bordered align-middle mb-0 plan-schedule-table">
+      <thead>
+        <tr>
+          <th scope="col">Служител</th>
+          <th scope="col">Причина</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
 }
 
 function chunkArray(items, chunkSize) {
@@ -514,7 +749,37 @@ function buildDutiesWithSecondDaySeparator(duties) {
     return duties;
   }
 
-  return [...firstDay, null, ...secondDay];
+  const maxDutiesPerRow = 5;
+  const hasFreeSlotInCurrentPanel = firstDay.length % maxDutiesPerRow !== 0;
+
+  if (!hasFreeSlotInCurrentPanel) {
+    return [...firstDay, ...secondDay];
+  }
+
+  return [...firstDay, { __separator: true }, ...secondDay];
+}
+
+function isSeparatorDuty(duty) {
+  return Boolean(duty && duty.__separator);
+}
+
+function getDutyCellClassAttr(duty, extraClass = '') {
+  const classNames = [];
+  if (extraClass) {
+    classNames.push(extraClass);
+  }
+
+  if (isSeparatorDuty(duty)) {
+    classNames.push('separator-col');
+  } else if (duty?.second_day) {
+    classNames.push('second-day-col');
+  }
+
+  if (!classNames.length) {
+    return '';
+  }
+
+  return ` class="${classNames.join(' ')}"`;
 }
 
 function normalizeTimeValue(value) {
