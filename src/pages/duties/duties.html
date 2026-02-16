@@ -40,7 +40,6 @@
             <th style="width: 44px;">↕</th>
             <th class="duties-name-col">Наименование</th>
             <th>Тип</th>
-            <th>Ключ-График</th>
             <th>Начало</th>
             <th>Край</th>
             <th>Прекъсване</th>
@@ -76,65 +75,7 @@
         <form id="duty-form">
           <input type="hidden" id="duty-id" />
 
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label for="duty-name" class="form-label">Наименование</label>
-              <input id="duty-name" class="form-control" type="text" required />
-            </div>
-
-            <div class="col-md-6">
-              <label for="duty-type" class="form-label">Тип на повеската</label>
-              <select id="duty-type" class="form-select" required>
-                <option value="">Избери тип</option>
-              </select>
-            </div>
-
-            <div class="col-md-6">
-              <label for="duty-schedule-keys" class="form-label">Ключ-Графици</label>
-              <select id="duty-schedule-keys" class="form-select" multiple required size="5">
-              </select>
-              <div class="form-text">Може да избереш един или повече ключ-графика.</div>
-            </div>
-
-            <div class="col-md-6">
-              <label for="duty-trains" class="form-label">Влакове</label>
-              <select id="duty-trains" class="form-select" multiple size="5">
-              </select>
-              <div class="form-text">Избери един или повече влака за тази повеска.</div>
-            </div>
-
-            <div class="col-md-6">
-              <label for="duty-start-time" class="form-label">Начало</label>
-              <input id="duty-start-time" class="form-control" type="time" required />
-            </div>
-
-            <div class="col-md-6">
-              <label for="duty-end-time" class="form-label">Край</label>
-              <input id="duty-end-time" class="form-control" type="time" required />
-            </div>
-
-            <div class="col-md-6 d-flex align-items-end">
-              <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="duty-second-day" />
-                <label class="form-check-label" for="duty-second-day">Втори ден</label>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <label for="duty-break-start-time" class="form-label">Начало на прекъсването</label>
-              <input id="duty-break-start-time" class="form-control" type="time" value="00:00" required />
-            </div>
-
-            <div class="col-md-6">
-              <label for="duty-break-end-time" class="form-label">Край на прекъсването</label>
-              <input id="duty-break-end-time" class="form-control" type="time" value="00:00" required />
-            </div>
-
-            <div class="col-12">
-              <label for="duty-notes" class="form-label">Бележки</label>
-              <textarea id="duty-notes" class="form-control" rows="3" placeholder="Въведи бележки (по избор)"></textarea>
-            </div>
-          </div>
+          <div id="duty-form-fields" class="row g-3"></div>
 
           <div class="d-flex justify-content-end gap-2 mt-4">
             <button id="duty-cancel-btn" type="button" class="btn btn-outline-secondary">Отказ</button>
@@ -173,6 +114,7 @@
         <div id="duty-profile-content"></div>
         <div class="d-flex justify-content-end gap-2 mt-4">
           <button id="duty-profile-close-secondary" type="button" class="btn btn-outline-secondary">Затвори</button>
+          <button id="duty-profile-duplicate" type="button" class="btn btn-outline-secondary">Копирай</button>
           <button id="duty-profile-edit" type="button" class="btn btn-primary">Редакция</button>
         </div>
       </div>

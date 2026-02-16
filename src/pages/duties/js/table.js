@@ -97,14 +97,17 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
         const scheduleKeyNames = getScheduleKeyNames(item);
         const scheduleKeyIds = getScheduleKeyIds(item);
         const trainIds = getTrainIds(item);
+        const multiScheduleBadge =`<span class="badge text-bg-info" title="${escapeHtml(scheduleKeyNames.join(', '))}">${scheduleKeyIds.length} кл-гр</span>`;
         return `
         <tr data-duty-id="${item.id}" draggable="true">
           <td class="text-secondary">↕</td>
-          <td class="duties-name-col">
-            <span class="duties-name-ellipsis" title="${escapeHtml(item.name ?? '-')}">${escapeHtml(item.name ?? '-')}</span>
+          <td>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              ${multiScheduleBadge}
+              <span class="duties-name-ellipsis" title="${escapeHtml(item.name ?? '-')}">${escapeHtml(item.name ?? '-')}</span>
+            </div>
           </td>
           <td>${escapeHtml(item.duty_types?.name ?? '-')}</td>
-          <td>${escapeHtml(scheduleKeyNames.length ? scheduleKeyNames.join(', ') : '-')}</td>
           <td>${escapeHtml(item.start_time ?? '-')}</td>
           <td>${escapeHtml(item.end_time ?? '-')}</td>
           <td>${escapeHtml(formatDuration(item.break_duration_interval))}</td>
@@ -126,6 +129,14 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
                 data-id="${item.id}"
               >
                 Редакция
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                data-action="duplicate"
+                data-id="${item.id}"
+              >
+                Копирай
               </button>
               <button
                 type="button"

@@ -42,50 +42,7 @@
         </div>
 
         <form id="schedule-key-duty-create-form">
-          <div class="row g-3">
-            <div class="col-md-4">
-              <label for="schedule-key-duty-create-name" class="form-label">Наименование</label>
-              <input id="schedule-key-duty-create-name" class="form-control" type="text" required />
-            </div>
-            <div class="col-md-4">
-              <label for="schedule-key-duty-create-type" class="form-label">Тип на повеската</label>
-              <select id="schedule-key-duty-create-type" class="form-select" required>
-                <option value="">Избери тип</option>
-              </select>
-            </div>
-            <div class="col-md-4">
-              <label for="schedule-key-duty-create-schedule-keys" class="form-label">Ключ-Графици</label>
-              <select id="schedule-key-duty-create-schedule-keys" class="form-select" multiple required size="4"></select>
-              <div class="form-text">Може да избереш един или повече ключ-графика.</div>
-            </div>
-            <div class="col-md-2">
-              <label for="schedule-key-duty-create-start" class="form-label">Начало</label>
-              <input id="schedule-key-duty-create-start" class="form-control" type="time" required />
-            </div>
-            <div class="col-md-2">
-              <label for="schedule-key-duty-create-end" class="form-label">Край</label>
-              <input id="schedule-key-duty-create-end" class="form-control" type="time" required />
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-              <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="schedule-key-duty-create-second-day" />
-                <label class="form-check-label" for="schedule-key-duty-create-second-day">Втори ден</label>
-              </div>
-            </div>
-            <div class="col-md-2">
-              <label for="schedule-key-duty-create-break-start" class="form-label">Начало на прекъсването</label>
-              <input id="schedule-key-duty-create-break-start" class="form-control" type="time" value="00:00" required />
-            </div>
-            <div class="col-md-2">
-              <label for="schedule-key-duty-create-break-end" class="form-label">Край на прекъсването</label>
-              <input id="schedule-key-duty-create-break-end" class="form-control" type="time" value="00:00" required />
-            </div>
-            <div class="col-md-4">
-              <label for="schedule-key-duty-create-trains" class="form-label">Влакове</label>
-              <select id="schedule-key-duty-create-trains" class="form-select" multiple size="4"></select>
-              <div class="form-text">Избери един или повече влака за тази повеска.</div>
-            </div>
-          </div>
+          <div id="schedule-key-duty-create-form-fields" class="row g-3"></div>
 
           <div class="d-flex justify-content-end gap-2 mt-4">
             <button id="schedule-key-duty-create-cancel" type="button" class="btn btn-outline-secondary">Отказ</button>
@@ -98,9 +55,9 @@
 </div>
 
 <div id="schedule-key-duty-edit-modal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50" style="z-index: 1060;">
-  <div class="d-flex align-items-center justify-content-center h-100 p-3">
-    <div class="card w-100" style="max-width: 860px;">
-      <div class="card-body p-4">
+  <div class="d-flex align-items-start justify-content-center h-100 p-3 p-md-4" style="overflow: auto;">
+    <div class="card w-100" style="max-width: 760px;">
+      <div class="card-body p-4" style="max-height: calc(100vh - 64px); overflow: auto;">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h2 class="h5 mb-0">Редакция на повеска</h2>
           <button id="schedule-key-duty-edit-modal-close" type="button" class="btn-close" aria-label="Close"></button>
@@ -108,50 +65,7 @@
 
         <form id="schedule-key-duty-edit-form">
           <input type="hidden" id="schedule-key-duty-edit-id" />
-          <div class="row g-3">
-            <div class="col-md-4">
-              <label for="schedule-key-duty-edit-name" class="form-label">Наименование</label>
-              <input id="schedule-key-duty-edit-name" class="form-control" type="text" required />
-            </div>
-            <div class="col-md-4">
-              <label for="schedule-key-duty-edit-type" class="form-label">Тип на повеската</label>
-              <select id="schedule-key-duty-edit-type" class="form-select" required>
-                <option value="">Избери тип</option>
-              </select>
-            </div>
-            <div class="col-md-4">
-              <label for="schedule-key-duty-edit-schedule-keys" class="form-label">Ключ-Графици</label>
-              <select id="schedule-key-duty-edit-schedule-keys" class="form-select" multiple required size="4"></select>
-              <div class="form-text">Може да избереш един или повече ключ-графика.</div>
-            </div>
-            <div class="col-md-2">
-              <label for="schedule-key-duty-edit-start" class="form-label">Начало</label>
-              <input id="schedule-key-duty-edit-start" class="form-control" type="time" required />
-            </div>
-            <div class="col-md-2">
-              <label for="schedule-key-duty-edit-end" class="form-label">Край</label>
-              <input id="schedule-key-duty-edit-end" class="form-control" type="time" required />
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-              <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="schedule-key-duty-edit-second-day" />
-                <label class="form-check-label" for="schedule-key-duty-edit-second-day">Втори ден</label>
-              </div>
-            </div>
-            <div class="col-md-2">
-              <label for="schedule-key-duty-edit-break-start" class="form-label">Начало на прекъсването</label>
-              <input id="schedule-key-duty-edit-break-start" class="form-control" type="time" value="00:00" required />
-            </div>
-            <div class="col-md-2">
-              <label for="schedule-key-duty-edit-break-end" class="form-label">Край на прекъсването</label>
-              <input id="schedule-key-duty-edit-break-end" class="form-control" type="time" value="00:00" required />
-            </div>
-            <div class="col-md-4">
-              <label for="schedule-key-duty-edit-trains" class="form-label">Влакове</label>
-              <select id="schedule-key-duty-edit-trains" class="form-select" multiple size="4"></select>
-              <div class="form-text">Избери един или повече влака за тази повеска.</div>
-            </div>
-          </div>
+          <div id="schedule-key-duty-edit-form-fields" class="row g-3"></div>
 
           <div class="d-flex justify-content-end gap-2 mt-4">
             <button id="schedule-key-duty-edit-cancel" type="button" class="btn btn-outline-secondary">Отказ</button>
@@ -190,6 +104,7 @@
         <div id="schedule-key-duty-profile-content"></div>
         <div class="d-flex justify-content-end gap-2 mt-4">
           <button id="schedule-key-duty-profile-close-secondary" type="button" class="btn btn-outline-secondary">Затвори</button>
+          <button id="schedule-key-duty-profile-edit" type="button" class="btn btn-primary">Редакция</button>
         </div>
       </div>
     </div>

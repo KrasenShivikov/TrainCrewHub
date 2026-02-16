@@ -3,6 +3,8 @@ import {
   calculateShiftDurationMinutes,
   intervalToTimeInput
 } from '../../../utils/dutyTime.js';
+import { buildDutyProfileContent } from '../../../utils/dutyProfileTemplate.js';
+import { renderDutyFormFields } from '../../../utils/dutyFormTemplate.js';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import {
@@ -23,11 +25,28 @@ import {
 export async function renderScheduleKeyDutiesPage(container) {
   const pageHtml = await loadHtml('../schedule-key-duties.html', import.meta.url);
   container.innerHTML = pageHtml;
+  initializeScheduleKeyFormFields(container);
   attachScheduleKeyDutiesHandlers(container);
   await loadDutyTypeOptions(container);
   await loadScheduleKeyOptions(container);
   await loadTrainOptions(container);
   await initScheduleKeyContext(container);
+}
+
+function initializeScheduleKeyFormFields(container) {
+  const createFieldsRoot = container.querySelector('#schedule-key-duty-create-form-fields');
+  if (createFieldsRoot) {
+    createFieldsRoot.innerHTML = renderDutyFormFields({
+      idPrefix: 'schedule-key-duty-create'
+    });
+  }
+
+  const editFieldsRoot = container.querySelector('#schedule-key-duty-edit-form-fields');
+  if (editFieldsRoot) {
+    editFieldsRoot.innerHTML = renderDutyFormFields({
+      idPrefix: 'schedule-key-duty-edit'
+    });
+  }
 }
 
 function attachScheduleKeyDutiesHandlers(container) {
@@ -47,6 +66,7 @@ function attachScheduleKeyDutiesHandlers(container) {
   const profileModal = container.querySelector('#schedule-key-duty-profile-modal');
   const profileCloseButton = container.querySelector('#schedule-key-duty-profile-close');
   const profileCloseSecondaryButton = container.querySelector('#schedule-key-duty-profile-close-secondary');
+  const profileEditButton = container.querySelector('#schedule-key-duty-profile-edit');
 
   openCreateButton?.addEventListener('click', () => {
     resetCreateDutyForm(container);
@@ -94,6 +114,16 @@ function attachScheduleKeyDutiesHandlers(container) {
 
   profileCloseSecondaryButton?.addEventListener('click', () => {
     closeModal(profileModal);
+  });
+
+  profileEditButton?.addEventListener('click', () => {
+    const dutyId = profileModal?.dataset?.dutyId || '';
+    if (!dutyId) {
+      return;
+    }
+
+    closeModal(profileModal);
+    openEditDutyModal(container, dutyId);
   });
 
   setupModalEscapeHandler('schedule-key-duties', [
@@ -305,6 +335,7 @@ async function saveDutyForScheduleKey(container) {
   const secondDay = secondDayInput.checked;
   const breakStartTime = breakStartInput.value;
   const breakEndTime = breakEndInput.value;
+  const notes = container.querySelector('#schedule-key-duty-create-notes').value.trim() || null;
   const selectedTrainIds = Array.from(trainsInput.selectedOptions || [])
     .map((option) => option.value)
     .filter(Boolean);
@@ -348,6 +379,7 @@ async function saveDutyForScheduleKey(container) {
       second_day: secondDay,
       break_start_time: breakStartTime,
       break_end_time: breakEndTime,
+      notes,
       created_from: createdFrom,
       display_order: maxDisplayOrder + 1
     })
@@ -403,6 +435,7 @@ function openEditDutyModal(container, dutyId) {
   container.querySelector('#schedule-key-duty-edit-second-day').checked = Boolean(duty.second_day);
   container.querySelector('#schedule-key-duty-edit-break-start').value = intervalToTimeInput(duty.break_start_time);
   container.querySelector('#schedule-key-duty-edit-break-end').value = intervalToTimeInput(duty.break_end_time);
+  container.querySelector('#schedule-key-duty-edit-notes').value = duty.notes ?? '';
   openModal(container.querySelector('#schedule-key-duty-edit-modal'));
 }
 
@@ -425,6 +458,7 @@ function resetCreateDutyForm(container) {
   container.querySelector('#schedule-key-duty-create-second-day').checked = false;
   container.querySelector('#schedule-key-duty-create-break-start').value = '00:00';
   container.querySelector('#schedule-key-duty-create-break-end').value = '00:00';
+  container.querySelector('#schedule-key-duty-create-notes').value = '';
   const trainsSelect = container.querySelector('#schedule-key-duty-create-trains');
   Array.from(trainsSelect.options).forEach((option) => {
     option.selected = false;
@@ -446,6 +480,7 @@ async function saveEditedDutyForScheduleKey(container) {
   const secondDay = container.querySelector('#schedule-key-duty-edit-second-day').checked;
   const breakStartTime = container.querySelector('#schedule-key-duty-edit-break-start').value;
   const breakEndTime = container.querySelector('#schedule-key-duty-edit-break-end').value;
+  const notes = container.querySelector('#schedule-key-duty-edit-notes').value.trim() || null;
   const selectedTrainIds = Array.from(
     container.querySelector('#schedule-key-duty-edit-trains').selectedOptions || []
   )
@@ -484,10 +519,11 @@ async function saveEditedDutyForScheduleKey(container) {
       end_time: endTime,
       second_day: secondDay,
       break_start_time: breakStartTime,
-      break_end_time: breakEndTime
+      break_end_time: breakEndTime,
+      notes
     })
     .eq('id', dutyId)
-    .eq('schedule_key_id', scheduleKeyDutiesState.scheduleKeyId);
+    ;
 
   const mappingError = error ? null : await syncDutyScheduleKeys(dutyId, selectedScheduleKeyIds);
   const trainMappingError = error || mappingError ? null : await syncDutyTrains(dutyId, selectedTrainIds);
@@ -560,90 +596,38 @@ function openDutyProfileModal(container, dutyId) {
   const duty = scheduleKeyDutiesState.duties.find((item) => item.id === dutyId);
   const content = container.querySelector('#schedule-key-duty-profile-content');
   const modal = container.querySelector('#schedule-key-duty-profile-modal');
+  const profileEditButton = container.querySelector('#schedule-key-duty-profile-edit');
 
   if (!content || !modal) {
     return;
   }
 
   if (!duty) {
+    modal.dataset.dutyId = '';
+    if (profileEditButton) {
+      profileEditButton.disabled = true;
+    }
     content.innerHTML = '<p class="text-secondary mb-0">Няма данни за тази повеска.</p>';
     openModal(modal);
     return;
   }
 
+  modal.dataset.dutyId = duty.id;
+  if (profileEditButton) {
+    profileEditButton.disabled = false;
+  }
+
   const scheduleKeyNames = getScheduleKeyNames(duty);
   const trainNumbers = getTrainNumbersOrdered(duty);
 
-  content.innerHTML = `
-    <div class="row g-3">
-      <div class="col-md-6">
-        <div class="border rounded p-3 h-100">
-          <div class="text-secondary small">Наименование</div>
-          <div class="fw-semibold">${escapeHtml(duty.name || '-')}</div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="border rounded p-3 h-100">
-          <div class="text-secondary small">Тип</div>
-          <div class="fw-semibold">${escapeHtml(duty?.duty_types?.name || '-')}</div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="border rounded p-3 h-100">
-          <div class="text-secondary small">Ключ-графици</div>
-          <div class="fw-semibold">${escapeHtml(scheduleKeyNames.length ? scheduleKeyNames.join(', ') : '-')}</div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="border rounded p-3 h-100">
-          <div class="text-secondary small">Влакове</div>
-          <div class="fw-semibold">${escapeHtml(trainNumbers.length ? trainNumbers.join(', ') : '-')}</div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="border rounded p-3 h-100">
-          <div class="text-secondary small">Начало</div>
-          <div class="fw-semibold">${escapeHtml((duty.start_time || '-').slice(0, 5) || '-')}</div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="border rounded p-3 h-100">
-          <div class="text-secondary small">Край</div>
-          <div class="fw-semibold">${escapeHtml((duty.end_time || '-').slice(0, 5) || '-')}</div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="border rounded p-3 h-100">
-          <div class="text-secondary small">Втори ден</div>
-          <div class="fw-semibold">${duty.second_day ? 'Да' : 'Не'}</div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="border rounded p-3 h-100">
-          <div class="text-secondary small">Начало на прекъсване</div>
-          <div class="fw-semibold">${escapeHtml((intervalToTimeInput(duty.break_start_time || '00:00:00') || '-').slice(0, 5) || '-')}</div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="border rounded p-3 h-100">
-          <div class="text-secondary small">Край на прекъсване</div>
-          <div class="fw-semibold">${escapeHtml((intervalToTimeInput(duty.break_end_time || '00:00:00') || '-').slice(0, 5) || '-')}</div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="border rounded p-3 h-100">
-          <div class="text-secondary small">Прекъсване</div>
-          <div class="fw-semibold">${escapeHtml(formatIntervalValue(duty.break_duration_interval))}</div>
-        </div>
-      </div>
-      <div class="col-md-12">
-        <div class="border rounded p-3 h-100">
-          <div class="text-secondary small">Времетраене</div>
-          <div class="fw-semibold">${escapeHtml(formatIntervalValue(duty.duration_interval))}</div>
-        </div>
-      </div>
-    </div>
-  `;
+  content.innerHTML = buildDutyProfileContent({
+    duty,
+    scheduleKeyNames,
+    trainNumbers,
+    escapeHtml,
+    intervalToTimeInput,
+    formatInterval: formatIntervalValue
+  });
 
   openModal(modal);
 }
