@@ -1,5 +1,6 @@
 import { loadHtml } from '../../../utils/loadHtml.js';
 import { applyPrintDepotLabel } from '../../../utils/printConfig.js';
+import { loadDutiesForScheduleDate } from '../../../utils/scheduleDuties.js';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import {
@@ -162,6 +163,7 @@ function attachScheduleHandlers(container) {
       return;
     }
 
+    setScheduleDraggingState(true);
     dragButton.classList.add('opacity-50');
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
@@ -176,6 +178,7 @@ function attachScheduleHandlers(container) {
     dragButton?.classList.remove('opacity-50');
     dndHandlers.clearDropTargetHighlights(container);
     draggedActualDutyId = '';
+    setScheduleDraggingState(false);
   });
 
   container.addEventListener('dragover', (event) => {
@@ -186,6 +189,7 @@ function attachScheduleHandlers(container) {
     const targetCell = event.target.closest('td[data-drop-duty-id]');
     if (!targetCell) {
       dndHandlers.clearDropTargetHighlights(container);
+      setScheduleDraggingState(false);
       return;
     }
 
@@ -199,11 +203,13 @@ function attachScheduleHandlers(container) {
 
     if (!targetDutyId || !targetDate || !actualId) {
       dndHandlers.clearDropTargetHighlights(container);
+      setScheduleDraggingState(false);
       return;
     }
 
     dndHandlers.clearDropTargetHighlights(container);
     await dndHandlers.moveDraggedActualDuty(container, actualId, targetDutyId, targetDate, targetRole);
+    setScheduleDraggingState(false);
   });
 
   setupModalEscapeHandler('schedule', [modal]);
@@ -301,6 +307,24 @@ async function loadScheduleData(container) {
     return;
   }
 
+  const { data: allDuties, error: dutiesError } = await loadDutiesForScheduleDate(selectedDate);
+
+  if (dutiesError) {
+    showToast(dutiesError.message, 'error');
+    actualRowsById.clear();
+    renderBoards(container, {
+      train: [],
+      businessTrip: [],
+      dayOff: []
+    }, new Map());
+    setMessage(container, {
+      hint: '',
+      error: 'Грешка при зареждане на повеските.',
+      empty: ''
+    });
+    return;
+  }
+
   const absentEmployeeIds = new Set((absenceRows || []).map((row) => row?.employee_id).filter(Boolean));
 
   actualRowsById.clear();
@@ -316,19 +340,7 @@ async function loadScheduleData(container) {
     dayOff: []
   };
 
-  const dutiesById = new Map();
-  (rows || []).forEach((row) => {
-    const duty = getDutyFromRow(row);
-    if (!duty?.id) {
-      return;
-    }
-
-    if (!dutiesById.has(duty.id)) {
-      dutiesById.set(duty.id, duty);
-    }
-  });
-
-  Array.from(dutiesById.values()).forEach((duty) => {
+  (allDuties || []).forEach((duty) => {
     const typeName = getDutyTypeName(duty).toLowerCase();
     if (typeName.includes('на влак')) {
       groupedDuties.train.push(duty);
@@ -413,5 +425,9 @@ async function removeEmployeeTripAndDayOffEntries(employeeId, date, currentDutyI
 
   const { error: deleteError } = await deleteQuery;
   return deleteError;
+}
+
+function setScheduleDraggingState(isDragging) {
+  document.body.classList.toggle('schedule-dragging', Boolean(isDragging));
 }
 

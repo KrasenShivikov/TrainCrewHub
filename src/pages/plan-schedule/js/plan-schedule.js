@@ -1,5 +1,6 @@
 import { loadHtml } from '../../../utils/loadHtml.js';
 import { applyPrintDepotLabel } from '../../../utils/printConfig.js';
+import { loadDutiesForScheduleDate } from '../../../utils/scheduleDuties.js';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { getDateFromQuery } from './helpers.js';
@@ -99,6 +100,24 @@ async function loadPlanScheduleData(container) {
     return;
   }
 
+  const { data: allDuties, error: dutiesError } = await loadDutiesForScheduleDate(selectedDate);
+
+  if (dutiesError) {
+    showToast(dutiesError.message, 'error');
+    renderBoards(container, {
+      train: [],
+      businessTrip: [],
+      dayOff: []
+    }, new Map());
+    renderAbsenceBoard(container.querySelector('#plan-schedule-absence'), []);
+    setMessage(container, {
+      hint: '',
+      error: 'Грешка при зареждане на повеските.',
+      empty: ''
+    });
+    return;
+  }
+
   const { data: absenceRows, error: absenceError } = await supabase
     .from('employee_absences')
     .select('employee_id, start_date, end_date, employees(first_name, last_name), absence_reasons(name)')
@@ -122,7 +141,9 @@ async function loadPlanScheduleData(container) {
   }
 
   const absenceByEmployeeId = buildAbsenceByEmployee(absenceRows || []);
-  const groupedDuties = groupDutiesFromPlanned(plannedRows || []);
+  const groupedDuties = groupDutiesFromPlanned(
+    (allDuties || []).map((duty) => ({ duties: duty }))
+  );
   const { assignmentsByDuty, absentAssignments } = buildAssignmentsByDuty(plannedRows || [], absenceByEmployeeId);
 
   renderBoards(container, groupedDuties, assignmentsByDuty);
@@ -135,3 +156,4 @@ async function loadPlanScheduleData(container) {
     empty: totalCount || absentAssignments.length ? '' : 'Няма повески за показване по избраните типове.'
   });
 }
+

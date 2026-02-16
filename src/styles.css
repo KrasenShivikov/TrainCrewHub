@@ -323,8 +323,73 @@ body {
   color: var(--bs-secondary-text-emphasis, var(--bs-secondary-color));
 }
 
+.plan-schedule-sheet .schedule-duty-note {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  font-weight: 500;
+  color: var(--bs-danger);
+  white-space: normal;
+  word-break: break-word;
+}
+
+.plan-schedule-sheet .schedule-duty-name-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.plan-schedule-sheet .schedule-duty-name-wrap .schedule-cell-key-badge {
+  margin-right: 0;
+  flex: 0 0 auto;
+}
+
+.plan-schedule-sheet .schedule-duty-name-ellipsis {
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
 .schedule-print-left-label {
   display: none;
+}
+
+body.schedule-dragging {
+  overflow: hidden;
+}
+
+body.schedule-dragging .plan-schedule-sheet {
+  user-select: none;
+}
+
+.schedule-page-root .card-body {
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+
+.schedule-page-root .plan-schedule-sheet {
+  padding: 0.85rem !important;
+}
+
+.schedule-page-root .plan-schedule-sheet section {
+  margin-bottom: 0.6rem !important;
+}
+
+.schedule-page-root .plan-schedule-sheet .plan-schedule-table tbody th,
+.schedule-page-root .plan-schedule-sheet .plan-schedule-table tbody td {
+  height: 34px;
+}
+
+.schedule-page-root .schedule-duty-note {
+  font-size: 0.68rem;
+  line-height: 1.1;
 }
 
 .plan-schedule-sheet .plan-schedule-table td.schedule-drop-target {
@@ -540,6 +605,20 @@ html.print-preparing.print-hide-second-day .plan-schedule-sheet .second-day-col 
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .plan-schedule-sheet .print-duty-card-note {
+    font-size: 8.7px;
+    line-height: 1.2;
+    color: var(--bs-danger);
+    border-bottom: 1px dashed #e5e7eb;
+    padding: 0 0 2px;
+    margin: -1px 0 2px;
+    min-height: 12px;
+    text-align: left;
+    word-break: break-word;
+    max-height: calc(1.2em * 2);
+    overflow: hidden;
   }
 
   .plan-schedule-sheet .print-duty-card-line {

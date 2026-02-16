@@ -283,7 +283,12 @@ function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
             return `<th scope="col"${classAttr}></th>`;
           }
 
-          return `<th scope="col"${classAttr}>${renderCellKeyBadge('Влак', 'train')}${escapeHtml(label)}</th>`;
+          const notes = String(duty?.notes || '').trim();
+          const notesHtml = notes
+            ? `<div class="schedule-duty-note" title="${escapeHtml(notes)}">${escapeHtml(notes)}</div>`
+            : '';
+
+          return `<th scope="col"${classAttr}><span class="schedule-duty-name-wrap">${renderCellKeyBadge('Влак', 'train')}<span class="schedule-duty-name-ellipsis" title="${escapeHtml(label)}">${escapeHtml(label)}</span></span>${notesHtml}</th>`;
         })
         .join('');
 
@@ -423,6 +428,7 @@ function renderPrintableDutyCards(duties, assignmentsByDuty, conductorRowsCount,
         return `
           <article class="print-duty-card">
             <div class="print-duty-card-title"></div>
+            <div class="print-duty-card-note"></div>
             ${hoursLine}
             <div class="print-duty-card-line">
               <span class="print-duty-card-key">НВ</span>
@@ -448,6 +454,7 @@ function renderPrintableDutyCards(duties, assignmentsByDuty, conductorRowsCount,
       return `
         <article class="print-duty-card">
           <div class="print-duty-card-title">${escapeHtml(duty.name || '')}</div>
+          <div class="print-duty-card-note">${escapeHtml(String(duty.notes || '').trim())}</div>
           ${showHours
     ? `
             <div class="print-duty-card-line">

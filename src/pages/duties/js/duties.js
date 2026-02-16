@@ -289,6 +289,7 @@ async function saveDuty(container) {
   const secondDayInput = container.querySelector('#duty-second-day');
   const breakStartInput = container.querySelector('#duty-break-start-time');
   const breakEndInput = container.querySelector('#duty-break-end-time');
+  const notesInput = container.querySelector('#duty-notes');
   const saveButton = container.querySelector('#duty-save-btn');
 
   const name = nameInput.value.trim();
@@ -305,6 +306,7 @@ async function saveDuty(container) {
   const secondDay = secondDayInput.checked;
   const breakStartTime = breakStartInput.value;
   const breakEndTime = breakEndInput.value;
+  const notes = notesInput.value.trim() || null;
   const editingId = idInput.value;
 
   if (!name || !dutyTypeId || !startTime || !endTime) {
@@ -336,7 +338,8 @@ async function saveDuty(container) {
     end_time: endTime,
     second_day: secondDay,
     break_start_time: breakStartTime,
-    break_end_time: breakEndTime
+    break_end_time: breakEndTime,
+    notes
   };
 
   let error;
@@ -402,6 +405,7 @@ function populateDutyForm(container, duty) {
   container.querySelector('#duty-second-day').checked = Boolean(duty.secondDay);
   container.querySelector('#duty-break-start-time').value = intervalToTimeInput(duty.breakStartTime);
   container.querySelector('#duty-break-end-time').value = intervalToTimeInput(duty.breakEndTime);
+  container.querySelector('#duty-notes').value = duty.notes ?? '';
 
   container.querySelector('#duty-form-title').textContent = 'Редакция на Повеска';
   container.querySelector('#duty-save-btn').textContent = 'Запази';
@@ -424,6 +428,7 @@ function resetDutyForm(container) {
   container.querySelector('#duty-second-day').checked = false;
   container.querySelector('#duty-break-start-time').value = '00:00';
   container.querySelector('#duty-break-end-time').value = '00:00';
+  container.querySelector('#duty-notes').value = '';
 
   container.querySelector('#duty-form-title').textContent = 'Нова Повеска';
   container.querySelector('#duty-save-btn').textContent = 'Създай';
@@ -636,7 +641,8 @@ function openDutyEditModal(container, dutyId) {
     endTime: normalizeTime(duty.end_time),
     secondDay: Boolean(duty.second_day),
     breakStartTime: duty.break_start_time || '00:00:00',
-    breakEndTime: duty.break_end_time || '00:00:00'
+    breakEndTime: duty.break_end_time || '00:00:00',
+    notes: duty.notes || ''
   });
 
   openModal(container.querySelector('#duty-modal'));
