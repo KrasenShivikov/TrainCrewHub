@@ -12,6 +12,7 @@ let documentKeydownHandler;
 export async function renderHeader(container) {
   const headerHtml = await loadHtml('./header.html', import.meta.url);
   container.innerHTML = headerHtml;
+  const navRoot = container.querySelector('nav.navbar');
 
   const signInNavItem = container.querySelector('#nav-sign-in');
   const registerNavItem = container.querySelector('#nav-register');
@@ -59,6 +60,8 @@ export async function renderHeader(container) {
     const { data } = await supabase.auth.getSession();
     const session = data.session;
     const isAuthenticated = Boolean(session);
+
+    navRoot?.classList.toggle('d-none', !isAuthenticated);
 
     signInNavItem?.classList.toggle('d-none', isAuthenticated);
     registerNavItem?.classList.toggle('d-none', isAuthenticated);

@@ -1,5 +1,4 @@
 import { renderIndexPage } from './pages/index/js/index.js';
-import { renderDashboardPage } from './pages/dashboard/js/dashboard.js';
 import { renderLoginPage } from './pages/login/js/login.js';
 import { renderRegisterPage } from './pages/register/js/register.js';
 import { renderScheduleKeysPage } from './pages/schedule-keys/js/schedule-keys.js';
@@ -30,10 +29,6 @@ const routes = {
   '/': {
     render: renderIndexPage,
     title: 'TrainCrewHub'
-  },
-  '/dashboard': {
-    render: renderDashboardPage,
-    title: 'TrainCrewHub / Dashboard'
   },
   '/login': {
     render: renderLoginPage,
@@ -175,6 +170,14 @@ function getRouteConfig(pathname) {
 }
 
 async function resolveAccessPath(pathname, config) {
+  const publicPaths = new Set(['/login', '/register']);
+  if (!publicPaths.has(pathname)) {
+    const session = await getCurrentUserSession();
+    if (!session?.user?.id) {
+      return '/login';
+    }
+  }
+
   if (!config?.requiresAdmin) {
     const screenResource = config?.screenResource || config?.resource || '';
     if (!screenResource) {
@@ -187,7 +190,7 @@ async function resolveAccessPath(pathname, config) {
     }
 
     showToast('Нямаш права за достъп до този екран.', 'warning');
-    return '/dashboard';
+    return '/';
   }
 
   const session = await getCurrentUserSession();
@@ -201,7 +204,7 @@ async function resolveAccessPath(pathname, config) {
   }
 
   showToast('Нямаш права за достъп до админ панела.', 'warning');
-  return '/dashboard';
+  return '/';
 }
 
 async function renderCurrentRoute() {

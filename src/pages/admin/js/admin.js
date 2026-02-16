@@ -4,6 +4,7 @@ import { showToast } from '../../../components/toast/toast.js';
 import { isPermissionBannerEnabled, setPermissionBannerEnabled } from '../../../utils/permissions.js';
 import { getResourceDisplayName } from '../../../utils/permissions.js';
 import { adminState } from './state.js';
+import { getRoleLabel } from './helpers.js';
 import {
   renderProfilesTable,
   renderRoleCatalogTable,
@@ -13,6 +14,16 @@ import {
 } from './table.js';
 
 const DEFAULT_ROLES = ['admin', 'head_of_transport', 'instructor', 'crew', 'user'];
+const ROLE_SORT_PRIORITY = {
+  admin: 10,
+  crew_manager: 20,
+  head_of_transport: 30,
+  crew_instructor: 40,
+  instructor: 50,
+  crew: 60,
+  crew_member: 70,
+  user: 80
+};
 let pendingRoleWarningAction = null;
 
 export async function renderAdminPage(container) {
@@ -36,11 +47,9 @@ export async function renderAdminPage(container) {
 }
 
 function attachAdminHandlers(container) {
-  const openAssignRoleModalButton = container.querySelector('#open-admin-assign-role-modal');
   const assignRoleModal = container.querySelector('#admin-assign-role-modal');
   const assignRoleModalCloseButton = container.querySelector('#admin-assign-role-modal-close');
   const assignRoleModalCancelButton = container.querySelector('#admin-assign-role-modal-cancel');
-  const openProfileLinkModalButton = container.querySelector('#open-admin-profile-link-modal');
   const profileLinkModal = container.querySelector('#admin-profile-link-modal');
   const profileLinkModalCloseButton = container.querySelector('#admin-profile-link-modal-close');
   const profileLinkModalCancelButton = container.querySelector('#admin-profile-link-modal-cancel');
@@ -63,20 +72,12 @@ function attachAdminHandlers(container) {
   const roleCatalogBody = container.querySelector('#admin-role-catalog-body');
   const profilesBody = container.querySelector('#admin-profiles-body');
 
-  openAssignRoleModalButton?.addEventListener('click', () => {
-    openModal(assignRoleModal);
-  });
-
   assignRoleModalCloseButton?.addEventListener('click', () => {
     closeModal(assignRoleModal);
   });
 
   assignRoleModalCancelButton?.addEventListener('click', () => {
     closeModal(assignRoleModal);
-  });
-
-  openProfileLinkModalButton?.addEventListener('click', () => {
-    openModal(profileLinkModal);
   });
 
   profileLinkModalCloseButton?.addEventListener('click', () => {
@@ -169,6 +170,17 @@ function attachAdminHandlers(container) {
   });
 
   rolesBody?.addEventListener('click', async (event) => {
+    const addButton = event.target.closest('button[data-admin-action="add-role"]');
+    if (addButton) {
+      const userId = addButton.getAttribute('data-user-id') || '';
+      if (!userId) {
+        return;
+      }
+
+      openAssignRoleModalForUser(container, userId);
+      return;
+    }
+
     const removeButton = event.target.closest('button[data-admin-action="remove-role"]');
     if (!removeButton) {
       return;
@@ -209,6 +221,15 @@ function attachAdminHandlers(container) {
   });
 
   profilesBody?.addEventListener('click', async (event) => {
+    const linkActionButton = event.target.closest('button[data-admin-action="link-profile"]');
+    if (linkActionButton) {
+      const profileId = linkActionButton.getAttribute('data-profile-id') || '';
+      if (profileId) {
+        openProfileLinkModalForProfile(container, profileId);
+      }
+      return;
+    }
+
     const unlinkActionButton = event.target.closest('button[data-admin-action="unlink-profile"]');
     if (!unlinkActionButton) {
       return;
@@ -225,6 +246,39 @@ function attachAdminHandlers(container) {
       onConfirm: () => updateProfileEmployeeLink(container, profileId, null)
     });
   });
+}
+
+function openProfileLinkModalForProfile(container, profileId) {
+  const profileLinkModal = container.querySelector('#admin-profile-link-modal');
+  const profileSelect = container.querySelector('#admin-profile-link-id');
+  const employeeSelect = container.querySelector('#admin-profile-link-employee-id');
+  const profile = adminState.profiles.find((item) => item.id === profileId);
+
+  if (profileSelect) {
+    profileSelect.value = profileId;
+  }
+
+  if (employeeSelect) {
+    employeeSelect.value = profile?.employee_id || '';
+  }
+
+  openModal(profileLinkModal);
+}
+
+function openAssignRoleModalForUser(container, userId) {
+  const assignRoleModal = container.querySelector('#admin-assign-role-modal');
+  const userSelect = container.querySelector('#admin-role-profile-id');
+  const roleSelect = container.querySelector('#admin-role-value');
+
+  if (userSelect) {
+    userSelect.value = userId;
+  }
+
+  if (roleSelect) {
+    roleSelect.value = '';
+  }
+
+  openModal(assignRoleModal);
 }
 
 async function loadAdminData(container) {
@@ -271,7 +325,7 @@ async function loadAdminData(container) {
   adminState.profiles = profiles || [];
   adminState.employees = employees || [];
   adminState.roleCatalog = roleCatalogRows || [];
-  adminState.roles = mapRolesWithProfiles(roles || [], adminState.profiles);
+  adminState.roles = mapAllUsersWithRoles(roles || [], adminState.profiles);
   adminState.availableRoles = getMergedRoles(roleCatalogRows || [], roles || []);
   syncRoleSelectOptions(container);
 
@@ -565,11 +619,62 @@ function mapRolesWithProfiles(roles, profiles) {
   }));
 }
 
+function mapAllUsersWithRoles(roles, profiles) {
+  const profilesById = new Map((profiles || []).map((profile) => [profile.id, profile]));
+  const rolesByUserId = new Map();
+
+  // Group roles by user_id
+  (roles || []).forEach((roleRow) => {
+    if (!rolesByUserId.has(roleRow.user_id)) {
+      rolesByUserId.set(roleRow.user_id, []);
+    }
+    rolesByUserId.get(roleRow.user_id).push(roleRow);
+  });
+
+  // Create rows: for each user with roles, create a row for each role; for users without roles, create one row
+  const result = [];
+  (profiles || []).forEach((profile) => {
+    const userRoles = rolesByUserId.get(profile.id) || [];
+    
+    if (userRoles.length > 0) {
+      // User has roles - create a row for each role
+      userRoles.forEach((roleRow) => {
+        result.push({
+          ...roleRow,
+          username: profile.username,
+          user_id: profile.id
+        });
+      });
+    } else {
+      // User has no roles - create a single row with empty role
+      result.push({
+        id: null,
+        user_id: profile.id,
+        role: null,
+        username: profile.username
+      });
+    }
+  });
+
+  return result;
+}
+
 function getMergedRoles(roleCatalogRows, assignedRoleRows) {
   const fromCatalog = (roleCatalogRows || []).map((row) => String(row?.name || '').trim()).filter(Boolean);
   const fromAssigned = (assignedRoleRows || []).map((row) => String(row?.role || '').trim()).filter(Boolean);
   const merged = [...new Set([...DEFAULT_ROLES, ...fromCatalog, ...fromAssigned])];
-  return merged.sort((left, right) => left.localeCompare(right, 'en'));
+  return merged.sort((left, right) => {
+    const normalizedLeft = String(left || '').trim().toLowerCase();
+    const normalizedRight = String(right || '').trim().toLowerCase();
+    const leftPriority = ROLE_SORT_PRIORITY[normalizedLeft] ?? 999;
+    const rightPriority = ROLE_SORT_PRIORITY[normalizedRight] ?? 999;
+
+    if (leftPriority !== rightPriority) {
+      return leftPriority - rightPriority;
+    }
+
+    return normalizedLeft.localeCompare(normalizedRight, 'en');
+  });
 }
 
 function syncRoleSelectOptions(container) {
@@ -625,10 +730,10 @@ function getRoleOptionLabel(roleName) {
   const roleMeta = adminState.roleCatalog.find((item) => item?.name === roleName);
   const bgName = String(roleMeta?.display_name_bg || '').trim();
   if (!bgName) {
-    return roleName;
+    return getRoleLabel(roleName);
   }
 
-  return `${bgName} (${roleName})`;
+  return bgName;
 }
 
 async function deleteCatalogRole(container, roleName) {

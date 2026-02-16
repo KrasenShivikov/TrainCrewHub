@@ -84,21 +84,35 @@ export function renderRolesTable(container, explicitEmptyMessage) {
   body.innerHTML = adminState.roles
     .map((row) => {
       const username = row?.username || row?.user_id || '-';
-      const role = getRoleLabel(resolveRoleLabel(row?.role));
+      const role = row?.role ? resolveRoleLabel(row.role) : '-';
+      const userId = row?.user_id || '';
+      const hasRole = Boolean(row?.role);
 
       return `
         <tr>
           <td>${escapeHtml(username)}</td>
-          <td><span class="badge text-bg-secondary">${escapeHtml(role)}</span></td>
+          <td>${hasRole ? `<span class="badge text-bg-secondary">${escapeHtml(role)}</span>` : '<span class="text-secondary">-</span>'}</td>
           <td class="text-end">
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-danger"
-              data-admin-action="remove-role"
-              data-role-id="${row.id}"
-            >
-              Премахни
-            </button>
+            <div class="d-inline-flex gap-2">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-primary"
+                data-admin-action="add-role"
+                data-user-id="${userId}"
+                data-username="${escapeHtml(username)}"
+              >
+                Добави роля
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-danger"
+                data-admin-action="remove-role"
+                data-role-id="${row.id || ''}"
+                ${!hasRole ? 'disabled' : ''}
+              >
+                Премахни
+              </button>
+            </div>
           </td>
         </tr>
       `;
@@ -125,7 +139,7 @@ export function renderRoleCatalogTable(container, explicitEmptyMessage) {
   body.innerHTML = adminState.roleCatalog
     .map((role) => {
       const code = String(role?.name || '').trim();
-      const labelBg = String(role?.display_name_bg || '').trim() || code;
+      const labelBg = String(role?.display_name_bg || '').trim() || getRoleLabel(code);
       const cannotDelete = code === 'admin';
 
       return `
@@ -183,6 +197,7 @@ export function renderProfilesTable(container, explicitEmptyMessage) {
       const employeeLabel = profile?.employees
         ? getEmployeeDisplayLabel(profile.employees)
         : '-';
+      const hasLinkedEmployee = Boolean(profile?.employee_id);
 
       return `
         <tr>
@@ -191,9 +206,18 @@ export function renderProfilesTable(container, explicitEmptyMessage) {
           <td class="text-end">
             <button
               type="button"
+              class="btn btn-sm btn-outline-primary me-2"
+              data-admin-action="link-profile"
+              data-profile-id="${profile.id}"
+            >
+              Свържи
+            </button>
+            <button
+              type="button"
               class="btn btn-sm btn-outline-danger"
               data-admin-action="unlink-profile"
               data-profile-id="${profile.id}"
+              ${hasLinkedEmployee ? '' : 'disabled'}
             >
               Разкачи
             </button>
@@ -279,9 +303,9 @@ function resolveRoleLabel(roleName) {
 
   const roleMeta = adminState.roleCatalog.find((item) => item?.name === normalizedRole);
   if (!roleMeta) {
-    return normalizedRole;
+    return getRoleLabel(normalizedRole);
   }
 
   const bg = String(roleMeta?.display_name_bg || '').trim();
-  return bg ? `${bg} (${normalizedRole})` : normalizedRole;
+  return bg || getRoleLabel(normalizedRole);
 }

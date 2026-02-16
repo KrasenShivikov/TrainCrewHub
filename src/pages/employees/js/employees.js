@@ -14,6 +14,16 @@ export async function renderEmployeesPage(container) {
   attachEmployeesHandlers(container);
   await loadPositionOptions(container);
   await loadEmployees(container);
+
+  const profileEmployeeId = getEmployeeProfileFromQuery();
+  if (profileEmployeeId) {
+    await openEmployeeProfile(container, profileEmployeeId);
+  }
+}
+
+function getEmployeeProfileFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('profile') || '';
 }
 
 function attachEmployeesHandlers(container) {

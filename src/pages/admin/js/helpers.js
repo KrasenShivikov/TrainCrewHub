@@ -1,3 +1,14 @@
+const ROLE_LABELS_BG = {
+  admin: 'Админ',
+  crew_manager: 'Ръководител екип',
+  head_of_transport: 'Ръководител транспорт',
+  crew_instructor: 'Инструктор екип',
+  instructor: 'Инструктор',
+  crew: 'Екип',
+  crew_member: 'Член екип',
+  user: 'Потребител'
+};
+
 export function escapeHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -29,10 +40,10 @@ export function getEmployeeDisplayLabel(employee) {
 }
 
 export function getRoleLabel(role) {
-  const normalized = String(role || '').trim();
+  const normalized = String(role || '').trim().toLowerCase();
   if (!normalized) {
     return '-';
   }
 
-  return normalized;
+  return ROLE_LABELS_BG[normalized] || role;
 }

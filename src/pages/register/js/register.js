@@ -81,7 +81,7 @@ function attachRegisterFormListener(container) {
     submitButton.disabled = false;
     submitButton.innerHTML = originalButtonHtml;
     showToast('Registration successful. You are now signed in.', 'success');
-    window.history.pushState({}, '', '/dashboard');
+    window.history.pushState({}, '', '/');
     window.dispatchEvent(new PopStateEvent('popstate'));
   });
 }
