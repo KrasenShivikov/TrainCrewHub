@@ -1,6 +1,8 @@
 import { loadHtml } from '../../utils/loadHtml.js';
 import { supabase } from '../../services/supabaseClient.js';
 import { showToast } from '../toast/toast.js';
+import { isUserAdmin } from '../../utils/auth.js';
+import { canViewResourceScreen, resetPermissionCache } from '../../utils/permissions.js';
 
 let authSubscription;
 let routeChangedHandler;
@@ -14,6 +16,7 @@ export async function renderHeader(container) {
   const signInNavItem = container.querySelector('#nav-sign-in');
   const registerNavItem = container.querySelector('#nav-register');
   const logoutNavItem = container.querySelector('#nav-logout');
+  const adminNavItem = container.querySelector('#nav-admin');
   const logoutButton = logoutNavItem?.querySelector('button');
   const navbarCollapse = container.querySelector('#mainNav');
   const navbarToggler = container.querySelector('.navbar-toggler');
@@ -54,11 +57,51 @@ export async function renderHeader(container) {
 
   const updateAuthNav = async () => {
     const { data } = await supabase.auth.getSession();
-    const isAuthenticated = Boolean(data.session);
+    const session = data.session;
+    const isAuthenticated = Boolean(session);
 
     signInNavItem?.classList.toggle('d-none', isAuthenticated);
     registerNavItem?.classList.toggle('d-none', isAuthenticated);
     logoutNavItem?.classList.toggle('d-none', !isAuthenticated);
+
+    let isAdmin = false;
+    if (session?.user?.id) {
+      isAdmin = await isUserAdmin(session.user.id);
+    }
+
+    adminNavItem?.classList.toggle('d-none', !isAdmin);
+
+    const resourceByPath = {
+      '/schedule-keys': 'schedule_keys',
+      '/duties': 'duties',
+      '/duty-types': 'duty_types',
+      '/trains': 'trains',
+      '/employees': 'employees',
+      '/employee-absences': 'employee_absences',
+      '/planned-duties': 'planned_duties',
+      '/actual-duties': 'actual_duties',
+      '/plan-schedule': 'page_plan_schedule',
+      '/schedule': 'page_schedule',
+      '/schedule-key-duties': 'duties'
+    };
+
+    await Promise.all(
+      Object.entries(resourceByPath).map(async ([href, resource]) => {
+        const link = container.querySelector(`a[data-link][href="${href}"]`);
+        const navItem = link?.closest('li');
+        if (!link || !navItem) {
+          return;
+        }
+
+        if (!isAuthenticated) {
+          navItem.classList.add('d-none');
+          return;
+        }
+
+        const canView = await canViewResourceScreen(resource);
+        navItem.classList.toggle('d-none', !canView);
+      })
+    );
   };
 
   container.addEventListener('click', (event) => {
@@ -141,6 +184,7 @@ export async function renderHeader(container) {
   document.addEventListener('keydown', documentKeydownHandler);
 
   const { data: listenerData } = supabase.auth.onAuthStateChange(() => {
+    resetPermissionCache();
     updateAuthNav();
   });
   authSubscription = listenerData.subscription;

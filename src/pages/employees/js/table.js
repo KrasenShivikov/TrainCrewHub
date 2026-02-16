@@ -24,13 +24,7 @@ export async function loadEmployees(container) {
 export function renderEmployeesTable(container, explicitEmptyMessage) {
   const tableBody = container.querySelector('#employees-table-body');
   const emptyState = container.querySelector('#employees-empty');
-  const profileStatus = container.querySelector('#employees-profile-link-status');
   syncEmployeesFilterOptions(container);
-
-  if (profileStatus) {
-    profileStatus.className = 'small text-secondary mb-3';
-    profileStatus.textContent = 'Изборът на профил в реда се записва автоматично.';
-  }
 
   const filteredRows = employeesState.rows.filter((item) => {
     const fullName = `${item.first_name || ''} ${item.last_name || ''}`.toLowerCase();
@@ -60,27 +54,6 @@ export function renderEmployeesTable(container, explicitEmptyMessage) {
           ? [item.user_profiles]
           : [];
 
-      const defaultProfileId =
-        employeesState.rowProfileSelections[item.id] ??
-        linkedProfiles[0]?.id ??
-        employeesState.currentUserId ??
-        employeesState.profiles[0]?.id ??
-        '';
-      const isRowSaving = Boolean(employeesState.rowProfileSaving[item.id]);
-
-      employeesState.rowProfileSelections[item.id] = defaultProfileId;
-
-      const profileOptions = employeesState.profiles.length
-        ? employeesState.profiles
-            .map((profile) => {
-              const baseLabel = profile.username || profile.id;
-              const label = profile.id === employeesState.currentUserId ? `${baseLabel} (моят профил)` : baseLabel;
-              const selected = profile.id === defaultProfileId ? 'selected' : '';
-              return `<option value="${profile.id}" ${selected}>${escapeHtml(label)}</option>`;
-            })
-            .join('')
-        : '<option value="">Няма достъпни профили</option>';
-
       const linkedProfilesLabel = linkedProfiles.length
         ? linkedProfiles
             .map((profile) => {
@@ -89,7 +62,7 @@ export function renderEmployeesTable(container, explicitEmptyMessage) {
                 return '';
               }
 
-              return profile?.id === employeesState.currentUserId ? `${baseLabel} (моят профил)` : baseLabel;
+              return baseLabel;
             })
             .filter(Boolean)
             .join(', ')
@@ -99,23 +72,6 @@ export function renderEmployeesTable(container, explicitEmptyMessage) {
         <tr data-employee-id="${item.id}">
           <td>${escapeHtml(item.first_name ?? '')} ${escapeHtml(item.last_name ?? '')}</td>
           <td>${escapeHtml(linkedProfilesLabel)}</td>
-          <td>
-            <div class="d-flex align-items-center gap-2">
-              <select
-                class="form-select form-select-sm"
-                data-role="row-profile-select"
-                data-employee-id="${item.id}"
-                ${isRowSaving ? 'disabled' : ''}
-              >
-                ${profileOptions}
-              </select>
-              ${
-                isRowSaving
-                  ? '<span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>'
-                  : ''
-              }
-            </div>
-          </td>
           <td>${escapeHtml(item.positions?.title ?? '-')}</td>
           <td>${item.is_active ? 'Да' : 'Не'}</td>
           <td class="text-end">

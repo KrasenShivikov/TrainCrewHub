@@ -13,7 +13,6 @@ export async function renderEmployeesPage(container) {
   container.innerHTML = pageHtml;
   attachEmployeesHandlers(container);
   await loadPositionOptions(container);
-  await loadProfiles(container);
   await loadEmployees(container);
 }
 
@@ -173,39 +172,6 @@ function attachEmployeesHandlers(container) {
     }
   });
 
-  tableBody?.addEventListener('change', async (event) => {
-    const profileSelect = event.target.closest('select[data-role="row-profile-select"]');
-    if (!profileSelect) {
-      return;
-    }
-
-    const employeeId = profileSelect.getAttribute('data-employee-id');
-    const previousProfileId = employeesState.rowProfileSelections[employeeId] || '';
-    const profileId = profileSelect.value || '';
-
-    if (!profileId) {
-      employeesState.rowProfileSelections[employeeId] = previousProfileId;
-      renderEmployeesTable(container);
-      return;
-    }
-
-    if (profileId === previousProfileId) {
-      return;
-    }
-
-    employeesState.rowProfileSelections[employeeId] = profileId;
-    employeesState.rowProfileSaving[employeeId] = true;
-    renderEmployeesTable(container);
-
-    const success = await assignProfileToEmployee(employeeId, profileId, container);
-    employeesState.rowProfileSaving[employeeId] = false;
-
-    if (!success) {
-      employeesState.rowProfileSelections[employeeId] = previousProfileId;
-    }
-
-    renderEmployeesTable(container);
-  });
 }
 
 async function openEmployeeProfile(container, employeeId) {
@@ -234,7 +200,7 @@ async function openEmployeeProfile(container, employeeId) {
             return '';
           }
 
-          return profile?.id === employeesState.currentUserId ? `${baseLabel} (моят профил)` : baseLabel;
+          return baseLabel;
         })
         .filter(Boolean)
         .join(', ')
@@ -331,113 +297,6 @@ async function loadPositionOptions(container) {
     .join('');
 
   select.innerHTML = '<option value="">Без позиция</option>' + options;
-}
-
-async function loadProfiles(container) {
-  const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError || !authData?.user) {
-    employeesState.currentUserId = null;
-    employeesState.currentProfileEmployeeId = null;
-    employeesState.profiles = [];
-    employeesState.rowProfileSelections = {};
-    employeesState.rowProfileSaving = {};
-    return;
-  }
-
-  employeesState.currentUserId = authData.user.id;
-
-  const { data: profiles, error: profilesError } = await supabase
-    .from('user_profiles')
-    .select('id, username, employee_id')
-    .order('username', { ascending: true });
-
-  if (profilesError) {
-    showToast(profilesError.message, 'error');
-    employeesState.currentProfileEmployeeId = null;
-    employeesState.profiles = [];
-    employeesState.rowProfileSelections = {};
-    employeesState.rowProfileSaving = {};
-    return;
-  }
-
-  employeesState.profiles = profiles || [];
-
-  const currentProfile = employeesState.profiles.find((profile) => profile.id === employeesState.currentUserId);
-  employeesState.currentProfileEmployeeId = currentProfile?.employee_id ?? null;
-  employeesState.rowProfileSelections = {};
-  employeesState.rowProfileSaving = {};
-}
-
-async function assignProfileToEmployee(employeeId, profileId, container) {
-  if (!profileId) {
-    showToast('Избери профил от реда на служителя.', 'warning');
-    return false;
-  }
-
-  if (!employeeId) {
-    showToast('Невалиден служител.', 'warning');
-    return false;
-  }
-
-  const targetProfile = employeesState.profiles.find((profile) => profile.id === profileId);
-  if (!targetProfile) {
-    showToast('Невалиден профил.', 'warning');
-    return false;
-  }
-
-  if (targetProfile.employee_id === employeeId) {
-    return true;
-  }
-
-  const { error: clearPreviousError } = await supabase
-    .from('user_profiles')
-    .update({
-      employee_id: null,
-      updated_at: new Date().toISOString()
-    })
-    .eq('employee_id', employeeId)
-    .neq('id', profileId);
-
-  if (clearPreviousError) {
-    showToast(clearPreviousError.message, 'error');
-    return false;
-  }
-
-  const { error } = await supabase
-    .from('user_profiles')
-    .update({
-      employee_id: employeeId,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', profileId);
-
-  if (error) {
-    showToast(error.message, 'error');
-    return false;
-  }
-
-  employeesState.profiles = employeesState.profiles.map((profile) =>
-    profile.id === profileId ? { ...profile, employee_id: employeeId } : profile
-  );
-
-  employeesState.profiles = employeesState.profiles.map((profile) =>
-    profile.id === profileId
-      ? profile
-      : profile.employee_id === employeeId
-        ? { ...profile, employee_id: null }
-        : profile
-  );
-
-  if (profileId === employeesState.currentUserId) {
-    employeesState.currentProfileEmployeeId = employeeId;
-  }
-
-  employeesState.rowProfileSelections[employeeId] = profileId;
-
-  await loadEmployees(container);
-
-  showToast('Профилът е свързан със служителя.', 'success');
-  return true;
 }
 
 async function saveEmployee(container) {
