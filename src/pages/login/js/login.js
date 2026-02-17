@@ -20,7 +20,25 @@ async function waitForActiveSession({ attempts = 10, delayMs = 120 } = {}) {
 export async function renderLoginPage(container) {
   const pageHtml = await loadHtml('../login.html', import.meta.url);
   container.innerHTML = pageHtml;
+  setupPasswordToggles(container);
   attachLoginFormListener(container);
+}
+
+function setupPasswordToggles(container) {
+  container.querySelectorAll('button[data-toggle-password]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const targetId = button.getAttribute('data-toggle-password') || '';
+      const input = container.querySelector(`#${targetId}`);
+      if (!input) {
+        return;
+      }
+
+      const shouldShow = input.type === 'password';
+      input.type = shouldShow ? 'text' : 'password';
+      button.textContent = shouldShow ? '🙈' : '👁';
+      button.setAttribute('aria-label', shouldShow ? 'Скрий паролата' : 'Покажи паролата');
+    });
+  });
 }
 
 function attachLoginFormListener(container) {
@@ -29,24 +47,40 @@ function attachLoginFormListener(container) {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const email = form.querySelector('input[name="email"]').value.trim();
+    const identifier = form.querySelector('input[name="identifier"]').value.trim();
     const password = form.querySelector('input[name="password"]').value;
+
+    if (!identifier || !password) {
+      showToast('Попълни имейл/потребителско име и парола.', 'warning');
+      return;
+    }
+
+    let email = identifier;
+    if (!identifier.includes('@')) {
+      const { data: resolvedEmail } = await supabase.rpc('resolve_login_email', {
+        input_username: identifier
+      });
+
+      if (resolvedEmail) {
+        email = String(resolvedEmail).trim();
+      }
+    }
 
     const submitButton = form.querySelector('button[type="submit"]');
     const originalButtonHtml = submitButton.innerHTML;
     submitButton.disabled = true;
-    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Loading...';
+    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Влизане...';
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     submitButton.disabled = false;
     submitButton.innerHTML = originalButtonHtml;
 
     if (error) {
-      showToast(error.message, 'error');
+      showToast('Невалидни данни за вход.', 'error');
       return;
     }
 
-    showToast('Login successful.', 'success');
+    showToast('Успешен вход.', 'success');
 
     const hasSession = Boolean(data?.session?.user?.id) || await waitForActiveSession();
     if (!hasSession) {

@@ -1,6 +1,8 @@
 import { renderIndexPage } from './pages/index/js/index.js';
 import { renderLoginPage } from './pages/login/js/login.js';
 import { renderRegisterPage } from './pages/register/js/register.js';
+import { renderForgotPasswordPage } from './pages/forgot-password/js/forgot-password.js';
+import { renderResetPasswordPage } from './pages/reset-password/js/reset-password.js';
 import { renderScheduleKeysPage } from './pages/schedule-keys/js/schedule-keys.js';
 import { renderDutiesPage } from './pages/duties/js/duties.js';
 import { renderEmployeesPage } from './pages/employees/js/employees.js';
@@ -14,6 +16,7 @@ import { renderScheduleKeyDutiesPage } from './pages/schedule-key-duties/js/sche
 import { renderTrainsPage } from './pages/trains/js/trains.js';
 import { renderAdminPage } from './pages/admin/js/admin.js';
 import { renderDocumentsPage } from './pages/documents/js/documents.js';
+import { renderUserProfilesPage } from './pages/user-profiles/js/user-profiles.js';
 import { showToast } from './components/toast/toast.js';
 import { getCurrentUserSession, isUserAdmin } from './utils/auth.js';
 import {
@@ -38,6 +41,14 @@ const routes = {
   '/register': {
     render: renderRegisterPage,
     title: 'TrainCrewHub / Register'
+  },
+  '/forgot-password': {
+    render: renderForgotPasswordPage,
+    title: 'TrainCrewHub / Forgot Password'
+  },
+  '/reset-password': {
+    render: renderResetPasswordPage,
+    title: 'TrainCrewHub / Reset Password'
   },
   '/schedule-keys': {
     render: renderScheduleKeysPage,
@@ -100,6 +111,10 @@ const routes = {
     render: renderDocumentsPage,
     title: 'TrainCrewHub / Документи',
     resource: 'documents'
+  },
+  '/user-profiles': {
+    render: renderUserProfilesPage,
+    title: 'TrainCrewHub / Потребителски профили'
   },
   '/admin': {
     render: renderAdminPage,
@@ -176,7 +191,7 @@ function getRouteConfig(pathname) {
 }
 
 async function resolveAccessPath(pathname, config) {
-  const publicPaths = new Set(['/login', '/register']);
+  const publicPaths = new Set(['/login', '/register', '/forgot-password', '/reset-password']);
   if (!publicPaths.has(pathname)) {
     const session = await getCurrentUserSession();
     if (!session?.user?.id) {

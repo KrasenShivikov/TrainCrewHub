@@ -16,6 +16,7 @@ export async function renderHeader(container) {
 
   const signInNavItem = container.querySelector('#nav-sign-in');
   const registerNavItem = container.querySelector('#nav-register');
+  const myProfileNavItem = container.querySelector('#nav-my-profile');
   const logoutNavItem = container.querySelector('#nav-logout');
   const adminNavItem = container.querySelector('#nav-admin');
   const logoutButton = logoutNavItem?.querySelector('button');
@@ -65,6 +66,7 @@ export async function renderHeader(container) {
 
     signInNavItem?.classList.toggle('d-none', isAuthenticated);
     registerNavItem?.classList.toggle('d-none', isAuthenticated);
+    myProfileNavItem?.classList.toggle('d-none', !isAuthenticated);
     logoutNavItem?.classList.toggle('d-none', !isAuthenticated);
 
     let isAdmin = false;
@@ -84,6 +86,7 @@ export async function renderHeader(container) {
       '/planned-duties': 'planned_duties',
       '/actual-duties': 'actual_duties',
       '/documents': 'documents',
+      '/user-profiles': 'user_profiles',
       '/plan-schedule': 'page_plan_schedule',
       '/schedule': 'page_schedule',
       '/schedule-key-duties': 'duties'
