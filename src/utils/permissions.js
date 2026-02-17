@@ -20,7 +20,8 @@ const RESOURCE_LABELS_BG = {
   schedule_key_duties: 'Повески към ключ-график',
   positions: 'Позиции',
   absence_reasons: 'Причини за отсъствие',
-  duty_trains: 'Влакове към повески'
+  duty_trains: 'Влакове към повески',
+  documents: 'Документи'
 };
 
 const ACCESS_SCOPE_RANK = {

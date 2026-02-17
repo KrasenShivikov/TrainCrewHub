@@ -57,7 +57,7 @@ function setSchedulePublicationStatus(container, publicationRow) {
     confirmRequiredBadge?.classList.toggle('d-none', !needsReconfirmation);
 
     if (publicationRow) {
-      statusElement.textContent = 'Статус: има промени, нужно е повторно потвърждение от разписание';
+      statusElement.textContent = 'Статус: има смяна на служител, нужно е повторно потвърждение от разписание';
     } else {
       statusElement.textContent = 'Статус: непотвърдено от разписание';
     }

@@ -552,11 +552,13 @@ function updateCurrentTimetablePreview(container, entries) {
               <a href="${escapeHtml(entry.url)}" target="_blank" rel="noopener noreferrer">Отвори</a>
               <button
                 type="button"
-                class="btn btn-sm btn-outline-secondary py-0 px-2 train-existing-timetable-preview"
+                class="btn btn-link btn-sm p-0 lh-1 text-decoration-none train-existing-timetable-preview"
                 data-url="${escapeHtml(entry.url)}"
                 data-label="${escapeHtml(label)}"
+                title="Преглед"
+                aria-label="Преглед"
               >
-                Преглед
+                👁
               </button>
             </div>
             <button

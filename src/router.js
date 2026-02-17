@@ -13,6 +13,7 @@ import { renderDutyTypesPage } from './pages/duty-types/js/duty-types.js';
 import { renderScheduleKeyDutiesPage } from './pages/schedule-key-duties/js/schedule-key-duties.js';
 import { renderTrainsPage } from './pages/trains/js/trains.js';
 import { renderAdminPage } from './pages/admin/js/admin.js';
+import { renderDocumentsPage } from './pages/documents/js/documents.js';
 import { showToast } from './components/toast/toast.js';
 import { getCurrentUserSession, isUserAdmin } from './utils/auth.js';
 import {
@@ -94,6 +95,11 @@ const routes = {
     render: renderScheduleKeyDutiesPage,
     title: 'TrainCrewHub / Повески към Ключ-График',
     resource: 'duties'
+  },
+  '/documents': {
+    render: renderDocumentsPage,
+    title: 'TrainCrewHub / Документи',
+    resource: 'documents'
   },
   '/admin': {
     render: renderAdminPage,

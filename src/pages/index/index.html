@@ -129,6 +129,38 @@
         </div>
       </section>
 
+      <section class="border rounded p-3 mt-3 d-none" id="index-workload-panel">
+        <div class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
+          <h3 class="h6 mb-0">Натовареност на всички служители</h3>
+          <div class="d-flex align-items-end gap-2">
+            <div>
+              <label for="index-workload-date" class="form-label mb-1">Към дата</label>
+              <input id="index-workload-date" type="date" class="form-control form-control-sm" />
+            </div>
+            <button id="index-workload-refresh" type="button" class="btn btn-sm btn-outline-secondary">Опресни</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Служител</th>
+                <th>Планирани</th>
+                <th>Реални</th>
+                <th>Норма</th>
+                <th>Отклонение</th>
+              </tr>
+            </thead>
+            <tbody id="index-workload-body">
+              <tr>
+                <td colspan="5" class="text-secondary">Няма данни.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <p class="text-secondary small mt-3 mb-0" id="index-last-updated">-</p>
     </div>
   </section>
@@ -164,10 +196,31 @@
         <span class="badge text-bg-success">Р</span>
         <span>Реални</span>
         <span class="badge text-bg-warning">Промяна</span>
-        <span>Чака потвърждение</span>
+        <span>Смяна на служител — чака потвърждение</span>
         <span class="badge text-bg-info">ΔN</span>
         <span>Брой промени</span>
       </div>
+
+      <section class="border rounded p-3 mb-3" id="index-crew-hours-summary">
+        <div class="row g-3">
+          <div class="col-12 col-md-3">
+            <div class="text-secondary small">Планирани часове до дата</div>
+            <div class="fw-semibold" id="index-crew-planned-hours-total">00:00</div>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="text-secondary small">Реални часове до дата</div>
+            <div class="fw-semibold" id="index-crew-actual-hours-total">00:00</div>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="text-secondary small">Норма (работни дни BG) до дата</div>
+            <div class="fw-semibold" id="index-crew-norm-hours-total">00:00</div>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="text-secondary small">Отклонение (Реални − Норма)</div>
+            <div class="fw-semibold" id="index-crew-deviation-hours-total">+00:00</div>
+          </div>
+        </div>
+      </section>
 
       <h3 class="h6 mb-2" id="index-crew-selected-date-label">Избери ден</h3>
 
@@ -225,6 +278,48 @@
           class="w-100 border rounded"
           style="height: min(72vh, 760px);"
         ></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="index-actual-duty-edit-modal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50" style="z-index: 1070;">
+  <div class="d-flex align-items-center justify-content-center h-100 p-3 p-md-4">
+    <div class="card w-100" style="max-width: 620px;">
+      <div class="card-body p-3 p-md-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">Редакция на реална повеска</h2>
+          <button id="index-actual-duty-edit-close" type="button" class="btn-close" aria-label="Close"></button>
+        </div>
+
+        <form id="index-actual-duty-edit-form" class="row g-3">
+          <input type="hidden" id="index-actual-duty-edit-id" />
+
+          <div class="col-6">
+            <label for="index-actual-duty-start" class="form-label">Начало</label>
+            <input id="index-actual-duty-start" type="time" class="form-control" required />
+          </div>
+
+          <div class="col-6">
+            <label for="index-actual-duty-end" class="form-label">Край</label>
+            <input id="index-actual-duty-end" type="time" class="form-control" required />
+          </div>
+
+          <div class="col-6">
+            <label for="index-actual-duty-break-start" class="form-label">Начало на прекъсване</label>
+            <input id="index-actual-duty-break-start" type="time" class="form-control" required />
+          </div>
+
+          <div class="col-6">
+            <label for="index-actual-duty-break-end" class="form-label">Край на прекъсване</label>
+            <input id="index-actual-duty-break-end" type="time" class="form-control" required />
+          </div>
+
+          <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+            <button id="index-actual-duty-edit-cancel" type="button" class="btn btn-outline-secondary">Отказ</button>
+            <button id="index-actual-duty-edit-save" type="submit" class="btn btn-primary">Запази</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

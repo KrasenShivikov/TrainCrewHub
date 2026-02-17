@@ -14,7 +14,7 @@ function getEmployeeFullName(employee) {
 export async function loadActualDuties(container) {
   const { data, error } = await supabase
     .from('actual_duties')
-    .select('id, date, employee_id, duty_id, assignment_role, employees(first_name, last_name), duties(name, schedule_key_duties(schedule_key_id))')
+    .select('id, date, employee_id, duty_id, assignment_role, start_time_override, end_time_override, break_start_time_override, break_end_time_override, employees(first_name, last_name), duties(name, start_time, end_time, break_start_time, break_end_time, schedule_key_duties(schedule_key_id))')
     .order('date', { ascending: false });
 
   if (error) {
@@ -104,6 +104,14 @@ export function renderActualDutiesTable(container, explicitEmptyMessage) {
             <div class="d-inline-flex gap-2">
               <button
                 type="button"
+                class="btn btn-sm btn-outline-secondary"
+                data-action="profile"
+                data-id="${item.id}"
+              >
+                Профил
+              </button>
+              <button
+                type="button"
                 class="btn btn-sm btn-outline-primary"
                 data-action="edit"
                 data-id="${item.id}"
@@ -112,6 +120,14 @@ export function renderActualDutiesTable(container, explicitEmptyMessage) {
                 data-duty-id="${item.duty_id ?? ''}"
                 data-assignment-role="${item.assignment_role ?? 'conductor'}"
                 data-duty-schedule-key-id="${dutyScheduleKeyId}"
+                data-start-time-override="${escapeHtml((item.start_time_override || '').slice(0, 5))}"
+                data-end-time-override="${escapeHtml((item.end_time_override || '').slice(0, 5))}"
+                data-break-start-time-override="${escapeHtml((item.break_start_time_override || '').slice(0, 5))}"
+                data-break-end-time-override="${escapeHtml((item.break_end_time_override || '').slice(0, 5))}"
+                data-duty-start-time="${escapeHtml((item.duties?.start_time || '').slice(0, 5))}"
+                data-duty-end-time="${escapeHtml((item.duties?.end_time || '').slice(0, 5))}"
+                data-duty-break-start-time="${escapeHtml((item.duties?.break_start_time || '').slice(0, 5))}"
+                data-duty-break-end-time="${escapeHtml((item.duties?.break_end_time || '').slice(0, 5))}"
               >
                 Редакция
               </button>

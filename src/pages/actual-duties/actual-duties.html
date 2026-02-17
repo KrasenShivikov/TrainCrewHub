@@ -105,6 +105,26 @@
                 <option value="chief">Началник влак</option>
               </select>
             </div>
+
+            <div class="col-md-3">
+              <label for="actual-duty-start-time" class="form-label">Начало</label>
+              <input id="actual-duty-start-time" class="form-control" type="time" required />
+            </div>
+
+            <div class="col-md-3">
+              <label for="actual-duty-end-time" class="form-label">Край</label>
+              <input id="actual-duty-end-time" class="form-control" type="time" required />
+            </div>
+
+            <div class="col-md-3">
+              <label for="actual-duty-break-start-time" class="form-label">Начало на прекъсване</label>
+              <input id="actual-duty-break-start-time" class="form-control" type="time" required />
+            </div>
+
+            <div class="col-md-3">
+              <label for="actual-duty-break-end-time" class="form-label">Край на прекъсване</label>
+              <input id="actual-duty-break-end-time" class="form-control" type="time" required />
+            </div>
           </div>
 
           <div class="d-flex justify-content-end gap-2 mt-4">
@@ -112,6 +132,25 @@
             <button id="actual-duty-save-btn" type="submit" class="btn btn-primary">Създай</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="actual-duty-profile-modal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50" style="z-index: 1060;">
+  <div class="d-flex align-items-center justify-content-center h-100 p-3">
+    <div class="card w-100" style="max-width: 760px;">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">Профил на реална повеска</h2>
+          <button id="actual-duty-profile-close" type="button" class="btn-close" aria-label="Close"></button>
+        </div>
+
+        <div id="actual-duty-profile-content"></div>
+
+        <div class="d-flex justify-content-end mt-4">
+          <button id="actual-duty-profile-close-secondary" type="button" class="btn btn-outline-secondary">Затвори</button>
+        </div>
       </div>
     </div>
   </div>

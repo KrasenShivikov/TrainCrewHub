@@ -31,11 +31,11 @@ export function setupModalEscapeHandler(handlerKey, modalsInPriority) {
 export function closeModal(modalElement) {
   modalElement.classList.add('d-none');
   if (
-    document.querySelector('#actual-duty-modal')?.classList.contains('d-none') &&
-    document.querySelector('#actual-duty-delete-modal')?.classList.contains('d-none') &&
-    document.querySelector('#actual-duty-bulk-delete-modal')?.classList.contains('d-none') &&
-    document.querySelector('#actual-duty-bulk-add-modal')?.classList.contains('d-none') &&
-    document.querySelector('#actual-duty-profile-modal')?.classList.contains('d-none')
+    document.querySelector('#document-category-modal')?.classList.contains('d-none') &&
+    document.querySelector('#document-modal')?.classList.contains('d-none') &&
+    document.querySelector('#document-category-delete-modal')?.classList.contains('d-none') &&
+    document.querySelector('#document-delete-modal')?.classList.contains('d-none') &&
+    document.querySelector('#document-preview-modal')?.classList.contains('d-none')
   ) {
     document.body.classList.remove('overflow-hidden');
   }

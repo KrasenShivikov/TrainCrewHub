@@ -1,6 +1,7 @@
 import { loadHtml } from '../../../utils/loadHtml.js';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
+import { calculateShiftDurationMinutes, intervalToTimeInput } from '../../../utils/dutyTime.js';
 
 const indexAbsenceState = {
   groups: [],
@@ -12,11 +13,13 @@ const crewCalendarState = {
   selectedDate: '',
   plannedRows: [],
   actualRows: [],
+  actualRowsById: new Map(),
   absenceRows: [],
   confirmedDates: new Set(),
   pendingConfirmationDates: new Set(),
   changeCountByDate: new Map(),
-  changeEventsByDate: new Map()
+  changeEventsByDate: new Map(),
+  editingActualDutyId: ''
 };
 
 const crewAbsenceCodeClassMap = {
@@ -27,6 +30,9 @@ const crewAbsenceCodeClassMap = {
   'К': 'text-bg-info',
   'ОТС': 'text-bg-secondary'
 };
+
+const DEVIATION_MIN_ALLOWED = -20 * 60;
+const DEVIATION_MAX_ALLOWED = 30 * 60;
 
 function getTodayIsoDate() {
   return new Date().toISOString().slice(0, 10);
@@ -115,6 +121,212 @@ function formatDutyTime(startTime, endTime, secondDay) {
   }
 
   return secondDay ? `${startTime} - ${endTime} (+1)` : `${startTime} - ${endTime}`;
+}
+
+function normalizeDutyTimeValue(value) {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+
+  const normalized = intervalToTimeInput(String(value));
+  return normalized || '';
+}
+
+function formatDutyTimeValue(value) {
+  const normalized = normalizeDutyTimeValue(value);
+  return normalized ? normalized.slice(0, 5) : '-';
+}
+
+function formatMinutesAsClock(minutes) {
+  const numericMinutes = Number(minutes);
+  if (!Number.isFinite(numericMinutes) || numericMinutes < 0) {
+    return '-';
+  }
+
+  const hours = Math.floor(numericMinutes / 60);
+  const restMinutes = numericMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(restMinutes).padStart(2, '0')}`;
+}
+
+function formatSignedMinutesAsClock(minutes) {
+  const numericMinutes = Number(minutes);
+  if (!Number.isFinite(numericMinutes)) {
+    return '-';
+  }
+
+  const sign = numericMinutes < 0 ? '-' : '+';
+  const absolute = Math.abs(numericMinutes);
+  const hours = Math.floor(absolute / 60);
+  const restMinutes = absolute % 60;
+  return `${sign}${String(hours).padStart(2, '0')}:${String(restMinutes).padStart(2, '0')}`;
+}
+
+function getDeviationClassByThreshold(deviationMinutes) {
+  const value = Number(deviationMinutes || 0);
+  if (!Number.isFinite(value)) {
+    return 'text-bg-secondary';
+  }
+
+  if (value < DEVIATION_MIN_ALLOWED || value > DEVIATION_MAX_ALLOWED) {
+    return 'text-bg-danger';
+  }
+
+  return 'text-bg-success';
+}
+
+function getDutyTimingSummary(duty) {
+  const startTime = normalizeDutyTimeValue(duty?.start_time);
+  const endTime = normalizeDutyTimeValue(duty?.end_time);
+  const breakStartTime = normalizeDutyTimeValue(duty?.break_start_time);
+  const breakEndTime = normalizeDutyTimeValue(duty?.break_end_time);
+
+  const breakDurationMinutes = breakStartTime && breakEndTime
+    ? calculateShiftDurationMinutes(breakStartTime, breakEndTime)
+    : null;
+  const shiftDurationMinutes = startTime && endTime
+    ? calculateShiftDurationMinutes(startTime, endTime)
+    : null;
+
+  const durationMinutes = Number.isFinite(shiftDurationMinutes) && Number.isFinite(breakDurationMinutes)
+    ? Math.max(0, shiftDurationMinutes - breakDurationMinutes)
+    : null;
+
+  return {
+    startTime: formatDutyTimeValue(duty?.start_time),
+    endTime: formatDutyTimeValue(duty?.end_time),
+    breakStartTime: formatDutyTimeValue(duty?.break_start_time),
+    breakEndTime: formatDutyTimeValue(duty?.break_end_time),
+    breakDuration: breakDurationMinutes === null ? '-' : formatMinutesAsClock(breakDurationMinutes),
+    duration: durationMinutes === null ? '-' : formatMinutesAsClock(durationMinutes),
+    breakDurationMinutes,
+    durationMinutes
+  };
+}
+
+function getActualDutyTimingSummary(row) {
+  const duty = row?.duties || {};
+
+  return getDutyTimingSummary({
+    start_time: row?.start_time_override ?? duty?.start_time,
+    end_time: row?.end_time_override ?? duty?.end_time,
+    break_start_time: row?.break_start_time_override ?? duty?.break_start_time,
+    break_end_time: row?.break_end_time_override ?? duty?.break_end_time
+  });
+}
+
+function toDbTimeValue(value) {
+  if (!value) {
+    return null;
+  }
+
+  return `${String(value).slice(0, 5)}:00`;
+}
+
+function getActualDutyRowById(rowId) {
+  if (!rowId) {
+    return null;
+  }
+
+  return crewCalendarState.actualRowsById.get(rowId) || null;
+}
+
+function openCrewActualDutyEditModal(container, rowId) {
+  const modal = container.querySelector('#index-actual-duty-edit-modal');
+  const idInput = container.querySelector('#index-actual-duty-edit-id');
+  const startInput = container.querySelector('#index-actual-duty-start');
+  const endInput = container.querySelector('#index-actual-duty-end');
+  const breakStartInput = container.querySelector('#index-actual-duty-break-start');
+  const breakEndInput = container.querySelector('#index-actual-duty-break-end');
+
+  const row = getActualDutyRowById(rowId);
+  if (!modal || !idInput || !startInput || !endInput || !breakStartInput || !breakEndInput || !row) {
+    showToast('Не е намерена реална повеска за редакция.', 'warning');
+    return;
+  }
+
+  idInput.value = rowId;
+  const timing = getActualDutyTimingSummary(row);
+  startInput.value = timing.startTime === '-' ? '' : timing.startTime;
+  endInput.value = timing.endTime === '-' ? '' : timing.endTime;
+  breakStartInput.value = timing.breakStartTime === '-' ? '00:00' : timing.breakStartTime;
+  breakEndInput.value = timing.breakEndTime === '-' ? '00:00' : timing.breakEndTime;
+
+  crewCalendarState.editingActualDutyId = rowId;
+  modal.classList.remove('d-none');
+}
+
+function closeCrewActualDutyEditModal(container) {
+  const modal = container.querySelector('#index-actual-duty-edit-modal');
+  const form = container.querySelector('#index-actual-duty-edit-form');
+  const idInput = container.querySelector('#index-actual-duty-edit-id');
+
+  if (form) {
+    form.reset();
+  }
+
+  if (idInput) {
+    idInput.value = '';
+  }
+
+  crewCalendarState.editingActualDutyId = '';
+  modal?.classList.add('d-none');
+}
+
+async function saveCrewActualDutyEdits(container) {
+  const mode = container.dataset.indexMode || 'default';
+  if (mode !== 'crew') {
+    return;
+  }
+
+  const employeeId = container.dataset.indexEmployeeId || '';
+  const rowId = (container.querySelector('#index-actual-duty-edit-id')?.value || '').trim();
+  const startTime = (container.querySelector('#index-actual-duty-start')?.value || '').trim();
+  const endTime = (container.querySelector('#index-actual-duty-end')?.value || '').trim();
+  const breakStartTime = (container.querySelector('#index-actual-duty-break-start')?.value || '').trim();
+  const breakEndTime = (container.querySelector('#index-actual-duty-break-end')?.value || '').trim();
+  const saveButton = container.querySelector('#index-actual-duty-edit-save');
+
+  if (!rowId || !startTime || !endTime || !breakStartTime || !breakEndTime) {
+    showToast('Попълни всички полета.', 'warning');
+    return;
+  }
+
+  const shiftDurationMinutes = calculateShiftDurationMinutes(startTime, endTime);
+  const breakDurationMinutes = calculateShiftDurationMinutes(breakStartTime, breakEndTime);
+  if (breakDurationMinutes > shiftDurationMinutes) {
+    showToast('Прекъсването не може да е по-голямо от продължителността.', 'warning');
+    return;
+  }
+
+  const originalText = saveButton?.innerHTML || 'Запази';
+  if (saveButton) {
+    saveButton.disabled = true;
+    saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Запис...';
+  }
+
+  const { error } = await supabase
+    .from('actual_duties')
+    .update({
+      start_time_override: toDbTimeValue(startTime),
+      end_time_override: toDbTimeValue(endTime),
+      break_start_time_override: toDbTimeValue(breakStartTime),
+      break_end_time_override: toDbTimeValue(breakEndTime)
+    })
+    .eq('id', rowId);
+
+  if (saveButton) {
+    saveButton.disabled = false;
+    saveButton.innerHTML = originalText;
+  }
+
+  if (error) {
+    showToast(error.message || 'Редакцията не беше запазена.', 'error');
+    return;
+  }
+
+  closeCrewActualDutyEditModal(container);
+  await loadCrewMonthlySnapshot(container, employeeId, crewCalendarState.visibleMonth);
+  showToast('Реалната повеска е обновена.', 'success');
 }
 
 function formatRoleLabel(value) {
@@ -556,8 +768,140 @@ async function loadHeadOfTransportAbsences(container) {
   renderAbsenceReasonsSummary(container, indexAbsenceState.groups);
 }
 
+function renderHeadOfTransportWorkloadRows(container, rows) {
+  const body = container.querySelector('#index-workload-body');
+  if (!body) {
+    return;
+  }
+
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="5" class="text-secondary">Няма данни.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows
+    .map((row) => `
+      <tr>
+        <td>${escapeHtml(row.employeeName)}</td>
+        <td>${escapeHtml(row.planned)}</td>
+        <td>${escapeHtml(row.actual)}</td>
+        <td>${escapeHtml(row.norm)}</td>
+        <td><span class="badge ${escapeHtml(row.deviationClass)}">${escapeHtml(row.deviation)}</span></td>
+      </tr>
+    `)
+    .join('');
+}
+
+async function loadHeadOfTransportWorkload(container) {
+  const cutoffInput = container.querySelector('#index-workload-date');
+  const cutoffDate = String(cutoffInput?.value || getTodayIsoDate());
+  const cutoffParsed = parseIsoDateSafe(cutoffDate);
+
+  if (!cutoffParsed) {
+    renderHeadOfTransportWorkloadRows(container, []);
+    return;
+  }
+
+  const monthKey = toMonthKey(cutoffParsed);
+  const { startDate } = getMonthBounds(monthKey);
+  const normMinutes = countBulgarianWorkdays(startDate, cutoffDate) * 8 * 60;
+
+  const [employeesResponse, plannedResponse, actualResponse] = await Promise.all([
+    supabase
+      .from('employees')
+      .select('id, first_name, last_name')
+      .eq('is_active', true)
+      .order('last_name', { ascending: true })
+      .order('first_name', { ascending: true }),
+    supabase
+      .from('planned_duties')
+      .select('employee_id, date, duties(start_time, end_time, break_start_time, break_end_time)')
+      .gte('date', startDate)
+      .lte('date', cutoffDate),
+    supabase
+      .from('actual_duties')
+      .select('employee_id, date, start_time_override, end_time_override, break_start_time_override, break_end_time_override, duties(start_time, end_time, break_start_time, break_end_time)')
+      .gte('date', startDate)
+      .lte('date', cutoffDate)
+  ]);
+
+  if (employeesResponse.error || plannedResponse.error || actualResponse.error) {
+    showToast('Натовареността не може да се зареди.', 'warning');
+    renderHeadOfTransportWorkloadRows(container, []);
+    return;
+  }
+
+  const employees = employeesResponse.data || [];
+  const plannedRows = plannedResponse.data || [];
+  const actualRows = actualResponse.data || [];
+
+  const plannedMinutesByEmployee = new Map();
+  plannedRows.forEach((row) => {
+    const employeeId = String(row?.employee_id || '');
+    if (!employeeId) {
+      return;
+    }
+
+    const durationMinutes = Number(getDutyTimingSummary(row?.duties).durationMinutes);
+    if (!Number.isFinite(durationMinutes)) {
+      return;
+    }
+
+    plannedMinutesByEmployee.set(employeeId, Number(plannedMinutesByEmployee.get(employeeId) || 0) + durationMinutes);
+  });
+
+  const actualMinutesByEmployee = new Map();
+  actualRows.forEach((row) => {
+    const employeeId = String(row?.employee_id || '');
+    if (!employeeId) {
+      return;
+    }
+
+    const durationMinutes = Number(getActualDutyTimingSummary(row).durationMinutes);
+    if (!Number.isFinite(durationMinutes)) {
+      return;
+    }
+
+    actualMinutesByEmployee.set(employeeId, Number(actualMinutesByEmployee.get(employeeId) || 0) + durationMinutes);
+  });
+
+  const resultRows = employees.map((employee) => {
+    const employeeId = String(employee?.id || '');
+    const employeeName = `${employee?.first_name || ''} ${employee?.last_name || ''}`.trim() || '-';
+    const plannedMinutes = Number(plannedMinutesByEmployee.get(employeeId) || 0);
+    const actualMinutes = Number(actualMinutesByEmployee.get(employeeId) || 0);
+    const deviationMinutes = actualMinutes - normMinutes;
+
+    return {
+      employeeName,
+      planned: formatMinutesAsClock(plannedMinutes),
+      actual: formatMinutesAsClock(actualMinutes),
+      norm: formatMinutesAsClock(normMinutes),
+      deviation: formatSignedMinutesAsClock(deviationMinutes),
+      deviationClass: getDeviationClassByThreshold(deviationMinutes),
+      deviationMinutes
+    };
+  });
+
+  resultRows.sort((left, right) => {
+    const deviationDiff = Math.abs(Number(right.deviationMinutes || 0)) - Math.abs(Number(left.deviationMinutes || 0));
+    if (deviationDiff !== 0) {
+      return deviationDiff;
+    }
+
+    return String(left.employeeName).localeCompare(String(right.employeeName), 'bg');
+  });
+
+  renderHeadOfTransportWorkloadRows(container, resultRows);
+}
+
 async function loadHeadOfTransportSnapshot(container) {
-  await Promise.all([loadKpiSnapshot(container), loadHeadOfTransportCertificates(container), loadHeadOfTransportAbsences(container)]);
+  await Promise.all([
+    loadKpiSnapshot(container),
+    loadHeadOfTransportCertificates(container),
+    loadHeadOfTransportAbsences(container),
+    loadHeadOfTransportWorkload(container)
+  ]);
 }
 
 function toMonthKey(date) {
@@ -604,6 +948,187 @@ function getMonthBounds(monthKey) {
     startDate: toIsoDateFromDate(monthStart),
     endDate: toIsoDateFromDate(monthEnd)
   };
+}
+
+function parseIsoDateSafe(dateValue) {
+  const normalized = String(dateValue || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return null;
+  }
+
+  const [yearRaw, monthRaw, dayRaw] = normalized.split('-');
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return null;
+  }
+
+  return new Date(year, month - 1, day);
+}
+
+function toUtcDate(year, month, day) {
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function getOrthodoxEasterSunday(year) {
+  const a = year % 4;
+  const b = year % 7;
+  const c = year % 19;
+  const d = (19 * c + 15) % 30;
+  const e = (2 * a + 4 * b - d + 34) % 7;
+  const month = Math.floor((d + e + 114) / 31);
+  const day = ((d + e + 114) % 31) + 1;
+
+  const julianDate = toUtcDate(year, month, day);
+  julianDate.setUTCDate(julianDate.getUTCDate() + 13);
+
+  return new Date(julianDate.getUTCFullYear(), julianDate.getUTCMonth(), julianDate.getUTCDate());
+}
+
+function addHolidayWithWeekendCompensation(holidaySet, date) {
+  const holidayIso = toIsoDateFromDate(date);
+  holidaySet.add(holidayIso);
+
+  const day = date.getDay();
+  if (day !== 0 && day !== 6) {
+    return;
+  }
+
+  const substitute = new Date(date);
+  substitute.setDate(substitute.getDate() + 1);
+
+  while (substitute.getDay() === 0 || substitute.getDay() === 6 || holidaySet.has(toIsoDateFromDate(substitute))) {
+    substitute.setDate(substitute.getDate() + 1);
+  }
+
+  holidaySet.add(toIsoDateFromDate(substitute));
+}
+
+function buildBulgarianOfficialHolidays(year) {
+  const holidaySet = new Set();
+  const fixedDates = [
+    [1, 1],
+    [3, 3],
+    [5, 1],
+    [5, 6],
+    [5, 24],
+    [9, 6],
+    [9, 22],
+    [12, 24],
+    [12, 25],
+    [12, 26]
+  ];
+
+  fixedDates.forEach(([month, day]) => {
+    addHolidayWithWeekendCompensation(holidaySet, new Date(year, month - 1, day));
+  });
+
+  const easterSunday = getOrthodoxEasterSunday(year);
+  const easterOffsets = [-2, -1, 0, 1];
+  easterOffsets.forEach((offset) => {
+    const holidayDate = new Date(easterSunday);
+    holidayDate.setDate(holidayDate.getDate() + offset);
+    holidaySet.add(toIsoDateFromDate(holidayDate));
+  });
+
+  return holidaySet;
+}
+
+function getBulgarianHolidaysBetween(startDate, endDate) {
+  const start = parseIsoDateSafe(startDate);
+  const end = parseIsoDateSafe(endDate);
+  if (!start || !end || start > end) {
+    return new Set();
+  }
+
+  const holidays = new Set();
+  for (let year = start.getFullYear(); year <= end.getFullYear(); year += 1) {
+    const yearHolidays = buildBulgarianOfficialHolidays(year);
+    yearHolidays.forEach((dateValue) => holidays.add(dateValue));
+  }
+
+  return holidays;
+}
+
+function countBulgarianWorkdays(startDate, endDate) {
+  const start = parseIsoDateSafe(startDate);
+  const end = parseIsoDateSafe(endDate);
+  if (!start || !end || start > end) {
+    return 0;
+  }
+
+  const holidays = getBulgarianHolidaysBetween(startDate, endDate);
+  let count = 0;
+  const cursor = new Date(start);
+
+  while (cursor <= end) {
+    const dayOfWeek = cursor.getDay();
+    const isoDate = toIsoDateFromDate(cursor);
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const isHoliday = holidays.has(isoDate);
+
+    if (!isWeekend && !isHoliday) {
+      count += 1;
+    }
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return count;
+}
+
+function renderCrewHoursSummary(container) {
+  const plannedHoursElement = container.querySelector('#index-crew-planned-hours-total');
+  const actualHoursElement = container.querySelector('#index-crew-actual-hours-total');
+  const normHoursElement = container.querySelector('#index-crew-norm-hours-total');
+  const deviationHoursElement = container.querySelector('#index-crew-deviation-hours-total');
+
+  if (!plannedHoursElement || !actualHoursElement || !normHoursElement || !deviationHoursElement) {
+    return;
+  }
+
+  const selectedDate = String(crewCalendarState.selectedDate || '').trim();
+  if (!selectedDate) {
+    plannedHoursElement.textContent = '00:00';
+    actualHoursElement.textContent = '00:00';
+    normHoursElement.textContent = '00:00';
+    deviationHoursElement.textContent = '+00:00';
+    deviationHoursElement.className = 'fw-semibold badge text-bg-success';
+    return;
+  }
+
+  const { startDate } = getMonthBounds(crewCalendarState.visibleMonth || toMonthKey(new Date()));
+  const rangeEndDate = selectedDate >= startDate ? selectedDate : startDate;
+
+  const plannedMinutes = crewCalendarState.plannedRows
+    .filter((row) => {
+      const date = String(row?.date || '');
+      return Boolean(date && date >= startDate && date <= rangeEndDate);
+    })
+    .reduce((sum, row) => {
+      const durationMinutes = Number(getDutyTimingSummary(row?.duties).durationMinutes);
+      return Number.isFinite(durationMinutes) ? sum + durationMinutes : sum;
+    }, 0);
+
+  const actualMinutes = crewCalendarState.actualRows
+    .filter((row) => {
+      const date = String(row?.date || '');
+      return Boolean(date && date >= startDate && date <= rangeEndDate);
+    })
+    .reduce((sum, row) => {
+      const durationMinutes = Number(getActualDutyTimingSummary(row).durationMinutes);
+      return Number.isFinite(durationMinutes) ? sum + durationMinutes : sum;
+    }, 0);
+
+  const normMinutes = countBulgarianWorkdays(startDate, rangeEndDate) * 8 * 60;
+  const deviationMinutes = actualMinutes - normMinutes;
+
+  plannedHoursElement.textContent = formatMinutesAsClock(plannedMinutes);
+  actualHoursElement.textContent = formatMinutesAsClock(actualMinutes);
+  normHoursElement.textContent = formatMinutesAsClock(normMinutes);
+  deviationHoursElement.textContent = formatSignedMinutesAsClock(deviationMinutes);
+  deviationHoursElement.className = `fw-semibold badge ${getDeviationClassByThreshold(deviationMinutes)}`;
 }
 
 async function loadSchedulePublicationDates(startDate, endDate) {
@@ -1149,10 +1674,20 @@ function renderCrewSelectedDayDetails(container) {
         const dutyName = row?.duties?.name || '-';
         const role = formatRoleLabel(row?.assignment_role);
         const time = formatDutyTime(row?.duties?.start_time, row?.duties?.end_time, row?.duties?.second_day);
+        const timing = getDutyTimingSummary(row?.duties);
+
         return `
           <article class="border rounded p-2">
             <div class="fw-semibold">${escapeHtml(dutyName)}</div>
             <div class="small text-secondary">${escapeHtml(role)} · ${escapeHtml(time)}</div>
+            <div class="small mt-1">
+              <div><span class="text-secondary">Начало:</span> ${escapeHtml(timing.startTime)}</div>
+              <div><span class="text-secondary">Край:</span> ${escapeHtml(timing.endTime)}</div>
+              <div><span class="text-secondary">Начало на прекъсване:</span> ${escapeHtml(timing.breakStartTime)}</div>
+              <div><span class="text-secondary">Край на прекъсване:</span> ${escapeHtml(timing.breakEndTime)}</div>
+              <div><span class="text-secondary">Прекъсване:</span> ${escapeHtml(timing.breakDuration)}</div>
+              <div><span class="text-secondary">Времетраене:</span> ${escapeHtml(timing.duration)}</div>
+            </div>
           </article>
         `;
       })
@@ -1168,7 +1703,7 @@ function renderCrewSelectedDayDetails(container) {
 
   if (!isDateConfirmed) {
     actualBody.innerHTML = hasPendingConfirmation
-      ? '<p class="text-warning mb-0">Има промяна по графика. Нужна е повторна валидация от разписание.</p>'
+      ? '<p class="text-warning mb-0">Има смяна на служител по реална повеска. Нужна е повторна валидация от разписание.</p>'
       : '<p class="text-secondary mb-0">Графикът за деня не е потвърден от разписание.</p>';
   } else if (!actualRows.length) {
     actualBody.innerHTML = '<p class="text-secondary mb-0">Няма реални повески.</p>';
@@ -1178,6 +1713,7 @@ function renderCrewSelectedDayDetails(container) {
         const dutyName = row?.duties?.name || '-';
         const role = formatRoleLabel(row?.assignment_role);
         const reported = row?.reported_at ? formatDateTime(new Date(row.reported_at)) : '-';
+        const timing = getActualDutyTimingSummary(row);
 
         const trains = Array.isArray(row?.duties?.duty_trains)
           ? [...row.duties.duty_trains].sort((left, right) => Number(left?.sequence_order || 0) - Number(right?.sequence_order || 0))
@@ -1197,16 +1733,22 @@ function renderCrewSelectedDayDetails(container) {
               .map((entry) => {
                 const encodedUrl = encodeURIComponent(entry.url);
                 const encodedLabel = encodeURIComponent(entry.label || 'Разписание');
+                const previewLabel = entry.label || 'Разписание';
                 return `
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-secondary py-0 px-2"
-                    data-index-crew-action="preview-timetable"
-                    data-preview-url="${escapeHtml(encodedUrl)}"
-                    data-preview-label="${escapeHtml(encodedLabel)}"
-                  >
-                    ${escapeHtml(entry.label)} · Преглед
-                  </button>
+                  <span class="d-inline-flex align-items-center gap-1 me-2">
+                    <span>${escapeHtml(previewLabel)}</span>
+                    <button
+                      type="button"
+                      class="btn btn-link btn-sm p-0 lh-1 text-decoration-none"
+                      data-index-crew-action="preview-timetable"
+                      data-preview-url="${escapeHtml(encodedUrl)}"
+                      data-preview-label="${escapeHtml(encodedLabel)}"
+                      title="Преглед: ${escapeHtml(previewLabel)}"
+                      aria-label="Преглед: ${escapeHtml(previewLabel)}"
+                    >
+                      👁
+                    </button>
+                  </span>
                 `;
               })
               .join(' ');
@@ -1217,8 +1759,28 @@ function renderCrewSelectedDayDetails(container) {
 
         return `
           <article class="border rounded p-2">
-            <div class="fw-semibold">${escapeHtml(dutyName)}</div>
+            <div class="d-flex align-items-start justify-content-between gap-2">
+              <div class="fw-semibold">${escapeHtml(dutyName)}</div>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary py-0 px-2"
+                title="Редакция на часове"
+                aria-label="Редакция на часове"
+                data-index-crew-action="edit-actual-duty"
+                data-actual-duty-id="${escapeHtml(String(row?.id || ''))}"
+              >
+                ✎
+              </button>
+            </div>
             <div class="small text-secondary mb-1">${escapeHtml(role)} · Отчетена: ${escapeHtml(reported)}</div>
+            <div class="small mb-1">
+              <div><span class="text-secondary">Начало:</span> ${escapeHtml(timing.startTime)}</div>
+              <div><span class="text-secondary">Край:</span> ${escapeHtml(timing.endTime)}</div>
+              <div><span class="text-secondary">Начало на прекъсване:</span> ${escapeHtml(timing.breakStartTime)}</div>
+              <div><span class="text-secondary">Край на прекъсване:</span> ${escapeHtml(timing.breakEndTime)}</div>
+              <div><span class="text-secondary">Прекъсване:</span> ${escapeHtml(timing.breakDuration)}</div>
+              <div><span class="text-secondary">Времетраене:</span> ${escapeHtml(timing.duration)}</div>
+            </div>
             ${trainRows ? `<div class="small"><span class="fw-semibold">Разписания:</span> ${trainRows}</div>` : ''}
           </article>
         `;
@@ -1281,6 +1843,7 @@ function renderCrewSelectedDayDetails(container) {
 function renderCrewCalendarAndDetails(container) {
   ensureCrewSelectedDate(crewCalendarState.visibleMonth);
   renderCrewCalendar(container);
+  renderCrewHoursSummary(container);
   renderCrewSelectedDayDetails(container);
 }
 
@@ -1291,6 +1854,7 @@ async function loadCrewMonthlySnapshot(container, employeeId, targetMonthKey) {
   if (!employeeId) {
     crewCalendarState.plannedRows = [];
     crewCalendarState.actualRows = [];
+    crewCalendarState.actualRowsById = new Map();
     crewCalendarState.absenceRows = [];
     crewCalendarState.confirmedDates = new Set();
     crewCalendarState.pendingConfirmationDates = new Set();
@@ -1307,7 +1871,7 @@ async function loadCrewMonthlySnapshot(container, employeeId, targetMonthKey) {
   const [plannedResponse, actualResponse, absencesResponse, publicationResponse, changeSummaryResponse] = await Promise.all([
     supabase
       .from('planned_duties')
-      .select('date, assignment_role, duties(name, start_time, end_time, second_day)')
+      .select('date, assignment_role, duties(name, start_time, end_time, second_day, break_start_time, break_end_time)')
       .eq('employee_id', employeeId)
       .gte('date', startDate)
       .lte('date', endDate)
@@ -1315,7 +1879,7 @@ async function loadCrewMonthlySnapshot(container, employeeId, targetMonthKey) {
       .order('duty_id', { ascending: true }),
     supabase
       .from('actual_duties')
-      .select('date, assignment_role, reported_at, duties(name, start_time, end_time, second_day, duty_trains(sequence_order, trains(number, timetable_url)))')
+      .select('id, date, assignment_role, reported_at, start_time_override, end_time_override, break_start_time_override, break_end_time_override, duties(name, start_time, end_time, second_day, break_start_time, break_end_time, duty_trains(sequence_order, trains(number, timetable_url)))')
       .eq('employee_id', employeeId)
       .gte('date', startDate)
       .lte('date', endDate)
@@ -1343,6 +1907,7 @@ async function loadCrewMonthlySnapshot(container, employeeId, targetMonthKey) {
 
   crewCalendarState.plannedRows = plannedResponse.data || [];
   crewCalendarState.actualRows = (actualResponse.data || []).filter((row) => confirmedDateSet.has(String(row?.date || '')));
+  crewCalendarState.actualRowsById = new Map(crewCalendarState.actualRows.map((row) => [String(row?.id || ''), row]));
   crewCalendarState.absenceRows = absencesResponse.data || [];
   crewCalendarState.confirmedDates = confirmedDateSet;
   crewCalendarState.pendingConfirmationDates = pendingConfirmationDateSet;
@@ -1431,8 +1996,14 @@ function attachIndexHandlers(container) {
   const crewActualBody = container.querySelector('#index-crew-actual-body');
   const crewTimetablePreviewModal = container.querySelector('#index-timetable-preview-modal');
   const crewTimetablePreviewClose = container.querySelector('#index-timetable-preview-close');
+  const crewActualDutyEditModal = container.querySelector('#index-actual-duty-edit-modal');
+  const crewActualDutyEditClose = container.querySelector('#index-actual-duty-edit-close');
+  const crewActualDutyEditCancel = container.querySelector('#index-actual-duty-edit-cancel');
+  const crewActualDutyEditForm = container.querySelector('#index-actual-duty-edit-form');
   const certificatesPanel = container.querySelector('#index-certificates-panel');
   const absencesPanel = container.querySelector('#index-absences-panel');
+  const workloadDateInput = container.querySelector('#index-workload-date');
+  const workloadRefreshButton = container.querySelector('#index-workload-refresh');
 
   refreshButton?.addEventListener('click', async () => {
     const mode = container.dataset.indexMode || 'default';
@@ -1525,6 +2096,22 @@ function attachIndexHandlers(container) {
   });
 
   crewActualBody?.addEventListener('click', (event) => {
+    const editButton = event.target.closest('button[data-index-crew-action="edit-actual-duty"]');
+    if (editButton) {
+      const mode = container.dataset.indexMode || 'default';
+      if (mode !== 'crew') {
+        return;
+      }
+
+      const actualDutyId = editButton.getAttribute('data-actual-duty-id') || '';
+      if (!actualDutyId) {
+        return;
+      }
+
+      openCrewActualDutyEditModal(container, actualDutyId);
+      return;
+    }
+
     const previewButton = event.target.closest('button[data-index-crew-action="preview-timetable"]');
     if (!previewButton) {
       return;
@@ -1548,6 +2135,25 @@ function attachIndexHandlers(container) {
     if (event.target === crewTimetablePreviewModal) {
       closeCrewTimetablePreview(container);
     }
+  });
+
+  crewActualDutyEditClose?.addEventListener('click', () => {
+    closeCrewActualDutyEditModal(container);
+  });
+
+  crewActualDutyEditCancel?.addEventListener('click', () => {
+    closeCrewActualDutyEditModal(container);
+  });
+
+  crewActualDutyEditModal?.addEventListener('click', (event) => {
+    if (event.target === crewActualDutyEditModal) {
+      closeCrewActualDutyEditModal(container);
+    }
+  });
+
+  crewActualDutyEditForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    await saveCrewActualDutyEdits(container);
   });
 
   certificatesPanel?.addEventListener('click', (event) => {
@@ -1591,6 +2197,26 @@ function attachIndexHandlers(container) {
     const key = actionButton.getAttribute('data-index-absence-key') || '';
     toggleAbsenceReasonDetails(container, key);
   });
+
+  workloadDateInput?.addEventListener('change', async () => {
+    const mode = container.dataset.indexMode || 'default';
+    if (mode !== 'head_of_transport') {
+      return;
+    }
+
+    await loadHeadOfTransportWorkload(container);
+  });
+
+  workloadRefreshButton?.addEventListener('click', async () => {
+    const mode = container.dataset.indexMode || 'default';
+    if (mode !== 'head_of_transport') {
+      return;
+    }
+
+    workloadRefreshButton.disabled = true;
+    await loadHeadOfTransportWorkload(container);
+    workloadRefreshButton.disabled = false;
+  });
 }
 
 function applyRoleLayout(container, userContext) {
@@ -1602,6 +2228,8 @@ function applyRoleLayout(container, userContext) {
   const employeesKpiCard = container.querySelector('#index-kpi-card-employees');
   const certificatesPanel = container.querySelector('#index-certificates-panel');
   const absencesPanel = container.querySelector('#index-absences-panel');
+  const workloadPanel = container.querySelector('#index-workload-panel');
+  const workloadDateInput = container.querySelector('#index-workload-date');
   const soonDetails = container.querySelector('#index-certificates-soon-details');
   const expiredDetails = container.querySelector('#index-certificates-expired-details');
   const quickActions = container.querySelector('#index-quick-actions');
@@ -1622,6 +2250,7 @@ function applyRoleLayout(container, userContext) {
     employeesKpiCard?.classList.add('col-xl-3');
     certificatesPanel?.classList.add('d-none');
     absencesPanel?.classList.add('d-none');
+    workloadPanel?.classList.add('d-none');
     soonDetails?.classList.add('d-none');
     expiredDetails?.classList.add('d-none');
 
@@ -1659,6 +2288,10 @@ function applyRoleLayout(container, userContext) {
         employeesKpiCard?.classList.add('col-xl-6');
         certificatesPanel?.classList.remove('d-none');
         absencesPanel?.classList.remove('d-none');
+        workloadPanel?.classList.remove('d-none');
+        if (workloadDateInput && !workloadDateInput.value) {
+          workloadDateInput.value = getTodayIsoDate();
+        }
       }
     }
 

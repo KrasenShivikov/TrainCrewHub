@@ -1,6 +1,7 @@
 import { loadHtml } from '../../../utils/loadHtml.js';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
+import { calculateShiftDurationMinutes } from '../../../utils/dutyTime.js';
 import { closeModal, escapeHtml, openModal, setupModalEscapeHandler } from './helpers.js';
 import { actualDutiesState } from './state.js';
 import { loadActualDuties, renderActualDutiesTable } from './table.js';
@@ -36,8 +37,11 @@ function attachActualDutiesHandlers(container) {
   const deleteModal = container.querySelector('#actual-duty-delete-modal');
   const bulkDeleteModal = container.querySelector('#actual-duty-bulk-delete-modal');
   const bulkAddModal = container.querySelector('#actual-duty-bulk-add-modal');
+  const profileModal = container.querySelector('#actual-duty-profile-modal');
   const modalCloseButton = container.querySelector('#actual-duty-modal-close');
   const modalCancelButton = container.querySelector('#actual-duty-cancel-btn');
+  const profileCloseButton = container.querySelector('#actual-duty-profile-close');
+  const profileCloseSecondaryButton = container.querySelector('#actual-duty-profile-close-secondary');
   const deleteConfirmButton = container.querySelector('#actual-duty-delete-confirm');
   const deleteCancelButton = container.querySelector('#actual-duty-delete-cancel');
   const bulkDeleteConfirmButton = container.querySelector('#actual-duty-bulk-delete-confirm');
@@ -93,6 +97,14 @@ function attachActualDutiesHandlers(container) {
 
   modalCancelButton?.addEventListener('click', () => {
     closeModal(actualDutyModal);
+  });
+
+  profileCloseButton?.addEventListener('click', () => {
+    closeModal(profileModal);
+  });
+
+  profileCloseSecondaryButton?.addEventListener('click', () => {
+    closeModal(profileModal);
   });
 
   deleteCancelButton?.addEventListener('click', () => {
@@ -165,6 +177,12 @@ function attachActualDutiesHandlers(container) {
 
   scheduleKeyInput?.addEventListener('change', () => {
     renderDutyOptionsByScheduleKey(container, scheduleKeyInput.value || '', '');
+    syncActualDutyTimingFromSelectedDuty(container);
+  });
+
+  const dutyInput = container.querySelector('#actual-duty-duty');
+  dutyInput?.addEventListener('change', () => {
+    syncActualDutyTimingFromSelectedDuty(container);
   });
 
   selectAllInput?.addEventListener('change', () => {
@@ -272,6 +290,12 @@ function attachActualDutiesHandlers(container) {
     }
 
     const action = actionButton.getAttribute('data-action');
+    if (action === 'profile') {
+      const id = actionButton.getAttribute('data-id');
+      openActualDutyProfileModal(container, id);
+      return;
+    }
+
     if (action === 'edit') {
       populateActualDutyForm(container, {
         id: actionButton.getAttribute('data-id'),
@@ -279,7 +303,15 @@ function attachActualDutiesHandlers(container) {
         employeeId: actionButton.getAttribute('data-employee-id'),
         assignmentRole: actionButton.getAttribute('data-assignment-role') || 'conductor',
         dutyId: actionButton.getAttribute('data-duty-id'),
-        dutyScheduleKeyId: actionButton.getAttribute('data-duty-schedule-key-id')
+        dutyScheduleKeyId: actionButton.getAttribute('data-duty-schedule-key-id'),
+        startTimeOverride: actionButton.getAttribute('data-start-time-override') || '',
+        endTimeOverride: actionButton.getAttribute('data-end-time-override') || '',
+        breakStartTimeOverride: actionButton.getAttribute('data-break-start-time-override') || '',
+        breakEndTimeOverride: actionButton.getAttribute('data-break-end-time-override') || '',
+        dutyStartTime: actionButton.getAttribute('data-duty-start-time') || '',
+        dutyEndTime: actionButton.getAttribute('data-duty-end-time') || '',
+        dutyBreakStartTime: actionButton.getAttribute('data-duty-break-start-time') || '',
+        dutyBreakEndTime: actionButton.getAttribute('data-duty-break-end-time') || ''
       });
       openModal(actualDutyModal);
       return;
@@ -293,6 +325,7 @@ function attachActualDutiesHandlers(container) {
   });
 
   setupModalEscapeHandler('actual-duties', [
+    profileModal,
     deleteModal,
     bulkDeleteModal,
     bulkAddModal,
@@ -345,7 +378,7 @@ async function loadScheduleKeyOptions(container) {
 async function loadDutyOptions(container) {
   const { data: mappings, error: mappingsError } = await supabase
     .from('schedule_key_duties')
-    .select('schedule_key_id, duty_id, duties(id, name)');
+    .select('schedule_key_id, duty_id, duties(id, name, start_time, end_time, break_start_time, break_end_time)');
 
   if (mappingsError) {
     showToast(mappingsError.message, 'error');
@@ -362,7 +395,11 @@ async function loadDutyOptions(container) {
     const existing = lookupMap.get(duty.id) || {
       id: duty.id,
       name: duty.name || '-',
-      scheduleKeyIds: []
+      scheduleKeyIds: [],
+      startTime: normalizeDbTimeToInput(duty.start_time),
+      endTime: normalizeDbTimeToInput(duty.end_time),
+      breakStartTime: normalizeDbTimeToInput(duty.break_start_time),
+      breakEndTime: normalizeDbTimeToInput(duty.break_end_time)
     };
 
     if (row.schedule_key_id && !existing.scheduleKeyIds.includes(row.schedule_key_id)) {
@@ -411,6 +448,89 @@ function isDutyForScheduleKey(dutyId, scheduleKeyId) {
   return Boolean(selectedDuty && selectedDuty.scheduleKeyIds?.includes(scheduleKeyId));
 }
 
+function getDutyById(dutyId) {
+  return dutiesLookup.find((item) => item.id === dutyId) || null;
+}
+
+function normalizeDbTimeToInput(value) {
+  if (!value) {
+    return '';
+  }
+
+  return String(value).slice(0, 5);
+}
+
+function normalizeInputTime(value, fallback = '') {
+  const normalized = String(value || '').slice(0, 5);
+  if (/^\d{2}:\d{2}$/.test(normalized)) {
+    return normalized;
+  }
+
+  return fallback;
+}
+
+function inputTimeToDb(value) {
+  const normalized = normalizeInputTime(value, '');
+  if (!normalized) {
+    return null;
+  }
+
+  return `${normalized}:00`;
+}
+
+function formatMinutesAsClock(minutes) {
+  const numericMinutes = Number(minutes);
+  if (!Number.isFinite(numericMinutes) || numericMinutes < 0) {
+    return '-';
+  }
+
+  const hours = Math.floor(numericMinutes / 60);
+  const restMinutes = numericMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(restMinutes).padStart(2, '0')}`;
+}
+
+function calculateTimingSummary(startTime, endTime, breakStartTime, breakEndTime) {
+  const normalizedStart = normalizeInputTime(startTime, '');
+  const normalizedEnd = normalizeInputTime(endTime, '');
+  const normalizedBreakStart = normalizeInputTime(breakStartTime, '00:00');
+  const normalizedBreakEnd = normalizeInputTime(breakEndTime, '00:00');
+
+  const shiftDurationMinutes = normalizedStart && normalizedEnd
+    ? calculateShiftDurationMinutes(normalizedStart, normalizedEnd)
+    : null;
+  const breakDurationMinutes = calculateShiftDurationMinutes(normalizedBreakStart, normalizedBreakEnd);
+  const durationMinutes = Number.isFinite(shiftDurationMinutes)
+    ? Math.max(0, shiftDurationMinutes - breakDurationMinutes)
+    : null;
+
+  return {
+    startTime: normalizedStart || '-',
+    endTime: normalizedEnd || '-',
+    breakStartTime: normalizedBreakStart || '-',
+    breakEndTime: normalizedBreakEnd || '-',
+    breakDuration: formatMinutesAsClock(breakDurationMinutes),
+    duration: durationMinutes === null ? '-' : formatMinutesAsClock(durationMinutes)
+  };
+}
+
+function syncActualDutyTimingFromSelectedDuty(container) {
+  const dutyId = container.querySelector('#actual-duty-duty')?.value || '';
+  const duty = getDutyById(dutyId);
+  if (!duty) {
+    return;
+  }
+
+  const startInput = container.querySelector('#actual-duty-start-time');
+  const endInput = container.querySelector('#actual-duty-end-time');
+  const breakStartInput = container.querySelector('#actual-duty-break-start-time');
+  const breakEndInput = container.querySelector('#actual-duty-break-end-time');
+
+  if (startInput) startInput.value = duty.startTime || '';
+  if (endInput) endInput.value = duty.endTime || '';
+  if (breakStartInput) breakStartInput.value = duty.breakStartTime || '00:00';
+  if (breakEndInput) breakEndInput.value = duty.breakEndTime || '00:00';
+}
+
 async function saveActualDuty(container) {
   const idInput = container.querySelector('#actual-duty-id');
   const dateInput = container.querySelector('#actual-duty-date');
@@ -418,6 +538,10 @@ async function saveActualDuty(container) {
   const scheduleKeyInput = container.querySelector('#actual-duty-schedule-key');
   const dutyInput = container.querySelector('#actual-duty-duty');
   const assignmentRoleInput = container.querySelector('#actual-duty-assignment-role');
+  const startTimeInput = container.querySelector('#actual-duty-start-time');
+  const endTimeInput = container.querySelector('#actual-duty-end-time');
+  const breakStartTimeInput = container.querySelector('#actual-duty-break-start-time');
+  const breakEndTimeInput = container.querySelector('#actual-duty-break-end-time');
   const saveButton = container.querySelector('#actual-duty-save-btn');
 
   const date = dateInput.value;
@@ -425,9 +549,13 @@ async function saveActualDuty(container) {
   const scheduleKeyId = scheduleKeyInput.value || null;
   const dutyId = dutyInput.value || null;
   const assignmentRole = assignmentRoleInput.value || 'conductor';
+  const startTime = normalizeInputTime(startTimeInput?.value || '', '');
+  const endTime = normalizeInputTime(endTimeInput?.value || '', '');
+  const breakStartTime = normalizeInputTime(breakStartTimeInput?.value || '', '00:00');
+  const breakEndTime = normalizeInputTime(breakEndTimeInput?.value || '', '00:00');
   const editingId = idInput.value;
 
-  if (!date || !employeeId || !scheduleKeyId || !dutyId) {
+  if (!date || !employeeId || !scheduleKeyId || !dutyId || !startTime || !endTime) {
     showToast('Моля, попълни всички полета.', 'warning');
     return;
   }
@@ -442,6 +570,13 @@ async function saveActualDuty(container) {
     return;
   }
 
+  const shiftDurationMinutes = calculateShiftDurationMinutes(startTime, endTime);
+  const breakDurationMinutes = calculateShiftDurationMinutes(breakStartTime, breakEndTime);
+  if (breakDurationMinutes > shiftDurationMinutes) {
+    showToast('Прекъсването не може да е по-голямо от продължителността на повеската.', 'warning');
+    return;
+  }
+
   const originalText = saveButton.innerHTML;
   saveButton.disabled = true;
   saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Запис...';
@@ -450,7 +585,11 @@ async function saveActualDuty(container) {
     date,
     employee_id: employeeId,
     duty_id: dutyId,
-    assignment_role: assignmentRole
+    assignment_role: assignmentRole,
+    start_time_override: inputTimeToDb(startTime),
+    end_time_override: inputTimeToDb(endTime),
+    break_start_time_override: inputTimeToDb(breakStartTime),
+    break_end_time_override: inputTimeToDb(breakEndTime)
   };
 
   let error;
@@ -487,6 +626,14 @@ function populateActualDutyForm(container, row) {
   container.querySelector('#actual-duty-assignment-role').value = row.assignmentRole ?? 'conductor';
   container.querySelector('#actual-duty-schedule-key').value = row.dutyScheduleKeyId ?? '';
   renderDutyOptionsByScheduleKey(container, row.dutyScheduleKeyId ?? '', row.dutyId ?? '');
+  container.querySelector('#actual-duty-start-time').value =
+    normalizeInputTime(row.startTimeOverride, row.dutyStartTime || '');
+  container.querySelector('#actual-duty-end-time').value =
+    normalizeInputTime(row.endTimeOverride, row.dutyEndTime || '');
+  container.querySelector('#actual-duty-break-start-time').value =
+    normalizeInputTime(row.breakStartTimeOverride, row.dutyBreakStartTime || '00:00');
+  container.querySelector('#actual-duty-break-end-time').value =
+    normalizeInputTime(row.breakEndTimeOverride, row.dutyBreakEndTime || '00:00');
 
   container.querySelector('#actual-duty-form-title').textContent = 'Редакция на запис';
   container.querySelector('#actual-duty-save-btn').textContent = 'Запази';
@@ -499,6 +646,10 @@ function resetActualDutyForm(container) {
   container.querySelector('#actual-duty-assignment-role').value = 'conductor';
   container.querySelector('#actual-duty-schedule-key').value = '';
   renderDutyOptionsByScheduleKey(container, '', '');
+  container.querySelector('#actual-duty-start-time').value = '';
+  container.querySelector('#actual-duty-end-time').value = '';
+  container.querySelector('#actual-duty-break-start-time').value = '00:00';
+  container.querySelector('#actual-duty-break-end-time').value = '00:00';
 
   container.querySelector('#actual-duty-form-title').textContent = 'Нов запис';
   container.querySelector('#actual-duty-save-btn').textContent = 'Създай';
@@ -757,4 +908,104 @@ function getDateFromQuery() {
 
 function getAssignmentRoleLabel(role) {
   return role === 'chief' ? 'Началник влак' : 'Кондуктор';
+}
+
+function openActualDutyProfileModal(container, id) {
+  const modal = container.querySelector('#actual-duty-profile-modal');
+  const content = container.querySelector('#actual-duty-profile-content');
+
+  if (!modal || !content) {
+    return;
+  }
+
+  const row = (actualDutiesState.rows || []).find((item) => item.id === id);
+  if (!row) {
+    content.innerHTML = '<p class="text-secondary mb-0">Няма данни за този запис.</p>';
+    openModal(modal);
+    return;
+  }
+
+  const employeeName = `${row.employees?.first_name ?? ''} ${row.employees?.last_name ?? ''}`.trim() || '-';
+  const dutyName = row.duties?.name || '-';
+  const roleLabel = getAssignmentRoleLabel(row.assignment_role);
+
+  const startTime = normalizeInputTime(row.start_time_override, normalizeDbTimeToInput(row.duties?.start_time));
+  const endTime = normalizeInputTime(row.end_time_override, normalizeDbTimeToInput(row.duties?.end_time));
+  const breakStartTime = normalizeInputTime(
+    row.break_start_time_override,
+    normalizeDbTimeToInput(row.duties?.break_start_time) || '00:00'
+  );
+  const breakEndTime = normalizeInputTime(
+    row.break_end_time_override,
+    normalizeDbTimeToInput(row.duties?.break_end_time) || '00:00'
+  );
+
+  const summary = calculateTimingSummary(startTime, endTime, breakStartTime, breakEndTime);
+
+  content.innerHTML = `
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Дата</div>
+          <div class="fw-semibold">${escapeHtml(row.date || '-')}</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Служител</div>
+          <div class="fw-semibold">${escapeHtml(employeeName)}</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Роля</div>
+          <div class="fw-semibold">${escapeHtml(roleLabel)}</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Повеска</div>
+          <div class="fw-semibold">${escapeHtml(dutyName)}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Начало</div>
+          <div class="fw-semibold">${escapeHtml(summary.startTime)}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Край</div>
+          <div class="fw-semibold">${escapeHtml(summary.endTime)}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Прекъсване</div>
+          <div class="fw-semibold">${escapeHtml(summary.breakDuration)}</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Начало на прекъсване</div>
+          <div class="fw-semibold">${escapeHtml(summary.breakStartTime)}</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Край на прекъсване</div>
+          <div class="fw-semibold">${escapeHtml(summary.breakEndTime)}</div>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small">Времетраене</div>
+          <div class="fw-semibold">${escapeHtml(summary.duration)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  openModal(modal);
 }

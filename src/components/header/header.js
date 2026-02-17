@@ -83,6 +83,7 @@ export async function renderHeader(container) {
       '/employee-absences': 'employee_absences',
       '/planned-duties': 'planned_duties',
       '/actual-duties': 'actual_duties',
+      '/documents': 'documents',
       '/plan-schedule': 'page_plan_schedule',
       '/schedule': 'page_schedule',
       '/schedule-key-duties': 'duties'
