@@ -1,9 +1,12 @@
 import { renderPageShell } from './components/page/page.js';
 import { initRouter } from './router.js';
 
-const appRoot = document.getElementById('app');
+function getAppRoot() {
+	return document.getElementById('app');
+}
 
 function renderBootstrapFatalError(message) {
+	const appRoot = getAppRoot();
 	if (!appRoot) {
 		return;
 	}
@@ -21,12 +24,25 @@ function renderBootstrapFatalError(message) {
 }
 
 async function bootstrap() {
+	const appRoot = getAppRoot();
+	if (!appRoot) {
+		throw new Error('App root element (#app) not found.');
+	}
+
 	await renderPageShell(appRoot);
 	initRouter();
 }
 
-bootstrap().catch((error) => {
-	const message = error instanceof Error ? error.message : String(error);
-	console.error('App bootstrap failed:', error);
-	renderBootstrapFatalError(message);
-});
+function start() {
+	bootstrap().catch((error) => {
+		const message = error instanceof Error ? error.message : String(error);
+		console.error('App bootstrap failed:', error);
+		renderBootstrapFatalError(message);
+	});
+}
+
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', start, { once: true });
+} else {
+	start();
+}
