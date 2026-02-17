@@ -232,21 +232,184 @@ function attachAdminHandlers(container) {
     }
 
     const unlinkActionButton = event.target.closest('button[data-admin-action="unlink-profile"]');
-    if (!unlinkActionButton) {
+    if (unlinkActionButton) {
+      const profileId = unlinkActionButton.getAttribute('data-profile-id') || '';
+      if (!profileId) {
+        return;
+      }
+
+      openRoleWarningModal(container, {
+        message: 'Сигурен ли си, че искаш да разкачиш профила от служителя?',
+        confirmLabel: 'Разкачи',
+        onConfirm: () => updateProfileEmployeeLink(container, profileId, null)
+      });
       return;
     }
 
-    const profileId = unlinkActionButton.getAttribute('data-profile-id') || '';
-    if (!profileId) {
+    const deactivateButton = event.target.closest('button[data-admin-action="deactivate-profile"]');
+    if (deactivateButton) {
+      const deactivateProfileId = deactivateButton.getAttribute('data-profile-id') || '';
+      if (!deactivateProfileId) {
+        return;
+      }
+
+      if (deactivateProfileId === adminState.currentUserId) {
+        showToast('Не можеш да деактивираш собствения си профил.', 'warning');
+        return;
+      }
+
+      openRoleWarningModal(container, {
+        message: 'Сигурен ли си, че искаш да деактивираш този профил? Потребителят ще загуби достъп до системата.',
+        confirmLabel: 'Деактивирай',
+        onConfirm: () => updateProfileActiveStatus(container, deactivateProfileId, false)
+      });
+      return;
+    }
+
+    const restoreButton = event.target.closest('button[data-admin-action="restore-profile"]');
+    if (restoreButton) {
+      const restoreProfileId = restoreButton.getAttribute('data-profile-id') || '';
+      if (!restoreProfileId) {
+        return;
+      }
+
+      openRoleWarningModal(container, {
+        message: 'Сигурен ли си, че искаш да възстановиш този профил?',
+        confirmLabel: 'Възстанови',
+        onConfirm: () => updateProfileActiveStatus(container, restoreProfileId, true)
+      });
+      return;
+    }
+
+    const hardDeleteButton = event.target.closest('button[data-admin-action="hard-delete-user"]');
+    if (!hardDeleteButton) {
+      return;
+    }
+
+    const hardDeleteUserId = hardDeleteButton.getAttribute('data-profile-id') || '';
+    if (!hardDeleteUserId) {
+      return;
+    }
+
+    if (hardDeleteUserId === adminState.currentUserId) {
+      showToast('Не можеш да изтриеш собствения си акаунт.', 'warning');
       return;
     }
 
     openRoleWarningModal(container, {
-      message: 'Сигурен ли си, че искаш да разкачиш профила от служителя?',
-      confirmLabel: 'Разкачи',
-      onConfirm: () => updateProfileEmployeeLink(container, profileId, null)
+      message: 'Сигурен ли си? Това е необратимо: ще бъдат изтрити Auth акаунтът, профилът и ролите.',
+      confirmLabel: 'Изтрий',
+      onConfirm: () => hardDeleteUser(container, hardDeleteUserId)
     });
   });
+}
+
+async function hardDeleteUser(container, userId) {
+  if (!userId) {
+    return;
+  }
+
+  const resolveAccessToken = async () => {
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+    if (!refreshError && refreshed?.session?.access_token) {
+      return refreshed.session.access_token;
+    }
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData?.session?.access_token) {
+      return '';
+    }
+
+    return sessionData.session.access_token;
+  };
+
+  let accessToken = await resolveAccessToken();
+  if (!accessToken) {
+    showToast('Липсва активна сесия. Влез отново и опитай пак.', 'warning');
+    return;
+  }
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    showToast('Липсва Supabase конфигурация (env vars).', 'error');
+    return;
+  }
+
+  const functionName = 'admin-hard-delete-user-v2';
+
+  const doRequest = async (token) => {
+    return fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: supabaseKey,
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        userId,
+        reason: 'admin_panel'
+      })
+    });
+  };
+
+  let response;
+  try {
+    response = await doRequest(accessToken);
+  } catch {
+    showToast('Неуспешна връзка към Edge функцията.', 'error');
+    return;
+  }
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+
+  if (response.status === 401) {
+    accessToken = await resolveAccessToken();
+    if (accessToken) {
+      try {
+        response = await doRequest(accessToken);
+        payload = null;
+        try {
+          payload = await response.json();
+        } catch {
+          payload = null;
+        }
+      } catch {
+        showToast('Неуспешна връзка към Edge функцията.', 'error');
+        return;
+      }
+    }
+  }
+
+  if (!response.ok) {
+    const message = String(payload?.error || payload?.message || response.statusText || 'Изтриването не беше успешно.');
+    if (response.status === 401) {
+      showToast('Нямаш валидна сесия за Edge функцията. Опитай logout/login.', 'warning');
+      return;
+    }
+
+    if (String(message).toLowerCase().includes('last admin')) {
+      showToast('Не може да се изтрие последният администратор.', 'warning');
+      return;
+    }
+
+    showToast(message, 'error');
+    return;
+  }
+
+  if (!payload?.ok) {
+    showToast('Изтриването не беше успешно.', 'error');
+    return;
+  }
+
+  showToast('Потребителят е изтрит.', 'success');
+  await loadAdminData(container);
 }
 
 function openProfileLinkModalForProfile(container, profileId) {
@@ -295,7 +458,7 @@ async function loadAdminData(container) {
   ] = await Promise.all([
     supabase
       .from('user_profiles')
-      .select('id, username, employee_id, employees(id, first_name, last_name, is_active)')
+      .select('id, username, is_active, employee_id, employees(id, first_name, last_name, is_active)')
       .order('username', { ascending: true }),
     supabase
       .from('employees')
@@ -629,6 +792,40 @@ async function updateProfileEmployeeLink(container, profileId, employeeId) {
     employeeSelect.value = '';
   }
   await loadProfiles(container);
+}
+
+async function updateProfileActiveStatus(container, profileId, shouldBeActive) {
+  if (!profileId) {
+    return;
+  }
+
+  const profile = adminState.profiles.find((item) => String(item?.id || '') === String(profileId));
+  const currentIsActive = profile?.is_active !== false;
+  if (currentIsActive === shouldBeActive) {
+    showToast(shouldBeActive ? 'Профилът вече е активен.' : 'Профилът вече е деактивиран.', 'warning');
+    return;
+  }
+
+  const { error } = await supabase
+    .from('user_profiles')
+    .update({
+      is_active: shouldBeActive,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', profileId);
+
+  if (error) {
+    if (String(error.message || '').toLowerCase().includes('last active admin')) {
+      showToast('Не може да деактивираш последния активен администратор.', 'warning');
+      return;
+    }
+
+    showToast(error.message, 'error');
+    return;
+  }
+
+  showToast(shouldBeActive ? 'Профилът е възстановен.' : 'Профилът е деактивиран.', 'success');
+  await loadAdminData(container);
 }
 
 async function loadRoles(container) {
@@ -1053,7 +1250,7 @@ function initializeAdminTabs(container) {
 async function loadProfiles(container) {
   const { data, error } = await supabase
     .from('user_profiles')
-    .select('id, username, employee_id, employees(id, first_name, last_name, is_active)')
+    .select('id, username, is_active, employee_id, employees(id, first_name, last_name, is_active)')
     .order('username', { ascending: true });
 
   if (error) {

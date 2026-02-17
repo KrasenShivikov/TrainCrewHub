@@ -1,6 +1,7 @@
 import { loadHtml } from '../../../utils/loadHtml.js';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
+import { isUserProfileActive } from '../../../utils/auth.js';
 
 async function waitForActiveSession({ attempts = 10, delayMs = 120 } = {}) {
   for (let index = 0; index < attempts; index += 1) {
@@ -78,6 +79,16 @@ function attachLoginFormListener(container) {
     if (error) {
       showToast('Невалидни данни за вход.', 'error');
       return;
+    }
+
+    const signedInUserId = data?.user?.id || data?.session?.user?.id || '';
+    if (signedInUserId) {
+      const profileIsActive = await isUserProfileActive(signedInUserId);
+      if (!profileIsActive) {
+        await supabase.auth.signOut();
+        showToast('Профилът е деактивиран. Свържи се с администратор.', 'warning');
+        return;
+      }
     }
 
     showToast('Успешен вход.', 'success');

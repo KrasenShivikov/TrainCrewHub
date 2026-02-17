@@ -19,7 +19,7 @@ import { renderAdminPage } from './pages/admin/js/admin.js';
 import { renderDocumentsPage } from './pages/documents/js/documents.js';
 import { renderUserProfilesPage } from './pages/user-profiles/js/user-profiles.js';
 import { showToast } from './components/toast/toast.js';
-import { getCurrentUserSession, hasUserAssignedRole, isUserAdmin } from './utils/auth.js';
+import { ensureActiveUserSession, getCurrentUserSession, hasUserAssignedRole, isUserAdmin } from './utils/auth.js';
 import {
   applyResourceActionGuards,
   canViewResourceScreen,
@@ -201,6 +201,14 @@ async function resolveAccessPath(pathname, config) {
   let session = null;
 
   if (!publicPaths.has(pathname)) {
+    const activeSessionCheck = await ensureActiveUserSession();
+    if (!activeSessionCheck.allowed) {
+      if (activeSessionCheck.reason === 'inactive-profile') {
+        showToast('Профилът е деактивиран. Свържи се с администратор.', 'warning');
+      }
+      return '/login';
+    }
+
     session = await getCurrentUserSession();
     if (!session?.user?.id) {
       return '/login';
@@ -218,7 +226,15 @@ async function resolveAccessPath(pathname, config) {
   }
 
   if (pathname === '/pending-access') {
-    if (!session) {
+    if (!session?.user?.id) {
+      const activeSessionCheck = await ensureActiveUserSession();
+      if (!activeSessionCheck.allowed) {
+        if (activeSessionCheck.reason === 'inactive-profile') {
+          showToast('Профилът е деактивиран. Свържи се с администратор.', 'warning');
+        }
+        return '/login';
+      }
+
       session = await getCurrentUserSession();
     }
 

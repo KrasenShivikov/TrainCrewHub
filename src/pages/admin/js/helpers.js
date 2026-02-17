@@ -21,11 +21,13 @@ export function escapeHtml(value) {
 export function getProfileDisplayLabel(profile) {
   const username = String(profile?.username || '').trim();
   const id = String(profile?.id || '').trim();
+  const isInactive = profile?.is_active === false;
   if (username && id) {
-    return `${username} (${id})`;
+    return `${username} (${id})${isInactive ? ' (деактивиран)' : ''}`;
   }
 
-  return username || id || '-';
+  const fallback = username || id || '-';
+  return isInactive && fallback !== '-' ? `${fallback} (деактивиран)` : fallback;
 }
 
 export function getEmployeeDisplayLabel(employee) {

@@ -221,14 +221,23 @@ export function renderProfilesTable(container, explicitEmptyMessage) {
   body.innerHTML = adminState.profiles
     .map((profile) => {
       const profileLabel = getProfileDisplayLabel(profile);
+      const isActiveProfile = profile?.is_active !== false;
+      const statusBadge = isActiveProfile
+        ? '<span class="badge text-bg-success">Активен</span>'
+        : '<span class="badge text-bg-secondary">Деактивиран</span>';
       const employeeLabel = profile?.employees
         ? getEmployeeDisplayLabel(profile.employees)
         : '-';
       const hasLinkedEmployee = Boolean(profile?.employee_id);
+      const isCurrentUser = String(profile?.id || '') === String(adminState.currentUserId || '');
+      const deactivateDisabled = !isActiveProfile || isCurrentUser;
+      const restoreDisabled = isActiveProfile;
+      const hardDeleteDisabled = isCurrentUser;
 
       return `
         <tr>
           <td>${escapeHtml(profileLabel)}</td>
+          <td>${statusBadge}</td>
           <td>${escapeHtml(employeeLabel)}</td>
           <td class="text-end">
             <button
@@ -241,12 +250,41 @@ export function renderProfilesTable(container, explicitEmptyMessage) {
             </button>
             <button
               type="button"
-              class="btn btn-sm btn-outline-danger"
+              class="btn btn-sm btn-outline-danger me-2"
               data-admin-action="unlink-profile"
               data-profile-id="${profile.id}"
               ${hasLinkedEmployee ? '' : 'disabled'}
             >
               Разкачи
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-warning me-2"
+              data-admin-action="deactivate-profile"
+              data-profile-id="${profile.id}"
+              ${deactivateDisabled ? 'disabled' : ''}
+              title="${isCurrentUser ? 'Не можеш да деактивираш собствения си профил.' : ''}"
+            >
+              Деактивирай
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-success"
+              data-admin-action="restore-profile"
+              data-profile-id="${profile.id}"
+              ${restoreDisabled ? 'disabled' : ''}
+            >
+              Възстанови
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-danger ms-2"
+              data-admin-action="hard-delete-user"
+              data-profile-id="${profile.id}"
+              ${hardDeleteDisabled ? 'disabled' : ''}
+              title="${isCurrentUser ? 'Не можеш да изтриеш собствения си акаунт.' : 'Необратимо изтриване (Auth + профил + роли).'}"
+            >
+              Изтрий
             </button>
           </td>
         </tr>
