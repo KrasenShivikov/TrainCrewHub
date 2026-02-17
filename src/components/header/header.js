@@ -22,16 +22,40 @@ export async function renderHeader(container) {
   const navbarCollapse = container.querySelector('#mainNav');
   const navbarToggler = container.querySelector('.navbar-toggler');
 
+  const bootstrapApi = globalThis.bootstrap;
+  const hasBootstrapCollapse = Boolean(bootstrapApi?.Collapse);
+  const hasBootstrapDropdown = Boolean(bootstrapApi?.Dropdown);
+
   const closeNavbarCollapse = () => {
-    if (!navbarCollapse || !navbarCollapse.classList.contains('show')) {
+    if (!navbarCollapse) {
       return;
     }
 
-    navbarCollapse.classList.remove('show');
-    navbarToggler?.setAttribute('aria-expanded', 'false');
+    if (hasBootstrapCollapse) {
+      const instance = bootstrapApi.Collapse.getOrCreateInstance(navbarCollapse, { toggle: false });
+      instance.hide();
+      return;
+    }
+
+    if (navbarCollapse.classList.contains('show')) {
+      navbarCollapse.classList.remove('show');
+      navbarToggler?.setAttribute('aria-expanded', 'false');
+    }
   };
 
   const closeAllDropdowns = () => {
+    if (hasBootstrapDropdown) {
+      container.querySelectorAll('.dropdown-toggle').forEach((toggle) => {
+        try {
+          bootstrapApi.Dropdown.getOrCreateInstance(toggle).hide();
+        } catch {
+          // ignore
+        }
+      });
+
+      return;
+    }
+
     container.querySelectorAll('.nav-item.dropdown').forEach((dropdown) => {
       dropdown.classList.remove('show');
       dropdown.querySelector('.dropdown-menu')?.classList.remove('show');
@@ -137,6 +161,21 @@ export async function renderHeader(container) {
     if (dropdownToggle && container.contains(dropdownToggle)) {
       event.preventDefault();
 
+      if (hasBootstrapDropdown) {
+        const dropdown = dropdownToggle.closest('.nav-item.dropdown');
+        const isOpen = dropdown?.classList.contains('show');
+        closeAllDropdowns();
+
+        const instance = bootstrapApi.Dropdown.getOrCreateInstance(dropdownToggle);
+        if (isOpen) {
+          instance.hide();
+        } else {
+          instance.show();
+        }
+
+        return;
+      }
+
       const dropdown = dropdownToggle.closest('.nav-item.dropdown');
       const menu = dropdown?.querySelector('.dropdown-menu');
       const isOpen = dropdown?.classList.contains('show');
@@ -158,9 +197,14 @@ export async function renderHeader(container) {
       closeAllDropdowns();
 
       if (navbarCollapse) {
-        const shouldOpen = !navbarCollapse.classList.contains('show');
-        navbarCollapse.classList.toggle('show', shouldOpen);
-        navbarToggler?.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+        if (hasBootstrapCollapse) {
+          const instance = bootstrapApi.Collapse.getOrCreateInstance(navbarCollapse, { toggle: false });
+          instance.toggle();
+        } else {
+          const shouldOpen = !navbarCollapse.classList.contains('show');
+          navbarCollapse.classList.toggle('show', shouldOpen);
+          navbarToggler?.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+        }
       }
 
       return;
