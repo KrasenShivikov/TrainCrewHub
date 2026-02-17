@@ -2,8 +2,8 @@
   --app-bg: var(--bs-body-bg);
   --app-text: var(--bs-emphasis-color);
   --app-surface: var(--bs-body-bg);
-  --app-nav-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-  --app-card-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+  --app-nav-shadow: var(--bs-box-shadow-sm);
+  --app-card-shadow: var(--bs-box-shadow-sm);
   --app-nav-link-active-bg: rgba(255, 255, 255, 0.14);
   --app-table-hover-bg: rgba(var(--bs-primary-rgb), 0.04);
   --app-control-height: 2.5rem;
@@ -15,6 +15,13 @@
 body {
   background: var(--app-bg);
   color: var(--app-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  text-underline-offset: 0.15em;
 }
 
 #page-content {
@@ -54,9 +61,10 @@ body {
 .search-panel {
   border: 1px solid var(--bs-border-color);
   border-radius: var(--bs-border-radius);
-  background: var(--bs-light-bg-subtle);
+  background: var(--bs-body-bg);
   padding: 1rem;
   margin-bottom: 1rem;
+  box-shadow: var(--bs-box-shadow-sm);
 }
 
 .search-panel-header {
@@ -130,6 +138,12 @@ body {
   background: var(--app-surface);
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    box-shadow: var(--bs-box-shadow) !important;
+  }
+}
+
 .card .card-body {
   border-radius: inherit;
 }
@@ -197,6 +211,10 @@ body {
 .table thead th {
   background: var(--bs-light-bg-subtle);
   font-weight: 700;
+  vertical-align: middle;
+}
+
+.table tbody td {
   vertical-align: middle;
 }
 

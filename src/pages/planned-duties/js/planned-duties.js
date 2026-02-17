@@ -23,14 +23,28 @@ import {
   toggleSelectAllVisible,
   toggleSingleSelection
 } from './bulk-delete.js';
+import { isCurrentUserCrew } from '../../../utils/userContext.js';
 
 export async function renderPlannedDutiesPage(container) {
   container.innerHTML = pageHtml;
+  plannedDutiesState.selectionEnabled = !(await isCurrentUserCrew());
+  applyPlannedDutiesCrewLayout(container);
   attachPlannedDutiesHandlers(container);
   await loadEmployeeOptions(container);
   await loadScheduleKeyOptions(container);
   await loadDutyOptions(container);
   await loadPlannedDuties(container);
+}
+
+function applyPlannedDutiesCrewLayout(container) {
+  if (plannedDutiesState.selectionEnabled) {
+    return;
+  }
+
+  container.querySelector('.page-actions')?.classList.add('d-none');
+
+  const selectAll = container.querySelector('#planned-duties-select-all');
+  selectAll?.closest('th')?.classList.add('d-none');
 }
 
 function attachPlannedDutiesHandlers(container) {
@@ -68,10 +82,18 @@ function attachPlannedDutiesHandlers(container) {
   });
 
   bulkDeleteButton?.addEventListener('click', () => {
+    if (!plannedDutiesState.selectionEnabled) {
+      return;
+    }
+
     openBulkDeleteModal(container);
   });
 
   addToActualButton?.addEventListener('click', async () => {
+    if (!plannedDutiesState.selectionEnabled) {
+      return;
+    }
+
     await addSelectedPlannedToActualDuties(container, async () => {
       await loadPlannedDuties(container);
     });
@@ -180,6 +202,10 @@ function attachPlannedDutiesHandlers(container) {
   });
 
   selectAllInput?.addEventListener('change', () => {
+    if (!plannedDutiesState.selectionEnabled) {
+      return;
+    }
+
     toggleSelectAllVisible(selectAllInput.checked);
     renderPlannedDutiesTable(container);
   });
@@ -203,6 +229,10 @@ function attachPlannedDutiesHandlers(container) {
   });
 
   tableBody?.addEventListener('change', (event) => {
+    if (!plannedDutiesState.selectionEnabled) {
+      return;
+    }
+
     const checkbox = event.target.closest('input[data-select-id]');
     if (!checkbox) {
       return;

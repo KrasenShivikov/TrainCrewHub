@@ -80,6 +80,8 @@ export function renderScheduleKeyDutiesTable(container, explicitEmptyMessage) {
     return;
   }
 
+  const reorderEnabled = scheduleKeyDutiesState.reorderEnabled !== false;
+
   emptyState.classList.add('d-none');
   dutiesBody.innerHTML = scheduleKeyDutiesState.duties
     .map(
@@ -89,8 +91,8 @@ export function renderScheduleKeyDutiesTable(container, explicitEmptyMessage) {
         const multiScheduleBadge =`<span class="badge text-bg-info" title="${escapeHtml(scheduleKeyNames.join(', '))}">${scheduleKeyIds.length} кл-гр</span>`;
 
         return `
-        <tr data-duty-id="${item.id}" draggable="true">
-          <td class="text-secondary">↕</td>
+        <tr data-duty-id="${item.id}" draggable="${reorderEnabled ? 'true' : 'false'}">
+          <td class="text-secondary">${reorderEnabled ? '↕' : ''}</td>
           <td>
             <div class="d-flex align-items-center gap-2 flex-wrap">
               ${multiScheduleBadge}

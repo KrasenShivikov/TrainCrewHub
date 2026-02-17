@@ -23,6 +23,9 @@ export async function loadDutyTypes(container) {
 export function renderDutyTypesTable(container, explicitEmptyMessage) {
   const tableBody = container.querySelector('#duty-types-table-body');
   const emptyState = container.querySelector('#duty-types-empty');
+  const actionsEnabled = dutyTypesState.actionsEnabled !== false;
+
+  container.querySelector('thead th.text-end')?.classList.toggle('d-none', !actionsEnabled);
 
   const filteredRows = dutyTypesState.rows.filter((item) => {
     if (!dutyTypesState.searchQuery) {
@@ -45,6 +48,7 @@ export function renderDutyTypesTable(container, explicitEmptyMessage) {
       (item) => `
         <tr>
           <td>${escapeHtml(item.name ?? '-')}</td>
+          ${actionsEnabled ? `
           <td class="text-end">
             <div class="d-inline-flex gap-2">
               <button
@@ -66,6 +70,7 @@ export function renderDutyTypesTable(container, explicitEmptyMessage) {
               </button>
             </div>
           </td>
+          ` : ''}
         </tr>
       `
     )

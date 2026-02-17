@@ -199,13 +199,22 @@ export async function getResourceScopes(resource) {
   };
 }
 
-function disableButton(button, shouldDisable) {
-  if (!button) {
+function setElementPermissionHidden(element, shouldHide) {
+  if (!element) {
     return;
   }
 
-  button.disabled = shouldDisable;
-  button.classList.toggle('disabled', shouldDisable);
+  const wasHiddenByGuard = element.dataset.permissionHidden === '1';
+  if (shouldHide) {
+    element.classList.add('d-none');
+    element.dataset.permissionHidden = '1';
+    return;
+  }
+
+  if (wasHiddenByGuard) {
+    element.classList.remove('d-none');
+    delete element.dataset.permissionHidden;
+  }
 }
 
 export async function applyResourceActionGuards(container, resource) {
@@ -229,27 +238,63 @@ export async function applyResourceActionGuards(container, resource) {
 
   const createSelectors = [
     'button[id^="open-create-"]',
-    'button[id^="open-add-"]'
+    'button[id^="open-add-"]',
+
+    // Planned duties page
+    '#open-auto-plan-duty',
+    '#go-to-plan-schedule',
+    '#add-selected-to-actual-duty',
+
+    // Actual duties page
+    '#go-to-schedule',
+
+    // Schedule page
+    '#schedule-confirm-from-timetable',
+    'button[data-actual-add-duty-id]'
   ];
   const editSelectors = [
     '[data-action="edit"]',
     '[data-duty-action="edit"]',
     '[data-action="duplicate"]',
-    '[data-duty-action="duplicate"]'
+    '[data-duty-action="duplicate"]',
+
+    // Schedule page
+    'button[data-actual-edit-id]',
+    'button[data-actual-drag-id]',
+    '#schedule-actual-edit-save'
   ];
-  const deleteSelectors = ['[data-action="delete"]', '[data-duty-action="delete"]'];
+  const deleteSelectors = [
+    '[data-action="delete"]',
+    '[data-duty-action="delete"]',
+
+    // Bulk delete buttons
+    '#open-bulk-delete-planned-duty',
+    '#open-bulk-delete-actual-duty'
+  ];
 
   const applyDisabledState = () => {
     if (lockCreate) {
-      container.querySelectorAll(createSelectors.join(',')).forEach((button) => disableButton(button, true));
+      container.querySelectorAll(createSelectors.join(',')).forEach((element) => setElementPermissionHidden(element, true));
     }
 
     if (lockEdit) {
-      container.querySelectorAll(editSelectors.join(',')).forEach((button) => disableButton(button, true));
+      container.querySelectorAll(editSelectors.join(',')).forEach((element) => setElementPermissionHidden(element, true));
     }
 
     if (lockDelete) {
-      container.querySelectorAll(deleteSelectors.join(',')).forEach((button) => disableButton(button, true));
+      container.querySelectorAll(deleteSelectors.join(',')).forEach((element) => setElementPermissionHidden(element, true));
+    }
+
+    if (!lockCreate) {
+      container.querySelectorAll(createSelectors.join(',')).forEach((element) => setElementPermissionHidden(element, false));
+    }
+
+    if (!lockEdit) {
+      container.querySelectorAll(editSelectors.join(',')).forEach((element) => setElementPermissionHidden(element, false));
+    }
+
+    if (!lockDelete) {
+      container.querySelectorAll(deleteSelectors.join(',')).forEach((element) => setElementPermissionHidden(element, false));
     }
   };
 

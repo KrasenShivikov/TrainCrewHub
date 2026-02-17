@@ -5,6 +5,8 @@ export const actualDutiesState = {
   roleFilter: '',
   selectedIds: [],
   visibleRowIds: [],
+  selectionEnabled: true,
+  crewEditTimeOnly: false,
   plannedRows: [],
   plannedSearchQuery: '',
   plannedDateFilter: '',

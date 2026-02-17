@@ -5,11 +5,17 @@ import { calculateShiftDurationMinutes } from '../../../utils/dutyTime.js';
 import { closeModal, escapeHtml, openModal, setupModalEscapeHandler } from './helpers.js';
 import { actualDutiesState } from './state.js';
 import { loadActualDuties, renderActualDutiesTable } from './table.js';
+import { isCurrentUserCrew } from '../../../utils/userContext.js';
 
 let dutiesLookup = [];
 
 export async function renderActualDutiesPage(container) {
   container.innerHTML = pageHtml;
+
+  const isCrew = await isCurrentUserCrew();
+  actualDutiesState.selectionEnabled = !isCrew;
+  actualDutiesState.crewEditTimeOnly = isCrew;
+  applyActualDutiesCrewLayout(container);
 
   const dateFromQuery = getDateFromQuery();
   const dateFilterInput = container.querySelector('#actual-duties-date-filter');
@@ -23,6 +29,36 @@ export async function renderActualDutiesPage(container) {
   await loadScheduleKeyOptions(container);
   await loadDutyOptions(container);
   await loadActualDuties(container);
+}
+
+function applyActualDutiesCrewLayout(container) {
+  if (actualDutiesState.selectionEnabled) {
+    return;
+  }
+
+  container.querySelector('#open-bulk-delete-actual-duty')?.classList.add('d-none');
+  container.querySelector('#actual-duties-select-all')?.closest('th')?.classList.add('d-none');
+}
+
+function setCrewEditTimeOnlyLayout(container, enabled) {
+  const fieldIdsToHide = [
+    'actual-duty-date',
+    'actual-duty-employee',
+    'actual-duty-schedule-key',
+    'actual-duty-duty',
+    'actual-duty-assignment-role'
+  ];
+
+  fieldIdsToHide.forEach((id) => {
+    const input = container.querySelector(`#${id}`);
+    const wrap = input?.closest('.col-md-4') || input?.closest('.col-md-3') || input?.closest('.col-12');
+    if (wrap) {
+      wrap.classList.toggle('d-none', enabled);
+    }
+    if (input) {
+      input.disabled = enabled;
+    }
+  });
 }
 
 function attachActualDutiesHandlers(container) {
@@ -62,10 +98,15 @@ function attachActualDutiesHandlers(container) {
 
   createButton?.addEventListener('click', () => {
     resetActualDutyForm(container);
+    setCrewEditTimeOnlyLayout(container, false);
     openModal(actualDutyModal);
   });
 
   bulkDeleteButton?.addEventListener('click', () => {
+    if (!actualDutiesState.selectionEnabled) {
+      return;
+    }
+
     if (!actualDutiesState.selectedIds.length) {
       showToast('Избери поне един запис за изтриване.', 'warning');
       return;
@@ -185,6 +226,10 @@ function attachActualDutiesHandlers(container) {
   });
 
   selectAllInput?.addEventListener('change', () => {
+    if (!actualDutiesState.selectionEnabled) {
+      return;
+    }
+
     const visibleIds = actualDutiesState.visibleRowIds || [];
     if (selectAllInput.checked) {
       const next = new Set(actualDutiesState.selectedIds);
@@ -261,6 +306,10 @@ function attachActualDutiesHandlers(container) {
   });
 
   tableBody?.addEventListener('change', (event) => {
+    if (!actualDutiesState.selectionEnabled) {
+      return;
+    }
+
     const checkbox = event.target.closest('input[data-select-id]');
     if (!checkbox) {
       return;
@@ -312,6 +361,12 @@ function attachActualDutiesHandlers(container) {
         dutyBreakStartTime: actionButton.getAttribute('data-duty-break-start-time') || '',
         dutyBreakEndTime: actionButton.getAttribute('data-duty-break-end-time') || ''
       });
+
+      if (actualDutiesState.crewEditTimeOnly) {
+        setCrewEditTimeOnlyLayout(container, true);
+      } else {
+        setCrewEditTimeOnlyLayout(container, false);
+      }
       openModal(actualDutyModal);
       return;
     }
@@ -554,19 +609,28 @@ async function saveActualDuty(container) {
   const breakEndTime = normalizeInputTime(breakEndTimeInput?.value || '', '00:00');
   const editingId = idInput.value;
 
-  if (!date || !employeeId || !scheduleKeyId || !dutyId || !startTime || !endTime) {
-    showToast('Моля, попълни всички полета.', 'warning');
-    return;
-  }
+  const isCrewTimeOnlyEdit = Boolean(editingId) && actualDutiesState.crewEditTimeOnly;
 
-  if (!isDutyForScheduleKey(dutyId, scheduleKeyId)) {
-    showToast('Избери повеска от посочения ключ-график.', 'warning');
-    return;
-  }
+  if (isCrewTimeOnlyEdit) {
+    if (!startTime || !endTime) {
+      showToast('Моля, попълни Начало и Край.', 'warning');
+      return;
+    }
+  } else {
+    if (!date || !employeeId || !scheduleKeyId || !dutyId || !startTime || !endTime) {
+      showToast('Моля, попълни всички полета.', 'warning');
+      return;
+    }
 
-  if (!['chief', 'conductor'].includes(assignmentRole)) {
-    showToast('Невалидна роля. Избери Кондуктор или Началник влак.', 'warning');
-    return;
+    if (!isDutyForScheduleKey(dutyId, scheduleKeyId)) {
+      showToast('Избери повеска от посочения ключ-график.', 'warning');
+      return;
+    }
+
+    if (!['chief', 'conductor'].includes(assignmentRole)) {
+      showToast('Невалидна роля. Избери Кондуктор или Началник влак.', 'warning');
+      return;
+    }
   }
 
   const shiftDurationMinutes = calculateShiftDurationMinutes(startTime, endTime);
@@ -580,16 +644,23 @@ async function saveActualDuty(container) {
   saveButton.disabled = true;
   saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Запис...';
 
-  const payload = {
-    date,
-    employee_id: employeeId,
-    duty_id: dutyId,
-    assignment_role: assignmentRole,
-    start_time_override: inputTimeToDb(startTime),
-    end_time_override: inputTimeToDb(endTime),
-    break_start_time_override: inputTimeToDb(breakStartTime),
-    break_end_time_override: inputTimeToDb(breakEndTime)
-  };
+  const payload = isCrewTimeOnlyEdit
+    ? {
+      start_time_override: inputTimeToDb(startTime),
+      end_time_override: inputTimeToDb(endTime),
+      break_start_time_override: inputTimeToDb(breakStartTime),
+      break_end_time_override: inputTimeToDb(breakEndTime)
+    }
+    : {
+      date,
+      employee_id: employeeId,
+      duty_id: dutyId,
+      assignment_role: assignmentRole,
+      start_time_override: inputTimeToDb(startTime),
+      end_time_override: inputTimeToDb(endTime),
+      break_start_time_override: inputTimeToDb(breakStartTime),
+      break_end_time_override: inputTimeToDb(breakEndTime)
+    };
 
   let error;
 

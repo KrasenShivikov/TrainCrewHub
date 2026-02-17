@@ -35,6 +35,12 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
   const bulkDeleteButton = container.querySelector('#open-bulk-delete-planned-duty');
   const addToActualButton = container.querySelector('#add-selected-to-actual-duty');
 
+  const selectionEnabled = plannedDutiesState.selectionEnabled !== false;
+
+  if (!selectionEnabled) {
+    plannedDutiesState.selectedIds = [];
+  }
+
   plannedDutiesState.selectedIds = plannedDutiesState.selectedIds.filter((id) =>
     plannedDutiesState.rows.some((row) => row.id === id)
   );
@@ -64,16 +70,17 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
     if (selectAllInput) {
       selectAllInput.checked = false;
       selectAllInput.indeterminate = false;
-      selectAllInput.disabled = true;
+      selectAllInput.disabled = !selectionEnabled;
+      selectAllInput.closest('th')?.classList.toggle('d-none', !selectionEnabled);
     }
     if (bulkDeleteButton) {
-      bulkDeleteButton.disabled = plannedDutiesState.selectedIds.length === 0;
+      bulkDeleteButton.disabled = !selectionEnabled || plannedDutiesState.selectedIds.length === 0;
       bulkDeleteButton.textContent = plannedDutiesState.selectedIds.length
         ? `Изтрий избраните (${plannedDutiesState.selectedIds.length})`
         : 'Изтрий избраните';
     }
     if (addToActualButton) {
-      addToActualButton.disabled = plannedDutiesState.selectedIds.length === 0;
+      addToActualButton.disabled = !selectionEnabled || plannedDutiesState.selectedIds.length === 0;
       addToActualButton.textContent = plannedDutiesState.selectedIds.length
         ? `Към Актуални (${plannedDutiesState.selectedIds.length})`
         : 'Към Актуални';
@@ -84,13 +91,19 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
   plannedDutiesState.visibleRowIds = filteredRows.map((row) => row.id);
 
   emptyState.classList.add('d-none');
+  if (selectAllInput) {
+    selectAllInput.disabled = !selectionEnabled;
+    selectAllInput.closest('th')?.classList.toggle('d-none', !selectionEnabled);
+  }
+
   tableBody.innerHTML = filteredRows
     .map(
       (item) => {
         const dutyScheduleKeyId = getFirstDutyScheduleKeyId(item);
-        const isSelected = plannedDutiesState.selectedIds.includes(item.id);
+        const isSelected = selectionEnabled && plannedDutiesState.selectedIds.includes(item.id);
         return `
         <tr>
+          ${selectionEnabled ? `
           <td>
             <input
               type="checkbox"
@@ -100,6 +113,7 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
               aria-label="Избери планиране"
             />
           </td>
+          ` : ''}
           <td>${escapeHtml(item.date ?? '-')}</td>
           <td>${escapeHtml(getEmployeeFullName(item.employees))}</td>
           <td>${escapeHtml(getAssignmentRoleLabel(item.assignment_role))}</td>
@@ -137,20 +151,20 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
 
   const selectedVisibleCount = filteredRows.filter((row) => plannedDutiesState.selectedIds.includes(row.id)).length;
   if (selectAllInput) {
-    selectAllInput.disabled = false;
-    selectAllInput.checked = selectedVisibleCount > 0 && selectedVisibleCount === filteredRows.length;
-    selectAllInput.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < filteredRows.length;
+    selectAllInput.disabled = !selectionEnabled;
+    selectAllInput.checked = selectionEnabled && selectedVisibleCount > 0 && selectedVisibleCount === filteredRows.length;
+    selectAllInput.indeterminate = selectionEnabled && selectedVisibleCount > 0 && selectedVisibleCount < filteredRows.length;
   }
 
   if (bulkDeleteButton) {
-    bulkDeleteButton.disabled = plannedDutiesState.selectedIds.length === 0;
+    bulkDeleteButton.disabled = !selectionEnabled || plannedDutiesState.selectedIds.length === 0;
     bulkDeleteButton.textContent = plannedDutiesState.selectedIds.length
       ? `Изтрий избраните (${plannedDutiesState.selectedIds.length})`
       : 'Изтрий избраните';
   }
 
   if (addToActualButton) {
-    addToActualButton.disabled = plannedDutiesState.selectedIds.length === 0;
+    addToActualButton.disabled = !selectionEnabled || plannedDutiesState.selectedIds.length === 0;
     addToActualButton.textContent = plannedDutiesState.selectedIds.length
       ? `Към Актуални (${plannedDutiesState.selectedIds.length})`
       : 'Към Актуални';

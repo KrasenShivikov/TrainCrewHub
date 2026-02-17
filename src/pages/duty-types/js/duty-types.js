@@ -4,11 +4,23 @@ import { showToast } from '../../../components/toast/toast.js';
 import { closeModal, openModal, setupModalEscapeHandler } from './helpers.js';
 import { dutyTypesState } from './state.js';
 import { loadDutyTypes, renderDutyTypesTable } from './table.js';
+import { isCurrentUserCrew } from '../../../utils/userContext.js';
 
 export async function renderDutyTypesPage(container) {
   container.innerHTML = pageHtml;
+  dutyTypesState.actionsEnabled = !(await isCurrentUserCrew());
+  applyDutyTypesCrewLayout(container);
   attachDutyTypesHandlers(container);
   await loadDutyTypes(container);
+}
+
+function applyDutyTypesCrewLayout(container) {
+  if (dutyTypesState.actionsEnabled) {
+    return;
+  }
+
+  container.querySelector('#open-create-duty-type')?.classList.add('d-none');
+  container.querySelector('thead th.text-end')?.classList.add('d-none');
 }
 
 function attachDutyTypesHandlers(container) {

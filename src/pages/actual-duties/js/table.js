@@ -34,6 +34,12 @@ export function renderActualDutiesTable(container, explicitEmptyMessage) {
   const selectAllInput = container.querySelector('#actual-duties-select-all');
   const bulkDeleteButton = container.querySelector('#open-bulk-delete-actual-duty');
 
+  const selectionEnabled = actualDutiesState.selectionEnabled !== false;
+
+  if (!selectionEnabled) {
+    actualDutiesState.selectedIds = [];
+  }
+
   actualDutiesState.selectedIds = actualDutiesState.selectedIds.filter((id) =>
     actualDutiesState.rows.some((row) => row.id === id)
   );
@@ -64,11 +70,12 @@ export function renderActualDutiesTable(container, explicitEmptyMessage) {
     if (selectAllInput) {
       selectAllInput.checked = false;
       selectAllInput.indeterminate = false;
-      selectAllInput.disabled = true;
+      selectAllInput.disabled = !selectionEnabled;
+      selectAllInput.closest('th')?.classList.toggle('d-none', !selectionEnabled);
     }
 
     if (bulkDeleteButton) {
-      bulkDeleteButton.disabled = actualDutiesState.selectedIds.length === 0;
+      bulkDeleteButton.disabled = !selectionEnabled || actualDutiesState.selectedIds.length === 0;
       bulkDeleteButton.textContent = actualDutiesState.selectedIds.length
         ? `Изтрий избраните (${actualDutiesState.selectedIds.length})`
         : 'Изтрий избраните';
@@ -80,13 +87,20 @@ export function renderActualDutiesTable(container, explicitEmptyMessage) {
   actualDutiesState.visibleRowIds = filteredRows.map((row) => row.id);
 
   emptyState.classList.add('d-none');
+
+  if (selectAllInput) {
+    selectAllInput.disabled = !selectionEnabled;
+    selectAllInput.closest('th')?.classList.toggle('d-none', !selectionEnabled);
+  }
+
   tableBody.innerHTML = filteredRows
     .map((item) => {
       const dutyScheduleKeyId = getFirstDutyScheduleKeyId(item);
-      const isSelected = actualDutiesState.selectedIds.includes(item.id);
+      const isSelected = selectionEnabled && actualDutiesState.selectedIds.includes(item.id);
 
       return `
         <tr>
+          ${selectionEnabled ? `
           <td>
             <input
               type="checkbox"
@@ -96,6 +110,7 @@ export function renderActualDutiesTable(container, explicitEmptyMessage) {
               aria-label="Избери запис"
             />
           </td>
+          ` : ''}
           <td>${escapeHtml(item.date ?? '-')}</td>
           <td>${escapeHtml(getEmployeeFullName(item.employees))}</td>
           <td>${escapeHtml(getAssignmentRoleLabel(item.assignment_role))}</td>
@@ -149,13 +164,13 @@ export function renderActualDutiesTable(container, explicitEmptyMessage) {
   const selectedVisibleCount = filteredRows.filter((row) => actualDutiesState.selectedIds.includes(row.id)).length;
 
   if (selectAllInput) {
-    selectAllInput.disabled = false;
-    selectAllInput.checked = selectedVisibleCount > 0 && selectedVisibleCount === filteredRows.length;
-    selectAllInput.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < filteredRows.length;
+    selectAllInput.disabled = !selectionEnabled;
+    selectAllInput.checked = selectionEnabled && selectedVisibleCount > 0 && selectedVisibleCount === filteredRows.length;
+    selectAllInput.indeterminate = selectionEnabled && selectedVisibleCount > 0 && selectedVisibleCount < filteredRows.length;
   }
 
   if (bulkDeleteButton) {
-    bulkDeleteButton.disabled = actualDutiesState.selectedIds.length === 0;
+    bulkDeleteButton.disabled = !selectionEnabled || actualDutiesState.selectedIds.length === 0;
     bulkDeleteButton.textContent = actualDutiesState.selectedIds.length
       ? `Изтрий избраните (${actualDutiesState.selectedIds.length})`
       : 'Изтрий избраните';

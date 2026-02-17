@@ -6,5 +6,6 @@ export const dutiesState = {
   scheduleKeyFilter: '',
   dutyTypeFilter: '',
   currentPage: 1,
-  draggedDutyId: null
+  draggedDutyId: null,
+  reorderEnabled: true
 };

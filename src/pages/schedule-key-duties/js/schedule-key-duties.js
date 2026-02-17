@@ -21,9 +21,11 @@ import {
   persistScheduleKeyDutiesOrder,
   renderScheduleKeyDutiesTable
 } from './table.js';
+import { isCurrentUserCrew } from '../../../utils/userContext.js';
 
 export async function renderScheduleKeyDutiesPage(container) {
   container.innerHTML = pageHtml;
+  scheduleKeyDutiesState.reorderEnabled = !(await isCurrentUserCrew());
   initializeScheduleKeyFormFields(container);
   attachScheduleKeyDutiesHandlers(container);
   await loadDutyTypeOptions(container);
@@ -133,6 +135,10 @@ function attachScheduleKeyDutiesHandlers(container) {
   ]);
 
   dutiesBody?.addEventListener('dragstart', (event) => {
+    if (!scheduleKeyDutiesState.reorderEnabled) {
+      return;
+    }
+
     const row = event.target.closest('tr[data-duty-id]');
     if (!row) {
       return;
@@ -143,6 +149,10 @@ function attachScheduleKeyDutiesHandlers(container) {
   });
 
   dutiesBody?.addEventListener('dragend', (event) => {
+    if (!scheduleKeyDutiesState.reorderEnabled) {
+      return;
+    }
+
     const row = event.target.closest('tr[data-duty-id]');
     if (row) {
       row.classList.remove('table-active');
@@ -151,10 +161,18 @@ function attachScheduleKeyDutiesHandlers(container) {
   });
 
   dutiesBody?.addEventListener('dragover', (event) => {
+    if (!scheduleKeyDutiesState.reorderEnabled) {
+      return;
+    }
+
     event.preventDefault();
   });
 
   dutiesBody?.addEventListener('drop', async (event) => {
+    if (!scheduleKeyDutiesState.reorderEnabled) {
+      return;
+    }
+
     event.preventDefault();
 
     const targetRow = event.target.closest('tr[data-duty-id]');

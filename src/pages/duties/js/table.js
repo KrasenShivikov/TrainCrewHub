@@ -91,6 +91,8 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
   const endIndex = startIndex + PAGE_SIZE;
   const pagedDuties = filteredDuties.slice(startIndex, endIndex);
 
+  const reorderEnabled = dutiesState.reorderEnabled !== false;
+
   tableBody.innerHTML = pagedDuties
     .map(
       (item) => {
@@ -103,8 +105,8 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
           ? `<span class="badge text-bg-secondary" title="Прикачени файлове">${attachmentCount} док.</span>`
           : '';
         return `
-        <tr data-duty-id="${item.id}" draggable="true">
-          <td class="text-secondary">↕</td>
+        <tr data-duty-id="${item.id}" draggable="${reorderEnabled ? 'true' : 'false'}">
+          <td class="text-secondary">${reorderEnabled ? '↕' : ''}</td>
           <td>
             <div class="d-flex align-items-center gap-2 flex-wrap">
               ${multiScheduleBadge}

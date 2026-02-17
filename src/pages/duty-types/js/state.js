@@ -1,4 +1,5 @@
 export const dutyTypesState = {
   rows: [],
-  searchQuery: ''
+  searchQuery: '',
+  actionsEnabled: true
 };

@@ -4,5 +4,6 @@ export const plannedDutiesState = {
   dateFilter: '',
   roleFilter: '',
   selectedIds: [],
-  visibleRowIds: []
+  visibleRowIds: [],
+  selectionEnabled: true
 };

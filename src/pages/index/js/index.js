@@ -4,7 +4,7 @@ import { showToast } from '../../../components/toast/toast.js';
 import { calculateShiftDurationMinutes, intervalToTimeInput } from '../../../utils/dutyTime.js';
 import { loadAdminDashboardSnapshot } from './admin-panel.js';
 import { createHeadOfTransportController } from './head-of-transport.js';
-import { isCrewRole, isTransportAnalyticsMode, resolveUserMode } from './role-mode.js';
+import { isCrewRole, isTransportAnalyticsMode, resolveUserMode } from '../../../utils/roleMode.js';
 import { attachCrewHandlers } from './crew-panel.js';
 import { createCrewSnapshotController } from './crew-snapshot.js';
 import { createCrewViewController } from './crew-view.js';
