@@ -24,9 +24,6 @@ import {
   applyResourceActionGuards,
   canViewResourceScreen,
   clearResourceActionGuards,
-  getResourceDisplayName,
-  getResourceScopes,
-  isPermissionBannerEnabled,
   resetPermissionCache
 } from './utils/permissions.js';
 
@@ -129,68 +126,6 @@ const routes = {
 };
 
 const contentRootId = 'page-content';
-
-const SCOPE_LABELS = {
-  none: 'без достъп',
-  all: 'всички',
-  own: 'собствени',
-  role_attached_employees: 'към прикачени служители по роля'
-};
-
-function getScopeBadgeClass(scope) {
-  if (scope === 'all') {
-    return 'text-bg-success';
-  }
-
-  if (scope === 'own' || scope === 'role_attached_employees') {
-    return 'text-bg-warning';
-  }
-
-  return 'text-bg-secondary';
-}
-
-async function renderResourceScopeBanner(contentRoot, resource) {
-  if (!contentRoot || !resource) {
-    return;
-  }
-
-  if (!isPermissionBannerEnabled()) {
-    return;
-  }
-
-  const scopes = await getResourceScopes(resource);
-  const resourceLabel = getResourceDisplayName(resource);
-  const rows = [
-    { label: 'Екран', key: 'view_screen' },
-    { label: 'Виж записи', key: 'view_records' },
-    { label: 'Създаване', key: 'create_records' },
-    { label: 'Редакция', key: 'edit_records' },
-    { label: 'Изтриване', key: 'delete_records' }
-  ];
-
-  const badges = rows
-    .map(({ label, key }) => {
-      const scope = scopes[key] || 'none';
-      const scopeLabel = SCOPE_LABELS[scope] || scope;
-      const badgeClass = getScopeBadgeClass(scope);
-      return `
-        <span class="me-3 mb-2 d-inline-flex align-items-center gap-2">
-          <span class="text-secondary small">${label}:</span>
-          <span class="badge ${badgeClass}">${scopeLabel}</span>
-        </span>
-      `;
-    })
-    .join('');
-
-  const banner = document.createElement('div');
-  banner.className = 'alert alert-light border d-flex flex-wrap align-items-center gap-1 mb-3';
-  banner.innerHTML = `
-    <span class="fw-semibold me-2">Права за ${resourceLabel}</span>
-    ${badges}
-  `;
-
-  contentRoot.prepend(banner);
-}
 
 function getRouteConfig(pathname) {
   return routes[pathname] ?? routes['/'];
@@ -295,7 +230,6 @@ async function renderCurrentRoute() {
   document.title = config.title;
   await config.render(contentRoot);
   if (config.resource) {
-    await renderResourceScopeBanner(contentRoot, config.resource);
     await applyResourceActionGuards(contentRoot, config.resource);
   }
   window.dispatchEvent(new CustomEvent('route:changed', { detail: { pathname: resolvedPath } }));

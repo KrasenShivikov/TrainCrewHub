@@ -1,7 +1,6 @@
 import pageHtml from '../admin.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
-import { isPermissionBannerEnabled, setPermissionBannerEnabled } from '../../../utils/permissions.js';
 import { getResourceDisplayName } from '../../../utils/permissions.js';
 import { adminState } from './state.js';
 import { getRoleLabel } from './helpers.js';
@@ -29,11 +28,7 @@ let pendingRoleWarningAction = null;
 
 export async function renderAdminPage(container) {
   container.innerHTML = pageHtml;
-  const bannerToggle = container.querySelector('#admin-permissions-banner-toggle');
   const permissionsRoleSelect = container.querySelector('#admin-permissions-role');
-  if (bannerToggle) {
-    bannerToggle.checked = isPermissionBannerEnabled();
-  }
   if (permissionsRoleSelect) {
     permissionsRoleSelect.value = adminState.permissionsRole;
   }
@@ -67,7 +62,6 @@ function attachAdminHandlers(container) {
   const unlinkButton = container.querySelector('#admin-profile-link-clear');
   const permissionsForm = container.querySelector('#admin-permissions-form');
   const permissionsRoleSelect = container.querySelector('#admin-permissions-role');
-  const bannerToggle = container.querySelector('#admin-permissions-banner-toggle');
   const rolesBody = container.querySelector('#admin-roles-body');
   const roleCatalogBody = container.querySelector('#admin-role-catalog-body');
   const profilesBody = container.querySelector('#admin-profiles-body');
@@ -162,11 +156,6 @@ function attachAdminHandlers(container) {
     const nextRole = event.target.value || 'admin';
     adminState.permissionsRole = nextRole;
     await loadPermissionsForRole(container, nextRole);
-  });
-
-  bannerToggle?.addEventListener('change', (event) => {
-    setPermissionBannerEnabled(Boolean(event.target?.checked));
-    showToast('Настройката за индикатора е запазена.', 'success');
   });
 
   rolesBody?.addEventListener('click', async (event) => {

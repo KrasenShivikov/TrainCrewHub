@@ -1,7 +1,7 @@
 import { supabase } from '../services/supabaseClient.js';
 import { showToast } from '../components/toast/toast.js';
 
-const PERMISSION_BANNER_PREFERENCE_KEY = 'traincrewhub_permission_banner_enabled';
+// Permission banner feature removed.
 
 const RESOURCE_LABELS_BG = {
   page_plan_schedule: 'Страница План-График',
@@ -316,23 +316,3 @@ export function getResourceDisplayName(resource) {
   return RESOURCE_LABELS_BG[normalizedResource] || normalizedResource;
 }
 
-export function isPermissionBannerEnabled() {
-  try {
-    const value = localStorage.getItem(PERMISSION_BANNER_PREFERENCE_KEY);
-    if (value === null) {
-      return true;
-    }
-
-    return value === 'true';
-  } catch {
-    return true;
-  }
-}
-
-export function setPermissionBannerEnabled(enabled) {
-  try {
-    localStorage.setItem(PERMISSION_BANNER_PREFERENCE_KEY, String(Boolean(enabled)));
-  } catch {
-    // noop
-  }
-}
