@@ -3,6 +3,10 @@
     <div class="d-flex justify-content-between align-items-center mb-3 no-print">
       <h1 class="h3 mb-0">Разпределение</h1>
       <div class="d-flex gap-2">
+        <button id="schedule-confirm-from-timetable" type="button" class="btn btn-primary">
+          Потвърди от разписание
+          <span id="schedule-confirm-required-badge" class="badge text-bg-warning ms-2 d-none">Нужно е повторно потвърждение</span>
+        </button>
         <button id="schedule-go-to-actual" type="button" class="btn btn-outline-secondary">Към Реални повески</button>
         <button id="schedule-print" type="button" class="btn btn-outline-secondary">Печат</button>
       </div>
@@ -14,6 +18,7 @@
       <div class="col-md-4">
         <label for="schedule-date" class="form-label">Дата</label>
         <input id="schedule-date" type="date" class="form-control" />
+        <div id="schedule-publication-status" class="form-text mt-2">Статус: непотвърдено</div>
       </div>
       <div class="col-md-3">
         <label for="schedule-print-orientation" class="form-label">Ориентация за печат</label>

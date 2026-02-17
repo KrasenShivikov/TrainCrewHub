@@ -315,11 +315,11 @@ async function saveDuty(container) {
   const dutyTypeInput = container.querySelector('#duty-type');
   const scheduleKeysInput = container.querySelector('#duty-schedule-keys');
   const trainsInput = container.querySelector('#duty-trains');
-  const startTimeInput = container.querySelector('#duty-start-time');
-  const endTimeInput = container.querySelector('#duty-end-time');
+  const startTimeInput = getDutyField(container, '#duty-start', '#duty-start-time');
+  const endTimeInput = getDutyField(container, '#duty-end', '#duty-end-time');
   const secondDayInput = container.querySelector('#duty-second-day');
-  const breakStartInput = container.querySelector('#duty-break-start-time');
-  const breakEndInput = container.querySelector('#duty-break-end-time');
+  const breakStartInput = getDutyField(container, '#duty-break-start', '#duty-break-start-time');
+  const breakEndInput = getDutyField(container, '#duty-break-end', '#duty-break-end-time');
   const notesInput = container.querySelector('#duty-notes');
   const saveButton = container.querySelector('#duty-save-btn');
 
@@ -332,11 +332,11 @@ async function saveDuty(container) {
     .map((option) => option.value)
     .filter(Boolean);
   const primaryScheduleKeyId = selectedScheduleKeyIds[0] || null;
-  const startTime = startTimeInput.value;
-  const endTime = endTimeInput.value;
+  const startTime = startTimeInput?.value || '';
+  const endTime = endTimeInput?.value || '';
   const secondDay = secondDayInput.checked;
-  const breakStartTime = breakStartInput.value;
-  const breakEndTime = breakEndInput.value;
+  const breakStartTime = breakStartInput?.value || '00:00';
+  const breakEndTime = breakEndInput?.value || '00:00';
   const notes = notesInput.value.trim() || null;
   const editingId = idInput.value;
 
@@ -380,7 +380,7 @@ async function saveDuty(container) {
     ({ error } = await supabase.from('duties').update(payload).eq('id', editingId));
   } else {
     const { data: userData } = await supabase.auth.getUser();
-    const createdFrom = userData?.user?.email ?? 'web_app';
+    const createdFrom = userData?.user?.id ?? userData?.user?.email ?? 'web_app';
     const maxDisplayOrder = dutiesState.allDuties.reduce(
       (maxValue, item) => Math.max(maxValue, Number(item.display_order) || 0),
       0
@@ -431,11 +431,11 @@ function populateDutyForm(container, duty) {
   Array.from(trainsSelect.options).forEach((option) => {
     option.selected = selectedTrainIds.includes(option.value);
   });
-  container.querySelector('#duty-start-time').value = duty.startTime ?? '';
-  container.querySelector('#duty-end-time').value = duty.endTime ?? '';
+  setDutyFieldValue(container, duty.startTime ?? '', '#duty-start', '#duty-start-time');
+  setDutyFieldValue(container, duty.endTime ?? '', '#duty-end', '#duty-end-time');
   container.querySelector('#duty-second-day').checked = Boolean(duty.secondDay);
-  container.querySelector('#duty-break-start-time').value = intervalToTimeInput(duty.breakStartTime);
-  container.querySelector('#duty-break-end-time').value = intervalToTimeInput(duty.breakEndTime);
+  setDutyFieldValue(container, intervalToTimeInput(duty.breakStartTime), '#duty-break-start', '#duty-break-start-time');
+  setDutyFieldValue(container, intervalToTimeInput(duty.breakEndTime), '#duty-break-end', '#duty-break-end-time');
   container.querySelector('#duty-notes').value = duty.notes ?? '';
 
   container.querySelector('#duty-form-title').textContent = 'Редакция на Повеска';
@@ -454,11 +454,11 @@ function resetDutyForm(container) {
   Array.from(trainsSelect.options).forEach((option) => {
     option.selected = false;
   });
-  container.querySelector('#duty-start-time').value = '';
-  container.querySelector('#duty-end-time').value = '';
+  setDutyFieldValue(container, '', '#duty-start', '#duty-start-time');
+  setDutyFieldValue(container, '', '#duty-end', '#duty-end-time');
   container.querySelector('#duty-second-day').checked = false;
-  container.querySelector('#duty-break-start-time').value = '00:00';
-  container.querySelector('#duty-break-end-time').value = '00:00';
+  setDutyFieldValue(container, '00:00', '#duty-break-start', '#duty-break-start-time');
+  setDutyFieldValue(container, '00:00', '#duty-break-end', '#duty-break-end-time');
   container.querySelector('#duty-notes').value = '';
 
   container.querySelector('#duty-form-title').textContent = 'Нова Повеска';
@@ -722,6 +722,26 @@ function normalizeTime(value) {
   }
 
   return String(value).slice(0, 5);
+}
+
+function getDutyField(container, ...selectors) {
+  for (const selector of selectors) {
+    const field = container.querySelector(selector);
+    if (field) {
+      return field;
+    }
+  }
+
+  return null;
+}
+
+function setDutyFieldValue(container, value, ...selectors) {
+  const field = getDutyField(container, ...selectors);
+  if (!field) {
+    return;
+  }
+
+  field.value = value;
 }
 
 function formatInterval(value) {

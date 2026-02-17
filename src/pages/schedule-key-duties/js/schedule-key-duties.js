@@ -316,11 +316,27 @@ async function saveDutyForScheduleKey(container) {
   const nameInput = container.querySelector('#schedule-key-duty-create-name');
   const dutyTypeInput = container.querySelector('#schedule-key-duty-create-type');
   const scheduleKeysInput = container.querySelector('#schedule-key-duty-create-schedule-keys');
-  const startInput = container.querySelector('#schedule-key-duty-create-start');
-  const endInput = container.querySelector('#schedule-key-duty-create-end');
+  const startInput = getDutyField(
+    container,
+    '#schedule-key-duty-create-start',
+    '#schedule-key-duty-create-start-time'
+  );
+  const endInput = getDutyField(
+    container,
+    '#schedule-key-duty-create-end',
+    '#schedule-key-duty-create-end-time'
+  );
   const secondDayInput = container.querySelector('#schedule-key-duty-create-second-day');
-  const breakStartInput = container.querySelector('#schedule-key-duty-create-break-start');
-  const breakEndInput = container.querySelector('#schedule-key-duty-create-break-end');
+  const breakStartInput = getDutyField(
+    container,
+    '#schedule-key-duty-create-break-start',
+    '#schedule-key-duty-create-break-start-time'
+  );
+  const breakEndInput = getDutyField(
+    container,
+    '#schedule-key-duty-create-break-end',
+    '#schedule-key-duty-create-break-end-time'
+  );
   const trainsInput = container.querySelector('#schedule-key-duty-create-trains');
   const saveButton = container.querySelector('#schedule-key-duty-create-save');
 
@@ -330,11 +346,11 @@ async function saveDutyForScheduleKey(container) {
     .map((option) => option.value)
     .filter(Boolean);
   const primaryScheduleKeyId = selectedScheduleKeyIds[0] || null;
-  const startTime = startInput.value;
-  const endTime = endInput.value;
+  const startTime = startInput?.value || '';
+  const endTime = endInput?.value || '';
   const secondDay = secondDayInput.checked;
-  const breakStartTime = breakStartInput.value;
-  const breakEndTime = breakEndInput.value;
+  const breakStartTime = breakStartInput?.value || '00:00';
+  const breakEndTime = breakEndInput?.value || '00:00';
   const notes = container.querySelector('#schedule-key-duty-create-notes').value.trim() || null;
   const selectedTrainIds = Array.from(trainsInput.selectedOptions || [])
     .map((option) => option.value)
@@ -362,7 +378,7 @@ async function saveDutyForScheduleKey(container) {
   saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Добавяне...';
 
   const { data: userData } = await supabase.auth.getUser();
-  const createdFrom = userData?.user?.email ?? 'web_app';
+  const createdFrom = userData?.user?.id ?? userData?.user?.email ?? 'web_app';
   const maxDisplayOrder = scheduleKeyDutiesState.duties.reduce(
     (maxValue, item) => Math.max(maxValue, Number(item.display_order) || 0),
     0
@@ -430,11 +446,31 @@ function openEditDutyModal(container, dutyId) {
   Array.from(trainsSelect.options).forEach((option) => {
     option.selected = selectedTrainIds.includes(option.value);
   });
-  container.querySelector('#schedule-key-duty-edit-start').value = (duty.start_time || '').slice(0, 5);
-  container.querySelector('#schedule-key-duty-edit-end').value = (duty.end_time || '').slice(0, 5);
+  setDutyFieldValue(
+    container,
+    (duty.start_time || '').slice(0, 5),
+    '#schedule-key-duty-edit-start',
+    '#schedule-key-duty-edit-start-time'
+  );
+  setDutyFieldValue(
+    container,
+    (duty.end_time || '').slice(0, 5),
+    '#schedule-key-duty-edit-end',
+    '#schedule-key-duty-edit-end-time'
+  );
   container.querySelector('#schedule-key-duty-edit-second-day').checked = Boolean(duty.second_day);
-  container.querySelector('#schedule-key-duty-edit-break-start').value = intervalToTimeInput(duty.break_start_time);
-  container.querySelector('#schedule-key-duty-edit-break-end').value = intervalToTimeInput(duty.break_end_time);
+  setDutyFieldValue(
+    container,
+    intervalToTimeInput(duty.break_start_time),
+    '#schedule-key-duty-edit-break-start',
+    '#schedule-key-duty-edit-break-start-time'
+  );
+  setDutyFieldValue(
+    container,
+    intervalToTimeInput(duty.break_end_time),
+    '#schedule-key-duty-edit-break-end',
+    '#schedule-key-duty-edit-break-end-time'
+  );
   container.querySelector('#schedule-key-duty-edit-notes').value = duty.notes ?? '';
   openModal(container.querySelector('#schedule-key-duty-edit-modal'));
 }
@@ -453,11 +489,21 @@ function resetCreateDutyForm(container) {
     option.selected = rememberedScheduleKeyIds.includes(option.value);
   });
 
-  container.querySelector('#schedule-key-duty-create-start').value = '';
-  container.querySelector('#schedule-key-duty-create-end').value = '';
+  setDutyFieldValue(container, '', '#schedule-key-duty-create-start', '#schedule-key-duty-create-start-time');
+  setDutyFieldValue(container, '', '#schedule-key-duty-create-end', '#schedule-key-duty-create-end-time');
   container.querySelector('#schedule-key-duty-create-second-day').checked = false;
-  container.querySelector('#schedule-key-duty-create-break-start').value = '00:00';
-  container.querySelector('#schedule-key-duty-create-break-end').value = '00:00';
+  setDutyFieldValue(
+    container,
+    '00:00',
+    '#schedule-key-duty-create-break-start',
+    '#schedule-key-duty-create-break-start-time'
+  );
+  setDutyFieldValue(
+    container,
+    '00:00',
+    '#schedule-key-duty-create-break-end',
+    '#schedule-key-duty-create-break-end-time'
+  );
   container.querySelector('#schedule-key-duty-create-notes').value = '';
   const trainsSelect = container.querySelector('#schedule-key-duty-create-trains');
   Array.from(trainsSelect.options).forEach((option) => {
@@ -475,11 +521,27 @@ async function saveEditedDutyForScheduleKey(container) {
     .map((option) => option.value)
     .filter(Boolean);
   const primaryScheduleKeyId = selectedScheduleKeyIds[0] || null;
-  const startTime = container.querySelector('#schedule-key-duty-edit-start').value;
-  const endTime = container.querySelector('#schedule-key-duty-edit-end').value;
+  const startTime = getDutyField(
+    container,
+    '#schedule-key-duty-edit-start',
+    '#schedule-key-duty-edit-start-time'
+  )?.value || '';
+  const endTime = getDutyField(
+    container,
+    '#schedule-key-duty-edit-end',
+    '#schedule-key-duty-edit-end-time'
+  )?.value || '';
   const secondDay = container.querySelector('#schedule-key-duty-edit-second-day').checked;
-  const breakStartTime = container.querySelector('#schedule-key-duty-edit-break-start').value;
-  const breakEndTime = container.querySelector('#schedule-key-duty-edit-break-end').value;
+  const breakStartTime = getDutyField(
+    container,
+    '#schedule-key-duty-edit-break-start',
+    '#schedule-key-duty-edit-break-start-time'
+  )?.value || '00:00';
+  const breakEndTime = getDutyField(
+    container,
+    '#schedule-key-duty-edit-break-end',
+    '#schedule-key-duty-edit-break-end-time'
+  )?.value || '00:00';
   const notes = container.querySelector('#schedule-key-duty-edit-notes').value.trim() || null;
   const selectedTrainIds = Array.from(
     container.querySelector('#schedule-key-duty-edit-trains').selectedOptions || []
@@ -638,6 +700,26 @@ function formatIntervalValue(value) {
   }
 
   return String(value).replace('.000000', '');
+}
+
+function getDutyField(container, ...selectors) {
+  for (const selector of selectors) {
+    const field = container.querySelector(selector);
+    if (field) {
+      return field;
+    }
+  }
+
+  return null;
+}
+
+function setDutyFieldValue(container, value, ...selectors) {
+  const field = getDutyField(container, ...selectors);
+  if (!field) {
+    return;
+  }
+
+  field.value = value;
 }
 
 function getScheduleKeyRows(duty) {

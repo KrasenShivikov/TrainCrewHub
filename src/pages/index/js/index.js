@@ -12,7 +12,11 @@ const crewCalendarState = {
   selectedDate: '',
   plannedRows: [],
   actualRows: [],
-  absenceRows: []
+  absenceRows: [],
+  confirmedDates: new Set(),
+  pendingConfirmationDates: new Set(),
+  changeCountByDate: new Map(),
+  changeEventsByDate: new Map()
 };
 
 const crewAbsenceCodeClassMap = {
@@ -115,6 +119,14 @@ function formatDutyTime(startTime, endTime, secondDay) {
 
 function formatRoleLabel(value) {
   const role = normalizeRole(value);
+  if (role === 'chief') {
+    return 'Началник влак';
+  }
+
+  if (role === 'conductor') {
+    return 'Кондуктор';
+  }
+
   if (role === 'driver') {
     return 'Машинист';
   }
@@ -594,6 +606,179 @@ function getMonthBounds(monthKey) {
   };
 }
 
+async function loadSchedulePublicationDates(startDate, endDate) {
+  const { data, error } = await supabase
+    .from('schedule_publications')
+    .select('schedule_date, is_confirmed')
+    .gte('schedule_date', startDate)
+    .lte('schedule_date', endDate);
+
+  if (error) {
+    return {
+      confirmedDateSet: new Set(),
+      pendingConfirmationDateSet: new Set(),
+      error
+    };
+  }
+
+  const confirmedDateSet = new Set();
+  const pendingConfirmationDateSet = new Set();
+
+  (data || []).forEach((row) => {
+    const date = String(row?.schedule_date || '').trim();
+    if (!date) {
+      return;
+    }
+
+    if (row?.is_confirmed) {
+      confirmedDateSet.add(date);
+      return;
+    }
+
+    pendingConfirmationDateSet.add(date);
+  });
+
+  return {
+    confirmedDateSet,
+    pendingConfirmationDateSet,
+    error: null
+  };
+}
+
+function formatAssignmentRoleName(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'chief') {
+    return 'Началник влак';
+  }
+
+  if (normalized === 'conductor') {
+    return 'Кондуктор';
+  }
+
+  if (!normalized) {
+    return '-';
+  }
+
+  return normalized;
+}
+
+function formatEmployeeDisplayName(row) {
+  const firstName = String(row?.first_name || '').trim();
+  const lastName = String(row?.last_name || '').trim();
+  return `${firstName} ${lastName}`.trim() || '-';
+}
+
+async function loadScheduleChangesSummary(startDate, endDate) {
+  const { data, error } = await supabase
+    .from('schedule_change_events')
+    .select('schedule_date, action, old_duty_id, new_duty_id, old_employee_id, new_employee_id, old_assignment_role, new_assignment_role, changed_at')
+    .gte('schedule_date', startDate)
+    .lte('schedule_date', endDate)
+    .order('changed_at', { ascending: false });
+
+  if (error) {
+    return {
+      changeCountByDate: new Map(),
+      changeEventsByDate: new Map(),
+      error
+    };
+  }
+
+  const dutyIds = new Set();
+  const employeeIds = new Set();
+
+  (data || []).forEach((row) => {
+    if (row?.old_duty_id) {
+      dutyIds.add(row.old_duty_id);
+    }
+
+    if (row?.new_duty_id) {
+      dutyIds.add(row.new_duty_id);
+    }
+
+    if (row?.old_employee_id) {
+      employeeIds.add(row.old_employee_id);
+    }
+
+    if (row?.new_employee_id) {
+      employeeIds.add(row.new_employee_id);
+    }
+  });
+
+  const [dutyResponse, employeeResponse] = await Promise.all([
+    dutyIds.size
+      ? supabase.from('duties').select('id, name').in('id', Array.from(dutyIds))
+      : Promise.resolve({ data: [], error: null }),
+    employeeIds.size
+      ? supabase.from('employees').select('id, first_name, last_name').in('id', Array.from(employeeIds))
+      : Promise.resolve({ data: [], error: null })
+  ]);
+
+  if (dutyResponse.error || employeeResponse.error) {
+    return {
+      changeCountByDate: new Map(),
+      changeEventsByDate: new Map(),
+      error: dutyResponse.error || employeeResponse.error
+    };
+  }
+
+  const dutyNameById = new Map(
+    (dutyResponse.data || [])
+      .map((row) => [String(row?.id || ''), String(row?.name || '').trim() || '-'])
+      .filter(([id]) => id)
+  );
+
+  const employeeNameById = new Map(
+    (employeeResponse.data || [])
+      .map((row) => [String(row?.id || ''), formatEmployeeDisplayName(row)])
+      .filter(([id]) => id)
+  );
+
+  const counts = new Map();
+  const eventsByDate = new Map();
+
+  (data || []).forEach((row) => {
+    const date = String(row?.schedule_date || '').trim();
+    if (!date) {
+      return;
+    }
+
+    const current = Number(counts.get(date) || 0);
+    counts.set(date, current + 1);
+
+    const oldDutyName = dutyNameById.get(String(row?.old_duty_id || '')) || '-';
+    const newDutyName = dutyNameById.get(String(row?.new_duty_id || '')) || '-';
+    const oldEmployeeName = employeeNameById.get(String(row?.old_employee_id || '')) || '-';
+    const newEmployeeName = employeeNameById.get(String(row?.new_employee_id || '')) || '-';
+    const oldRole = formatAssignmentRoleName(row?.old_assignment_role);
+    const newRole = formatAssignmentRoleName(row?.new_assignment_role);
+    const action = String(row?.action || '').trim().toLowerCase();
+    const changedAt = row?.changed_at ? formatDateTime(new Date(row.changed_at)) : '-';
+
+    let summary = '';
+    if (action === 'insert') {
+      summary = `Добавено: ${newEmployeeName} | ${newDutyName} | ${newRole}`;
+    } else if (action === 'delete') {
+      summary = `Премахнато: ${oldEmployeeName} | ${oldDutyName} | ${oldRole}`;
+    } else {
+      summary = `Промяна: ${oldEmployeeName} | ${oldDutyName} | ${oldRole} → ${newEmployeeName} | ${newDutyName} | ${newRole}`;
+    }
+
+    const entries = eventsByDate.get(date) || [];
+    entries.push({
+      summary,
+      changedAt
+    });
+    eventsByDate.set(date, entries);
+  });
+
+  return {
+    changeCountByDate: counts,
+    changeEventsByDate: eventsByDate,
+    error: null
+  };
+}
+
 function parseTimetableEntriesForCrew(value) {
   if (Array.isArray(value)) {
     return value
@@ -848,6 +1033,18 @@ function buildCrewDayCounters() {
     counters.set(date, existing);
   });
 
+  crewCalendarState.pendingConfirmationDates.forEach((date) => {
+    const existing = counters.get(date) || { planned: 0, actual: 0, absences: [] };
+    existing.pendingConfirmation = true;
+    counters.set(date, existing);
+  });
+
+  crewCalendarState.changeCountByDate.forEach((count, date) => {
+    const existing = counters.get(date) || { planned: 0, actual: 0, absences: [] };
+    existing.changeCount = Number(count || 0);
+    counters.set(date, existing);
+  });
+
   crewCalendarState.absenceRows.forEach((row) => {
     const reasonName = normalizeAbsenceReasonName(row);
     const className = getAbsenceReasonBadgeClass(reasonName);
@@ -916,6 +1113,8 @@ function renderCrewCalendar(container) {
         <span class="index-crew-calendar-day-flags">
           ${dayCounter.planned ? `<span class="badge text-bg-primary">П${dayCounter.planned}</span>` : ''}
           ${dayCounter.actual ? `<span class="badge text-bg-success">Р${dayCounter.actual}</span>` : ''}
+          ${dayCounter.pendingConfirmation ? `<span class="badge text-bg-warning">Промяна</span>` : ''}
+          ${dayCounter.changeCount ? `<span class="badge text-bg-info" title="Извършени промени за деня">Δ${escapeHtml(String(dayCounter.changeCount))}</span>` : ''}
           ${absenceBadges}
         </span>
       </button>
@@ -929,9 +1128,10 @@ function renderCrewSelectedDayDetails(container) {
   const selectedDate = crewCalendarState.selectedDate;
   const plannedBody = container.querySelector('#index-crew-planned-body');
   const actualBody = container.querySelector('#index-crew-actual-body');
+  const changesBody = container.querySelector('#index-crew-change-body');
   const absenceBody = container.querySelector('#index-crew-absence-body');
 
-  if (!plannedBody || !actualBody || !absenceBody) {
+  if (!plannedBody || !actualBody || !changesBody || !absenceBody) {
     return;
   }
 
@@ -963,7 +1163,14 @@ function renderCrewSelectedDayDetails(container) {
     .filter((row) => row?.date === selectedDate)
     .sort((left, right) => String(right?.reported_at || '').localeCompare(String(left?.reported_at || ''), 'bg'));
 
-  if (!actualRows.length) {
+  const isDateConfirmed = crewCalendarState.confirmedDates.has(selectedDate);
+  const hasPendingConfirmation = crewCalendarState.pendingConfirmationDates.has(selectedDate);
+
+  if (!isDateConfirmed) {
+    actualBody.innerHTML = hasPendingConfirmation
+      ? '<p class="text-warning mb-0">Има промяна по графика. Нужна е повторна валидация от разписание.</p>'
+      : '<p class="text-secondary mb-0">Графикът за деня не е потвърден от разписание.</p>';
+  } else if (!actualRows.length) {
     actualBody.innerHTML = '<p class="text-secondary mb-0">Няма реални повески.</p>';
   } else {
     actualBody.innerHTML = actualRows
@@ -1019,6 +1226,20 @@ function renderCrewSelectedDayDetails(container) {
       .join('');
   }
 
+  const changeEvents = crewCalendarState.changeEventsByDate.get(selectedDate) || [];
+  if (!changeEvents.length) {
+    changesBody.innerHTML = '<p class="text-secondary mb-0">Няма регистрирани промени за избрания ден.</p>';
+  } else {
+    changesBody.innerHTML = changeEvents
+      .map((eventItem) => `
+        <article class="border rounded p-2">
+          <div class="small">${escapeHtml(eventItem.summary || '-')}</div>
+          <div class="small text-secondary">${escapeHtml(eventItem.changedAt || '-')}</div>
+        </article>
+      `)
+      .join('');
+  }
+
   const absenceRows = crewCalendarState.absenceRows
     .filter((row) => {
       const startDate = String(row?.start_date || '');
@@ -1071,6 +1292,10 @@ async function loadCrewMonthlySnapshot(container, employeeId, targetMonthKey) {
     crewCalendarState.plannedRows = [];
     crewCalendarState.actualRows = [];
     crewCalendarState.absenceRows = [];
+    crewCalendarState.confirmedDates = new Set();
+    crewCalendarState.pendingConfirmationDates = new Set();
+    crewCalendarState.changeCountByDate = new Map();
+    crewCalendarState.changeEventsByDate = new Map();
     crewCalendarState.selectedDate = '';
     renderCrewCalendarAndDetails(container);
     setText(container, '#index-crew-last-updated', 'Липсва прикачен служител към профила.');
@@ -1079,7 +1304,7 @@ async function loadCrewMonthlySnapshot(container, employeeId, targetMonthKey) {
 
   const { startDate, endDate } = getMonthBounds(monthKey);
 
-  const [plannedResponse, actualResponse, absencesResponse] = await Promise.all([
+  const [plannedResponse, actualResponse, absencesResponse, publicationResponse, changeSummaryResponse] = await Promise.all([
     supabase
       .from('planned_duties')
       .select('date, assignment_role, duties(name, start_time, end_time, second_day)')
@@ -1102,16 +1327,27 @@ async function loadCrewMonthlySnapshot(container, employeeId, targetMonthKey) {
       .eq('employee_id', employeeId)
       .lte('start_date', endDate)
       .gte('end_date', startDate)
-      .order('start_date', { ascending: true })
+      .order('start_date', { ascending: true }),
+    loadSchedulePublicationDates(startDate, endDate),
+    loadScheduleChangesSummary(startDate, endDate)
   ]);
 
-  if (plannedResponse.error || actualResponse.error || absencesResponse.error) {
+  if (plannedResponse.error || actualResponse.error || absencesResponse.error || publicationResponse.error || changeSummaryResponse.error) {
     showToast('Част от данните за моите повески не могат да се заредят.', 'warning');
   }
 
+  const confirmedDateSet = publicationResponse.confirmedDateSet || new Set();
+  const pendingConfirmationDateSet = publicationResponse.pendingConfirmationDateSet || new Set();
+  const changeCountByDate = changeSummaryResponse.changeCountByDate || new Map();
+  const changeEventsByDate = changeSummaryResponse.changeEventsByDate || new Map();
+
   crewCalendarState.plannedRows = plannedResponse.data || [];
-  crewCalendarState.actualRows = actualResponse.data || [];
+  crewCalendarState.actualRows = (actualResponse.data || []).filter((row) => confirmedDateSet.has(String(row?.date || '')));
   crewCalendarState.absenceRows = absencesResponse.data || [];
+  crewCalendarState.confirmedDates = confirmedDateSet;
+  crewCalendarState.pendingConfirmationDates = pendingConfirmationDateSet;
+  crewCalendarState.changeCountByDate = changeCountByDate;
+  crewCalendarState.changeEventsByDate = changeEventsByDate;
   renderCrewCalendarAndDetails(container);
   setText(container, '#index-crew-last-updated', `Последно обновяване: ${formatDateTime(new Date())}`);
 }
@@ -1123,7 +1359,8 @@ async function loadKpiSnapshot(container) {
     plannedResponse,
     actualResponse,
     absencesResponse,
-    employeesResponse
+    employeesResponse,
+    publicationStatusResponse
   ] = await Promise.all([
     supabase.from('planned_duties').select('id', { count: 'exact', head: true }).eq('date', today),
     supabase.from('actual_duties').select('id', { count: 'exact', head: true }).eq('date', today),
@@ -1132,16 +1369,24 @@ async function loadKpiSnapshot(container) {
       .select('id', { count: 'exact', head: true })
       .lte('start_date', today)
       .gte('end_date', today),
-    supabase.from('employees').select('id', { count: 'exact', head: true }).eq('is_active', true)
+    supabase.from('employees').select('id', { count: 'exact', head: true }).eq('is_active', true),
+    supabase
+      .from('schedule_publications')
+      .select('is_confirmed')
+      .eq('schedule_date', today)
+      .maybeSingle()
   ]);
 
-  const hasError = [plannedResponse, actualResponse, absencesResponse, employeesResponse].some((item) => item.error);
+  const hasError = [plannedResponse, actualResponse, absencesResponse, employeesResponse, publicationStatusResponse].some((item) => item.error);
   if (hasError) {
     showToast('Част от данните за индекс страницата не могат да се заредят.', 'warning');
   }
 
+  const isTodayConfirmed = Boolean(publicationStatusResponse?.data?.is_confirmed);
+  const actualCount = isTodayConfirmed ? Number(actualResponse.count ?? 0) : 0;
+
   setText(container, '#index-kpi-planned', String(plannedResponse.count ?? 0));
-  setText(container, '#index-kpi-actual', String(actualResponse.count ?? 0));
+  setText(container, '#index-kpi-actual', String(actualCount));
   setText(container, '#index-kpi-absences', String(absencesResponse.count ?? 0));
   setText(container, '#index-kpi-employees', String(employeesResponse.count ?? 0));
   setText(container, '#index-last-updated', `Последно обновяване: ${formatDateTime(new Date())}`);

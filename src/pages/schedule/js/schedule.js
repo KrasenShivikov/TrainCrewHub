@@ -28,12 +28,115 @@ import { createScheduleDndHandlers } from './dnd.js';
 const actualRowsById = new Map();
 let draggedActualDutyId = '';
 
+function formatPublicationDateTime(value) {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat('bg-BG', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }).format(date);
+}
+
+function setSchedulePublicationStatus(container, publicationRow) {
+  const statusElement = container.querySelector('#schedule-publication-status');
+  const confirmRequiredBadge = container.querySelector('#schedule-confirm-required-badge');
+  if (!statusElement) {
+    return;
+  }
+
+  const isConfirmed = Boolean(publicationRow?.is_confirmed);
+  if (!isConfirmed) {
+    const needsReconfirmation = Boolean(publicationRow);
+    confirmRequiredBadge?.classList.toggle('d-none', !needsReconfirmation);
+
+    if (publicationRow) {
+      statusElement.textContent = 'Статус: има промени, нужно е повторно потвърждение от разписание';
+    } else {
+      statusElement.textContent = 'Статус: непотвърдено от разписание';
+    }
+
+    statusElement.classList.remove('text-success');
+    statusElement.classList.add('text-warning');
+    return;
+  }
+
+  confirmRequiredBadge?.classList.add('d-none');
+
+  const source = String(publicationRow?.source || 'timetable').trim();
+  const sourceLabel = source === 'timetable' ? 'разписание' : source;
+  const confirmedAtText = formatPublicationDateTime(publicationRow?.confirmed_at);
+  statusElement.textContent = confirmedAtText
+    ? `Статус: потвърдено от ${sourceLabel} (${confirmedAtText})`
+    : `Статус: потвърдено от ${sourceLabel}`;
+  statusElement.classList.remove('text-warning');
+  statusElement.classList.add('text-success');
+}
+
+async function loadSchedulePublicationStatus(container, selectedDate) {
+  if (!selectedDate) {
+    setSchedulePublicationStatus(container, null);
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('schedule_publications')
+    .select('schedule_date, is_confirmed, source, confirmed_at')
+    .eq('schedule_date', selectedDate)
+    .maybeSingle();
+
+  if (error) {
+    setSchedulePublicationStatus(container, null);
+    return null;
+  }
+
+  setSchedulePublicationStatus(container, data || null);
+  return data || null;
+}
+
+async function confirmScheduleFromTimetable(container, selectedDate) {
+  if (!selectedDate) {
+    showToast('Избери дата за потвърждение.', 'warning');
+    return;
+  }
+
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData?.user?.id || null;
+  const nowIso = new Date().toISOString();
+
+  const { error } = await supabase
+    .from('schedule_publications')
+    .upsert({
+      schedule_date: selectedDate,
+      is_confirmed: true,
+      source: 'timetable',
+      confirmed_at: nowIso,
+      confirmed_by: userId,
+      created_from: userId
+    }, { onConflict: 'schedule_date' });
+
+  if (error) {
+    showToast(error.message, 'error');
+    return;
+  }
+
+  await loadSchedulePublicationStatus(container, selectedDate);
+  showToast('Графикът е потвърден от разписание.', 'success');
+}
+
 export async function renderSchedulePage(container) {
   const pageHtml = await loadHtml('../schedule.html', import.meta.url);
   container.innerHTML = pageHtml;
   applyPrintDepotLabel(container, '#schedule-print-left-label');
 
   const dateInput = container.querySelector('#schedule-date');
+  const confirmFromTimetableButton = container.querySelector('#schedule-confirm-from-timetable');
   const goToActualButton = container.querySelector('#schedule-go-to-actual');
   const printButton = container.querySelector('#schedule-print');
   const orientationInput = container.querySelector('#schedule-print-orientation');
@@ -52,6 +155,13 @@ export async function renderSchedulePage(container) {
 
   dateInput?.addEventListener('change', async () => {
     await loadScheduleData(container);
+  });
+
+  confirmFromTimetableButton?.addEventListener('click', async () => {
+    const selectedDate = dateInput?.value || '';
+    confirmFromTimetableButton.disabled = true;
+    await confirmScheduleFromTimetable(container, selectedDate);
+    confirmFromTimetableButton.disabled = false;
   });
 
   goToActualButton?.addEventListener('click', () => {
@@ -196,6 +306,7 @@ function attachScheduleHandlers(container) {
     event.preventDefault();
 
     const targetDutyId = targetCell.getAttribute('data-drop-duty-id') || '';
+    const targetDutyName = targetCell.getAttribute('data-drop-duty-name') || '';
     const targetDate = targetCell.getAttribute('data-drop-date') || '';
     const targetRole = targetCell.getAttribute('data-drop-role') || '';
     const actualIdFromTransfer = event.dataTransfer?.getData('text/plain') || '';
@@ -208,7 +319,7 @@ function attachScheduleHandlers(container) {
     }
 
     dndHandlers.clearDropTargetHighlights(container);
-    await dndHandlers.moveDraggedActualDuty(container, actualId, targetDutyId, targetDate, targetRole);
+    await dndHandlers.moveDraggedActualDuty(container, actualId, targetDutyId, targetDate, targetRole, targetDutyName);
     setScheduleDraggingState(false);
   });
 
@@ -261,6 +372,8 @@ async function loadScheduleData(container) {
       error: '',
       empty: ''
     });
+
+    await loadSchedulePublicationStatus(container, '');
     return;
   }
 
@@ -282,6 +395,8 @@ async function loadScheduleData(container) {
       error: 'Грешка при зареждане на актуалните записи.',
       empty: ''
     });
+
+    await loadSchedulePublicationStatus(container, selectedDate);
     return;
   }
 
@@ -304,6 +419,8 @@ async function loadScheduleData(container) {
       error: 'Грешка при зареждане на отсъствията.',
       empty: ''
     });
+
+    await loadSchedulePublicationStatus(container, selectedDate);
     return;
   }
 
@@ -322,6 +439,8 @@ async function loadScheduleData(container) {
       error: 'Грешка при зареждане на повеските.',
       empty: ''
     });
+
+    await loadSchedulePublicationStatus(container, selectedDate);
     return;
   }
 
@@ -370,11 +489,18 @@ async function loadScheduleData(container) {
     error: '',
     empty: totalCount ? '' : 'Няма повески за показване по избраните типове.'
   });
+
+  await loadSchedulePublicationStatus(container, selectedDate);
 }
 
 async function removeEmployeeTripAndDayOffEntries(employeeId, date, currentDutyId, currentActualId) {
+  const emptyResult = {
+    error: null,
+    removedEntries: []
+  };
+
   if (!employeeId || !date || !currentDutyId) {
-    return null;
+    return emptyResult;
   }
 
   const { data: currentDuty, error: currentDutyError } = await supabase
@@ -384,12 +510,15 @@ async function removeEmployeeTripAndDayOffEntries(employeeId, date, currentDutyI
     .single();
 
   if (currentDutyError) {
-    return currentDutyError;
+    return {
+      error: currentDutyError,
+      removedEntries: []
+    };
   }
 
   const currentTypeName = getDutyTypeName(currentDuty).toLowerCase();
   if (!currentTypeName.includes('на влак')) {
-    return null;
+    return emptyResult;
   }
 
   const { data: allDuties, error: allDutiesError } = await supabase
@@ -397,7 +526,10 @@ async function removeEmployeeTripAndDayOffEntries(employeeId, date, currentDutyI
     .select('id, duty_types(name)');
 
   if (allDutiesError) {
-    return allDutiesError;
+    return {
+      error: allDutiesError,
+      removedEntries: []
+    };
   }
 
   const tripAndDayOffDutyIds = (allDuties || [])
@@ -409,22 +541,58 @@ async function removeEmployeeTripAndDayOffEntries(employeeId, date, currentDutyI
     .filter(Boolean);
 
   if (!tripAndDayOffDutyIds.length) {
-    return null;
+    return emptyResult;
   }
 
-  let deleteQuery = supabase
+  let rowsQuery = supabase
     .from('actual_duties')
-    .delete()
+    .select('id, date, duties(name, duty_types(name))')
     .eq('employee_id', employeeId)
     .eq('date', date)
     .in('duty_id', tripAndDayOffDutyIds);
 
   if (currentActualId) {
-    deleteQuery = deleteQuery.neq('id', currentActualId);
+    rowsQuery = rowsQuery.neq('id', currentActualId);
   }
 
-  const { error: deleteError } = await deleteQuery;
-  return deleteError;
+  const { data: rowsToRemove, error: rowsError } = await rowsQuery;
+  if (rowsError) {
+    return {
+      error: rowsError,
+      removedEntries: []
+    };
+  }
+
+  const idsToRemove = (rowsToRemove || []).map((item) => item?.id).filter(Boolean);
+  if (!idsToRemove.length) {
+    return emptyResult;
+  }
+
+  const { error: deleteError } = await supabase
+    .from('actual_duties')
+    .delete()
+    .in('id', idsToRemove);
+
+  if (deleteError) {
+    return {
+      error: deleteError,
+      removedEntries: []
+    };
+  }
+
+  const removedEntries = (rowsToRemove || []).map((row) => {
+    const duty = getDutyFromRow(row);
+    return {
+      dutyName: String(duty?.name || '').trim(),
+      dutyTypeName: String(getDutyTypeName(duty) || '').trim(),
+      date: String(row?.date || '').trim()
+    };
+  });
+
+  return {
+    error: null,
+    removedEntries
+  };
 }
 
 function setScheduleDraggingState(isDragging) {

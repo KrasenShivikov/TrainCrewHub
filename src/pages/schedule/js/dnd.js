@@ -10,6 +10,36 @@ export function createScheduleDndHandlers({
   loadScheduleData,
   removeEmployeeTripAndDayOffEntries
 }) {
+  function formatAssignmentRole(role) {
+    return role === 'chief' ? 'Началник влак' : 'Кондуктор';
+  }
+
+  function getEmployeeNameFromRow(row) {
+    const firstName = row?.employees?.first_name ?? '';
+    const lastName = row?.employees?.last_name ?? '';
+    return `${firstName} ${lastName}`.trim() || '-';
+  }
+
+  function buildAssignmentLabel({ employeeName, dutyName, date, role }) {
+    return `${employeeName || '-'} | ${dutyName || '-'} | ${date || '-'} | ${formatAssignmentRole(role)}`;
+  }
+
+  function buildRemovedEntriesText(removedEntries) {
+    if (!Array.isArray(removedEntries) || !removedEntries.length) {
+      return '';
+    }
+
+    const normalized = removedEntries
+      .map((item) => String(item?.dutyName || item?.dutyTypeName || '').trim())
+      .filter(Boolean);
+
+    if (!normalized.length) {
+      return ' Премахнати са автоматично конфликтни записи.';
+    }
+
+    return ` Премахнати: ${normalized.join(', ')}.`;
+  }
+
   function getDutyCategoryByTypeName(typeName) {
     const normalized = String(typeName || '').toLowerCase();
     if (normalized.includes('на влак')) {
@@ -82,7 +112,7 @@ export function createScheduleDndHandlers({
     }
   }
 
-  async function moveDraggedActualDuty(container, actualDutyId, targetDutyId, targetDate, targetRole) {
+  async function moveDraggedActualDuty(container, actualDutyId, targetDutyId, targetDate, targetRole, targetDutyName = '') {
     const row = actualRowsById.get(actualDutyId);
     if (!row) {
       return;
@@ -100,6 +130,14 @@ export function createScheduleDndHandlers({
     const updatePayload = {
       duty_id: targetDutyId,
       date: targetDate
+    };
+
+    const previousDutyName = getDutyFromRow(row)?.name || '';
+    const previousAssignment = {
+      employeeName: getEmployeeNameFromRow(row),
+      dutyName: previousDutyName,
+      date: row.date || '',
+      role: currentRole
     };
 
     if (normalizedTargetRole) {
@@ -121,14 +159,23 @@ export function createScheduleDndHandlers({
       return;
     }
 
-    const cleanupError = await removeEmployeeTripAndDayOffEntries(row.employee_id, targetDate, targetDutyId, actualDutyId);
-    if (cleanupError) {
-      showToast(cleanupError.message, 'error');
+    const cleanupResult = await removeEmployeeTripAndDayOffEntries(row.employee_id, targetDate, targetDutyId, actualDutyId);
+    if (cleanupResult?.error) {
+      showToast(cleanupResult.error.message, 'error');
       return;
     }
 
+    const nextAssignment = {
+      employeeName: getEmployeeNameFromRow(row),
+      dutyName: targetDutyName || previousDutyName,
+      date: targetDate,
+      role: normalizedTargetRole || currentRole
+    };
+
+    const removedEntriesText = buildRemovedEntriesText(cleanupResult?.removedEntries || []);
+
     await loadScheduleData(container);
-    showToast('Служителят е преместен успешно.', 'success');
+    showToast(`Промяна: ${buildAssignmentLabel(previousAssignment)} → ${buildAssignmentLabel(nextAssignment)}.${removedEntriesText}`, 'success');
   }
 
   return {
