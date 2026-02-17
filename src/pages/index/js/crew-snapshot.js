@@ -23,6 +23,36 @@ export function createCrewSnapshotController(deps) {
     renderCrewSelectedDayDetails(container);
   }
 
+  const normalizeIsoDateKey = (value) => {
+    if (!value) {
+      return '';
+    }
+
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return value.toISOString().slice(0, 10);
+    }
+
+    const raw = String(value).trim();
+    const match = raw.match(/\d{4}-\d{2}-\d{2}/);
+    return match ? match[0] : raw;
+  };
+
+  const normalizeRowDate = (row) => {
+    if (!row || typeof row !== 'object') {
+      return row;
+    }
+
+    const normalizedDate = normalizeIsoDateKey(row.date);
+    if (!normalizedDate || row.date === normalizedDate) {
+      return row;
+    }
+
+    return {
+      ...row,
+      date: normalizedDate
+    };
+  };
+
   async function loadCrewMonthlySnapshot(container, employeeId, targetMonthKey) {
     const monthKey = targetMonthKey || crewCalendarState.visibleMonth || toMonthKey(new Date());
     crewCalendarState.visibleMonth = monthKey;
@@ -81,8 +111,16 @@ export function createCrewSnapshotController(deps) {
     const changeCountByDate = changeSummaryResponse.changeCountByDate || new Map();
     const changeEventsByDate = changeSummaryResponse.changeEventsByDate || new Map();
 
-    crewCalendarState.plannedRows = plannedResponse.data || [];
-    crewCalendarState.actualRows = (actualResponse.data || []).filter((row) => confirmedDateSet.has(String(row?.date || '')));
+    const plannedRowsRaw = plannedResponse.data || [];
+    const actualRowsRaw = actualResponse.data || [];
+
+    const plannedRows = plannedRowsRaw.map(normalizeRowDate);
+    const confirmedActualRows = actualRowsRaw
+      .map(normalizeRowDate)
+      .filter((row) => confirmedDateSet.has(normalizeIsoDateKey(row?.date)));
+
+    crewCalendarState.plannedRows = plannedRows;
+    crewCalendarState.actualRows = confirmedActualRows;
     crewCalendarState.actualRowsById = new Map(crewCalendarState.actualRows.map((row) => [String(row?.id || ''), row]));
     crewCalendarState.absenceRows = absencesResponse.data || [];
     crewCalendarState.confirmedDates = confirmedDateSet;

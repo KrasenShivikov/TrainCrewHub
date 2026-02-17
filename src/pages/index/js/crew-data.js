@@ -39,8 +39,14 @@ export async function loadSchedulePublicationDates(dbClient, startDate, endDate)
   const confirmedDateSet = new Set();
   const pendingConfirmationDateSet = new Set();
 
+  const normalizeIsoDateKey = (value) => {
+    const raw = String(value || '').trim();
+    const match = raw.match(/\d{4}-\d{2}-\d{2}/);
+    return match ? match[0] : raw;
+  };
+
   (data || []).forEach((row) => {
-    const date = String(row?.schedule_date || '').trim();
+    const date = normalizeIsoDateKey(row?.schedule_date);
     if (!date) {
       return;
     }

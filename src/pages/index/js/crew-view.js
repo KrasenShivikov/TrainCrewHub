@@ -32,6 +32,20 @@ export function createCrewViewController(deps) {
     getDistinctBadgeClassByReason
   } = deps;
 
+  function normalizeIsoDateKey(value) {
+    if (!value) {
+      return '';
+    }
+
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return value.toISOString().slice(0, 10);
+    }
+
+    const raw = String(value).trim();
+    const match = raw.match(/\d{4}-\d{2}-\d{2}/);
+    return match ? match[0] : raw;
+  }
+
   function getActualDutyRowById(rowId) {
     if (!rowId) {
       return null;
@@ -286,25 +300,38 @@ export function createCrewViewController(deps) {
     const today = getTodayIsoDate();
     const hasTodayInMonth = today.startsWith(monthPrefix);
 
-    if (crewCalendarState.selectedDate && crewCalendarState.selectedDate.startsWith(monthPrefix)) {
+    const candidateDates = new Set([
+      ...crewCalendarState.plannedRows.map((row) => normalizeIsoDateKey(row?.date)).filter(Boolean),
+      ...crewCalendarState.actualRows.map((row) => normalizeIsoDateKey(row?.date)).filter(Boolean),
+      ...crewCalendarState.absenceRows.flatMap((row) => createDateRange(row?.start_date, row?.end_date)),
+      ...Array.from(crewCalendarState.pendingConfirmationDates || []).map((date) => normalizeIsoDateKey(date)).filter(Boolean),
+      ...Array.from((crewCalendarState.changeCountByDate || new Map()).keys()).map((date) => normalizeIsoDateKey(date)).filter(Boolean)
+    ]);
+
+    const selectedKey = normalizeIsoDateKey(crewCalendarState.selectedDate);
+    const hasCandidateForSelected = selectedKey
+      ? candidateDates.has(selectedKey)
+      : false;
+
+    const hasAnyCandidates = candidateDates.size > 0;
+
+    if (
+      selectedKey &&
+      selectedKey.startsWith(monthPrefix) &&
+      (!hasAnyCandidates || hasCandidateForSelected)
+    ) {
       return;
     }
 
-    const allDates = [
-      ...new Set([
-        ...crewCalendarState.plannedRows.map((row) => row?.date).filter(Boolean),
-        ...crewCalendarState.actualRows.map((row) => row?.date).filter(Boolean),
-        ...crewCalendarState.absenceRows.flatMap((row) => createDateRange(row?.start_date, row?.end_date))
-      ])
-    ].sort((left, right) => String(left).localeCompare(String(right), 'bg'));
+    const allDates = [...candidateDates].sort((left, right) => String(left).localeCompare(String(right), 'bg'));
 
-    if (hasTodayInMonth) {
+    if (hasTodayInMonth && candidateDates.has(today)) {
       crewCalendarState.selectedDate = today;
       return;
     }
 
     if (allDates.length) {
-      crewCalendarState.selectedDate = allDates[0];
+      crewCalendarState.selectedDate = String(allDates[0]);
       return;
     }
 
@@ -315,7 +342,7 @@ export function createCrewViewController(deps) {
     const counters = new Map();
 
     crewCalendarState.plannedRows.forEach((row) => {
-      const date = row?.date;
+      const date = normalizeIsoDateKey(row?.date);
       if (!date) {
         return;
       }
@@ -326,7 +353,7 @@ export function createCrewViewController(deps) {
     });
 
     crewCalendarState.actualRows.forEach((row) => {
-      const date = row?.date;
+      const date = normalizeIsoDateKey(row?.date);
       if (!date) {
         return;
       }
@@ -336,13 +363,23 @@ export function createCrewViewController(deps) {
       counters.set(date, existing);
     });
 
-    crewCalendarState.pendingConfirmationDates.forEach((date) => {
+    crewCalendarState.pendingConfirmationDates.forEach((dateRaw) => {
+      const date = normalizeIsoDateKey(dateRaw);
+      if (!date) {
+        return;
+      }
+
       const existing = counters.get(date) || { planned: 0, actual: 0, absences: [] };
       existing.pendingConfirmation = true;
       counters.set(date, existing);
     });
 
-    crewCalendarState.changeCountByDate.forEach((count, date) => {
+    crewCalendarState.changeCountByDate.forEach((count, dateRaw) => {
+      const date = normalizeIsoDateKey(dateRaw);
+      if (!date) {
+        return;
+      }
+
       const existing = counters.get(date) || { planned: 0, actual: 0, absences: [] };
       existing.changeCount = Number(count || 0);
       counters.set(date, existing);
@@ -428,7 +465,7 @@ export function createCrewViewController(deps) {
   }
 
   function renderCrewSelectedDayDetails(container) {
-    const selectedDate = crewCalendarState.selectedDate;
+    const selectedDate = normalizeIsoDateKey(crewCalendarState.selectedDate);
     const plannedBody = container.querySelector('#index-crew-planned-body');
     const actualBody = container.querySelector('#index-crew-actual-body');
     const changesBody = container.querySelector('#index-crew-change-body');
@@ -441,7 +478,7 @@ export function createCrewViewController(deps) {
     setText(container, '#index-crew-selected-date-label', `Детайли за ${formatDate(selectedDate)}`);
 
     const plannedRows = crewCalendarState.plannedRows
-      .filter((row) => row?.date === selectedDate)
+      .filter((row) => normalizeIsoDateKey(row?.date) === selectedDate)
       .sort((left, right) => String(left?.duties?.start_time || '').localeCompare(String(right?.duties?.start_time || ''), 'bg'));
 
     if (!plannedRows.length) {
@@ -473,7 +510,7 @@ export function createCrewViewController(deps) {
     }
 
     const actualRows = crewCalendarState.actualRows
-      .filter((row) => row?.date === selectedDate)
+      .filter((row) => normalizeIsoDateKey(row?.date) === selectedDate)
       .sort((left, right) => String(right?.reported_at || '').localeCompare(String(left?.reported_at || ''), 'bg'));
 
     const isDateConfirmed = crewCalendarState.confirmedDates.has(selectedDate);
