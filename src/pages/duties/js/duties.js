@@ -11,6 +11,9 @@ import { closeModal, escapeHtml, openModal, setupModalEscapeHandler } from './he
 import { dutiesState } from './state.js';
 import { loadDuties, persistDutiesOrder, renderDutiesTable } from './table.js';
 
+const DUTY_FILES_BUCKET = 'duty-files';
+const MAX_DUTY_FILE_ITEMS = 5;
+
 export async function renderDutiesPage(container) {
   const pageHtml = await loadHtml('../duties.html', import.meta.url);
   container.innerHTML = pageHtml;
@@ -28,9 +31,23 @@ function initializeDutyFormFields(container) {
     return;
   }
 
-  fieldsRoot.innerHTML = renderDutyFormFields({
-    idPrefix: 'duty'
-  });
+  fieldsRoot.innerHTML = `
+    ${renderDutyFormFields({ idPrefix: 'duty' })}
+
+    <div class="col-12">
+      <label for="duty-attachment-file" class="form-label">Файлове</label>
+      <input id="duty-attachment-file" class="form-control" type="file" multiple />
+      <div class="form-text">Може да добавиш до ${MAX_DUTY_FILE_ITEMS} файла общо.</div>
+    </div>
+
+    <div id="duty-current-attachments-wrap" class="col-12 d-none">
+      <label class="form-label">Текущи файлове</label>
+      <div id="duty-current-attachments-links" class="d-flex flex-column gap-2"></div>
+    </div>
+
+    <input type="hidden" id="duty-existing-attachments" />
+    <input type="hidden" id="duty-draft-attachments" />
+  `;
 }
 
 async function loadTrainOptions(container) {
@@ -84,6 +101,7 @@ function attachDutiesHandlers(container) {
   const dutyModal = container.querySelector('#duty-modal');
   const deleteModal = container.querySelector('#duty-delete-modal');
   const profileModal = container.querySelector('#duty-profile-modal');
+  const attachmentPreviewModal = container.querySelector('#duty-attachment-preview-modal');
   const modalCloseButton = container.querySelector('#duty-modal-close');
   const deleteConfirmButton = container.querySelector('#duty-delete-confirm');
   const deleteCancelButton = container.querySelector('#duty-delete-cancel');
@@ -97,6 +115,8 @@ function attachDutiesHandlers(container) {
   const filterResetButton = container.querySelector('#duties-filter-reset');
   const prevPageButton = container.querySelector('#duties-prev-page');
   const nextPageButton = container.querySelector('#duties-next-page');
+  const attachmentFileInput = container.querySelector('#duty-attachment-file');
+  const currentAttachmentsLinks = container.querySelector('#duty-current-attachments-links');
 
   createButton?.addEventListener('click', () => {
     resetDutyForm(container);
@@ -126,6 +146,21 @@ function attachDutiesHandlers(container) {
 
   profileCloseSecondaryButton?.addEventListener('click', () => {
     closeModal(profileModal);
+  });
+
+  container.querySelector('#duty-profile-content')?.addEventListener('click', (event) => {
+    const previewButton = event.target.closest('button[data-duty-profile-action="preview-attachment"]');
+    if (!previewButton) {
+      return;
+    }
+
+    const previewUrl = String(previewButton.getAttribute('data-url') || '').trim();
+    const previewLabel = String(previewButton.getAttribute('data-label') || '').trim();
+    openDutyAttachmentPreview(container, previewUrl, previewLabel);
+  });
+
+  container.querySelector('#duty-attachment-preview-close')?.addEventListener('click', () => {
+    closeDutyAttachmentPreview(container);
   });
 
   profileEditButton?.addEventListener('click', () => {
@@ -189,7 +224,71 @@ function attachDutiesHandlers(container) {
     renderDutiesTable(container);
   });
 
+  attachmentFileInput?.addEventListener('change', () => {
+    if (!attachmentFileInput.files?.length) {
+      return;
+    }
+
+    if (attachmentFileInput.files.length > MAX_DUTY_FILE_ITEMS) {
+      showToast(`Може да избереш до ${MAX_DUTY_FILE_ITEMS} файла наведнъж.`, 'warning');
+      attachmentFileInput.value = '';
+    }
+  });
+
+  currentAttachmentsLinks?.addEventListener('input', (event) => {
+    const input = event.target.closest('.duty-existing-attachment-label');
+    if (!input) {
+      return;
+    }
+
+    const index = Number(input.getAttribute('data-index'));
+    if (!Number.isInteger(index) || index < 0) {
+      return;
+    }
+
+    const draftInput = container.querySelector('#duty-draft-attachments');
+    const entries = parseAttachmentEntries(draftInput?.value || '');
+    if (!entries[index]) {
+      return;
+    }
+
+    entries[index].label = input.value;
+    if (draftInput) {
+      draftInput.value = serializeAttachmentEntries(entries) || '';
+    }
+  });
+
+  currentAttachmentsLinks?.addEventListener('click', (event) => {
+    const previewButton = event.target.closest('.duty-existing-attachment-preview');
+    if (previewButton) {
+      const previewUrl = String(previewButton.getAttribute('data-url') || '').trim();
+      const previewLabel = String(previewButton.getAttribute('data-label') || '').trim();
+      openDutyAttachmentPreview(container, previewUrl, previewLabel);
+      return;
+    }
+
+    const removeButton = event.target.closest('.duty-existing-attachment-remove');
+    if (!removeButton) {
+      return;
+    }
+
+    const index = Number(removeButton.getAttribute('data-index'));
+    if (!Number.isInteger(index) || index < 0) {
+      return;
+    }
+
+    const draftInput = container.querySelector('#duty-draft-attachments');
+    const entries = parseAttachmentEntries(draftInput?.value || '');
+    if (!entries[index]) {
+      return;
+    }
+
+    entries.splice(index, 1);
+    updateCurrentAttachmentsPreview(container, entries);
+  });
+
   setupModalEscapeHandler('duties', [
+    attachmentPreviewModal,
     profileModal,
     deleteModal,
     dutyModal
@@ -321,6 +420,9 @@ async function saveDuty(container) {
   const breakStartInput = getDutyField(container, '#duty-break-start', '#duty-break-start-time');
   const breakEndInput = getDutyField(container, '#duty-break-end', '#duty-break-end-time');
   const notesInput = container.querySelector('#duty-notes');
+  const attachmentFileInput = container.querySelector('#duty-attachment-file');
+  const existingAttachmentsInput = container.querySelector('#duty-existing-attachments');
+  const draftAttachmentsInput = container.querySelector('#duty-draft-attachments');
   const saveButton = container.querySelector('#duty-save-btn');
 
   const name = nameInput.value.trim();
@@ -338,6 +440,9 @@ async function saveDuty(container) {
   const breakStartTime = breakStartInput?.value || '00:00';
   const breakEndTime = breakEndInput?.value || '00:00';
   const notes = notesInput.value.trim() || null;
+  const previousAttachments = parseAttachmentEntries(existingAttachmentsInput?.value || '');
+  const draftAttachments = parseAttachmentEntries(draftAttachmentsInput?.value || '');
+  const attachmentFiles = Array.from(attachmentFileInput?.files || []);
   const editingId = idInput.value;
 
   if (!name || !dutyTypeId || !startTime || !endTime) {
@@ -361,6 +466,42 @@ async function saveDuty(container) {
   saveButton.disabled = true;
   saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Запис...';
 
+  const dutyRecordId = editingId || crypto.randomUUID();
+  const nextAttachments = dedupeAttachmentEntries(draftAttachments);
+  const uploadedObjectPaths = [];
+
+  const projectedTotalItems = nextAttachments.length + attachmentFiles.length;
+  if (projectedTotalItems > MAX_DUTY_FILE_ITEMS) {
+    saveButton.disabled = false;
+    saveButton.innerHTML = originalText;
+    showToast(`Максимум ${MAX_DUTY_FILE_ITEMS} файла/линка за една повеска.`, 'warning');
+    return;
+  }
+
+  if (attachmentFiles.length) {
+    const uploadedEntries = await uploadDutyAttachments(attachmentFiles, dutyRecordId);
+    if (!uploadedEntries) {
+      saveButton.disabled = false;
+      saveButton.innerHTML = originalText;
+      return;
+    }
+
+    uploadedEntries.forEach((entry) => {
+      if (entry?.url) {
+        nextAttachments.push({
+          url: entry.url,
+          label: entry.label || deriveAttachmentLabel(entry.url, nextAttachments.length)
+        });
+      }
+
+      if (entry?.objectPath) {
+        uploadedObjectPaths.push(entry.objectPath);
+      }
+    });
+  }
+
+  const finalAttachments = dedupeAttachmentEntries(nextAttachments);
+
   const payload = {
     name,
     duty_type_id: dutyTypeId,
@@ -370,7 +511,8 @@ async function saveDuty(container) {
     second_day: secondDay,
     break_start_time: breakStartTime,
     break_end_time: breakEndTime,
-    notes
+    notes,
+    duty_files: serializeAttachmentEntries(finalAttachments)
   };
 
   let error;
@@ -387,7 +529,7 @@ async function saveDuty(container) {
     );
     const { data: insertedDuty, error: insertError } = await supabase
       .from('duties')
-      .insert({ ...payload, created_from: createdFrom, display_order: maxDisplayOrder + 1 })
+      .insert({ ...payload, id: dutyRecordId, created_from: createdFrom, display_order: maxDisplayOrder + 1 })
       .select('id')
       .single();
 
@@ -407,8 +549,26 @@ async function saveDuty(container) {
   saveButton.innerHTML = originalText;
 
   if (error) {
+    if (uploadedObjectPaths.length) {
+      await removeDutyAttachmentObjects(uploadedObjectPaths);
+    }
     showToast(error.message, 'error');
     return;
+  }
+
+  if (editingId) {
+    const previousObjectPaths = previousAttachments
+      .map((entry) => extractDutyAttachmentObjectPath(entry.url))
+      .filter(Boolean);
+    const currentObjectPaths = finalAttachments
+      .map((entry) => extractDutyAttachmentObjectPath(entry.url))
+      .filter(Boolean);
+
+    const currentSet = new Set(currentObjectPaths);
+    const obsoletePaths = previousObjectPaths.filter((path) => !currentSet.has(path));
+    if (obsoletePaths.length) {
+      await removeDutyAttachmentObjects(obsoletePaths);
+    }
   }
 
   showToast(editingId ? 'Повеската е обновена.' : 'Повеската е създадена.', 'success');
@@ -418,6 +578,8 @@ async function saveDuty(container) {
 }
 
 function populateDutyForm(container, duty) {
+  const attachments = parseAttachmentEntries(duty.dutyFiles);
+
   container.querySelector('#duty-id').value = duty.id;
   container.querySelector('#duty-name').value = duty.name ?? '';
   container.querySelector('#duty-type').value = duty.dutyTypeId ?? '';
@@ -437,6 +599,10 @@ function populateDutyForm(container, duty) {
   setDutyFieldValue(container, intervalToTimeInput(duty.breakStartTime), '#duty-break-start', '#duty-break-start-time');
   setDutyFieldValue(container, intervalToTimeInput(duty.breakEndTime), '#duty-break-end', '#duty-break-end-time');
   container.querySelector('#duty-notes').value = duty.notes ?? '';
+  container.querySelector('#duty-existing-attachments').value = serializeAttachmentEntries(attachments) || '';
+  container.querySelector('#duty-draft-attachments').value = serializeAttachmentEntries(attachments) || '';
+  container.querySelector('#duty-attachment-file').value = '';
+  updateCurrentAttachmentsPreview(container, attachments);
 
   container.querySelector('#duty-form-title').textContent = 'Редакция на Повеска';
   container.querySelector('#duty-save-btn').textContent = 'Запази';
@@ -460,6 +626,10 @@ function resetDutyForm(container) {
   setDutyFieldValue(container, '00:00', '#duty-break-start', '#duty-break-start-time');
   setDutyFieldValue(container, '00:00', '#duty-break-end', '#duty-break-end-time');
   container.querySelector('#duty-notes').value = '';
+  container.querySelector('#duty-existing-attachments').value = '';
+  container.querySelector('#duty-draft-attachments').value = '';
+  container.querySelector('#duty-attachment-file').value = '';
+  updateCurrentAttachmentsPreview(container, []);
 
   container.querySelector('#duty-form-title').textContent = 'Нова Повеска';
   container.querySelector('#duty-save-btn').textContent = 'Създай';
@@ -471,6 +641,19 @@ async function deleteDuty(id, container) {
   deleteButton.disabled = true;
   deleteButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Изтриване...';
 
+  const { data: dutyRow, error: dutyLoadError } = await supabase
+    .from('duties')
+    .select('duty_files')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (dutyLoadError) {
+    deleteButton.disabled = false;
+    deleteButton.innerHTML = originalDeleteText;
+    showToast(dutyLoadError.message, 'error');
+    return;
+  }
+
   const { error } = await supabase.from('duties').delete().eq('id', id);
   deleteButton.disabled = false;
   deleteButton.innerHTML = originalDeleteText;
@@ -478,6 +661,13 @@ async function deleteDuty(id, container) {
   if (error) {
     showToast(error.message, 'error');
     return;
+  }
+
+  const objectPaths = parseAttachmentEntries(dutyRow?.duty_files)
+    .map((entry) => extractDutyAttachmentObjectPath(entry.url))
+    .filter(Boolean);
+  if (objectPaths.length) {
+    await removeDutyAttachmentObjects(objectPaths);
   }
 
   showToast('Повеската е изтрита.', 'success');
@@ -527,6 +717,468 @@ async function syncDutyTrains(dutyId, trainIds) {
 
   const { error: insertError } = await supabase.from('duty_trains').insert(payload);
   return insertError;
+}
+
+function updateCurrentAttachmentsPreview(container, entries) {
+  const wrap = container.querySelector('#duty-current-attachments-wrap');
+  const linksContainer = container.querySelector('#duty-current-attachments-links');
+  const draftInput = container.querySelector('#duty-draft-attachments');
+  if (!wrap || !linksContainer || !draftInput) {
+    return;
+  }
+
+  const normalized = dedupeAttachmentEntries(entries);
+  draftInput.value = serializeAttachmentEntries(normalized) || '';
+
+  if (!normalized.length) {
+    wrap.classList.add('d-none');
+    linksContainer.innerHTML = '';
+    return;
+  }
+
+  wrap.classList.remove('d-none');
+  linksContainer.innerHTML = normalized
+    .map((entry, index) => {
+      const label = entry.label || deriveAttachmentLabel(entry.url, index);
+      return `
+        <div class="border rounded p-2 w-100">
+          <div class="mb-2 d-flex align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <a href="${escapeHtml(entry.url)}" target="_blank" rel="noopener noreferrer">Отвори</a>
+              <button
+                type="button"
+                class="btn btn-link btn-sm p-0 lh-1 text-decoration-none duty-existing-attachment-preview"
+                data-url="${escapeHtml(entry.url)}"
+                data-label="${escapeHtml(label)}"
+                title="Преглед"
+                aria-label="Преглед"
+              >
+                👁
+              </button>
+            </div>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-danger duty-existing-attachment-remove"
+              data-index="${index}"
+            >
+              Премахни
+            </button>
+          </div>
+          <input
+            type="text"
+            class="form-control form-control-sm duty-existing-attachment-label"
+            data-index="${index}"
+            value="${escapeHtml(label)}"
+            placeholder="Име на файла/линка"
+          />
+        </div>
+      `;
+    })
+    .join('');
+}
+
+function parseAttachmentEntries(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item, index) => normalizeAttachmentEntry(item, index))
+      .filter((entry) => entry.url);
+  }
+
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return [];
+  }
+
+  if (raw.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item, index) => normalizeAttachmentEntry(item, index))
+          .filter((entry) => entry.url);
+      }
+    } catch {
+      return [{ url: raw, label: deriveAttachmentLabel(raw, 0) }];
+    }
+  }
+
+  return raw
+    .split('\n')
+    .map((item, index) => normalizeAttachmentEntry(item, index))
+    .filter((entry) => entry.url);
+}
+
+function normalizeAttachmentEntry(item, index) {
+  if (item && typeof item === 'object' && !Array.isArray(item)) {
+    const url = String(item.url || '').trim();
+    const label = String(item.label || '').trim() || deriveAttachmentLabel(url, index);
+    return { url, label };
+  }
+
+  const url = String(item || '').trim();
+  return {
+    url,
+    label: deriveAttachmentLabel(url, index)
+  };
+}
+
+function serializeAttachmentEntries(entries) {
+  const normalized = dedupeAttachmentEntries(entries);
+  if (!normalized.length) {
+    return '';
+  }
+
+  return JSON.stringify(normalized);
+}
+
+function dedupeAttachmentEntries(entries) {
+  const unique = [];
+  const seen = new Set();
+
+  for (const entry of entries || []) {
+    const normalized = normalizeAttachmentEntry(entry, unique.length);
+    if (!normalized.url) {
+      continue;
+    }
+
+    const key = normalized.url.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    unique.push(normalized);
+  }
+
+  return unique;
+}
+
+function deriveAttachmentLabel(url, index) {
+  const raw = String(url || '').trim();
+  if (!raw) {
+    return `Файл ${index + 1}`;
+  }
+
+  try {
+    const parsedUrl = new URL(raw);
+    const pathPart = parsedUrl.pathname.split('/').pop() || '';
+    const decoded = decodeURIComponent(pathPart);
+    if (decoded) {
+      return decoded;
+    }
+  } catch {
+    // ignore parsing errors
+  }
+
+  return `Файл ${index + 1}`;
+}
+
+async function uploadDutyAttachments(files, dutyId) {
+  if (!Array.isArray(files) || !files.length || !dutyId) {
+    return [];
+  }
+
+  const uploaded = [];
+
+  for (const file of files) {
+    const extension = (file.name?.split('.').pop() || 'pdf').toLowerCase();
+    const safeExtension = extension.replace(/[^a-z0-9]/g, '') || 'pdf';
+    const randomSuffix = Math.random().toString(36).slice(2, 10);
+    const filePath = `${dutyId}/${Date.now()}-${randomSuffix}.${safeExtension}`;
+
+    const { error } = await supabase.storage
+      .from(DUTY_FILES_BUCKET)
+      .upload(filePath, file, { upsert: true, contentType: file.type || undefined });
+
+    if (error) {
+      if (uploaded.length) {
+        await removeDutyAttachmentObjects(uploaded.map((item) => item.objectPath));
+      }
+      showToast(error.message, 'error');
+      return null;
+    }
+
+    const { data } = supabase.storage.from(DUTY_FILES_BUCKET).getPublicUrl(filePath);
+    if (!data?.publicUrl) {
+      await removeDutyAttachmentObjects([filePath, ...uploaded.map((item) => item.objectPath)]);
+      showToast('Файлът е качен, но не успях да генерирам публичен линк.', 'error');
+      return null;
+    }
+
+    uploaded.push({
+      url: data.publicUrl,
+      label: file.name || '',
+      objectPath: filePath
+    });
+  }
+
+  return uploaded;
+}
+
+function extractDutyAttachmentObjectPath(value) {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return '';
+  }
+
+  if (!/^https?:\/\//i.test(raw)) {
+    const normalized = raw.replace(/^\/+/, '');
+    const bucketPrefix = `${DUTY_FILES_BUCKET}/`;
+    return normalized.startsWith(bucketPrefix) ? normalized.slice(bucketPrefix.length) : '';
+  }
+
+  try {
+    const url = new URL(raw);
+    const marker = `/storage/v1/object/public/${DUTY_FILES_BUCKET}/`;
+    const index = url.pathname.indexOf(marker);
+    if (index === -1) {
+      return '';
+    }
+
+    return decodeURIComponent(url.pathname.slice(index + marker.length));
+  } catch {
+    return '';
+  }
+}
+
+async function removeDutyAttachmentObjects(objectPaths) {
+  const uniquePaths = Array.from(new Set((objectPaths || []).filter(Boolean)));
+  if (!uniquePaths.length) {
+    return;
+  }
+
+  await supabase.storage
+    .from(DUTY_FILES_BUCKET)
+    .remove(uniquePaths);
+}
+
+function openDutyAttachmentPreview(container, url, label) {
+  const previewModal = container.querySelector('#duty-attachment-preview-modal');
+  const frame = container.querySelector('#duty-attachment-preview-frame');
+  const textWrap = container.querySelector('#duty-attachment-preview-text-wrap');
+  const textPreview = container.querySelector('#duty-attachment-preview-text');
+  const csvWrap = container.querySelector('#duty-attachment-preview-csv-wrap');
+  const csvNote = container.querySelector('#duty-attachment-preview-csv-note');
+  const csvHead = container.querySelector('#duty-attachment-preview-csv-head');
+  const csvBody = container.querySelector('#duty-attachment-preview-csv-body');
+  const title = container.querySelector('#duty-attachment-preview-title');
+  const fallback = container.querySelector('#duty-attachment-preview-fallback');
+  const directOpenLink = container.querySelector('#duty-attachment-preview-open');
+  if (!previewModal || !frame || !textWrap || !textPreview || !csvWrap || !csvNote || !csvHead || !csvBody || !title || !fallback || !directOpenLink) {
+    return;
+  }
+
+  const safeUrl = String(url || '').trim();
+  if (!safeUrl) {
+    showToast('Липсва линк за преглед.', 'warning');
+    return;
+  }
+
+  const previewUrl = resolveAttachmentPreviewUrl(safeUrl);
+  const extension = getFileExtensionFromUrl(safeUrl);
+  const isCsvPreview = extension === 'csv';
+  const isTextPreview = ['txt', 'csv', 'json'].includes(extension);
+
+  title.textContent = label ? `Преглед: ${label}` : 'Преглед на файл';
+  directOpenLink.setAttribute('href', safeUrl);
+  fallback.classList.add('d-none');
+  textWrap.classList.add('d-none');
+  csvWrap.classList.add('d-none');
+  csvNote.textContent = '';
+  csvHead.innerHTML = '';
+  csvBody.innerHTML = '';
+  textPreview.textContent = '';
+  frame.classList.remove('d-none');
+  frame.src = 'about:blank';
+
+  if (isCsvPreview) {
+    csvWrap.classList.remove('d-none');
+    frame.classList.add('d-none');
+    void loadAttachmentCsvPreview(safeUrl, csvHead, csvBody, csvNote, fallback);
+  } else if (isTextPreview) {
+    textWrap.classList.remove('d-none');
+    frame.classList.add('d-none');
+    textPreview.textContent = 'Зареждане...';
+    void loadAttachmentTextPreview(safeUrl, textPreview, fallback);
+  } else {
+    frame.src = previewUrl;
+    frame.onload = () => {
+      if (previewUrl !== safeUrl) {
+        fallback.classList.add('d-none');
+        return;
+      }
+
+      const currentExtension = getFileExtensionFromUrl(safeUrl);
+      const likelyNonRenderable = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(currentExtension);
+      fallback.classList.toggle('d-none', !likelyNonRenderable);
+    };
+    frame.onerror = () => {
+      fallback.classList.remove('d-none');
+    };
+  }
+
+  openModal(previewModal);
+}
+
+function closeDutyAttachmentPreview(container) {
+  const previewModal = container.querySelector('#duty-attachment-preview-modal');
+  const frame = container.querySelector('#duty-attachment-preview-frame');
+  const textWrap = container.querySelector('#duty-attachment-preview-text-wrap');
+  const textPreview = container.querySelector('#duty-attachment-preview-text');
+  const csvWrap = container.querySelector('#duty-attachment-preview-csv-wrap');
+  const csvNote = container.querySelector('#duty-attachment-preview-csv-note');
+  const csvHead = container.querySelector('#duty-attachment-preview-csv-head');
+  const csvBody = container.querySelector('#duty-attachment-preview-csv-body');
+  const fallback = container.querySelector('#duty-attachment-preview-fallback');
+  const directOpenLink = container.querySelector('#duty-attachment-preview-open');
+  if (!previewModal || !frame || !textWrap || !textPreview || !csvWrap || !csvNote || !csvHead || !csvBody || !fallback || !directOpenLink) {
+    return;
+  }
+
+  frame.src = 'about:blank';
+  frame.classList.remove('d-none');
+  textWrap.classList.add('d-none');
+  csvWrap.classList.add('d-none');
+  textPreview.textContent = '';
+  csvNote.textContent = '';
+  csvHead.innerHTML = '';
+  csvBody.innerHTML = '';
+  directOpenLink.setAttribute('href', '#');
+  fallback.classList.add('d-none');
+  closeModal(previewModal);
+}
+
+async function loadAttachmentCsvPreview(url, csvHeadElement, csvBodyElement, csvNoteElement, fallbackElement) {
+  try {
+    const response = await fetch(url, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const text = await response.text();
+    const rows = parseAttachmentCsvRows(text);
+    if (!rows.length) {
+      csvHeadElement.innerHTML = '';
+      csvBodyElement.innerHTML = '';
+      csvNoteElement.textContent = 'Файлът е празен.';
+      fallbackElement.classList.add('d-none');
+      return;
+    }
+
+    const MAX_PREVIEW_ROWS = 200;
+    const previewRows = rows.slice(0, MAX_PREVIEW_ROWS);
+    const headerCells = previewRows[0] || [];
+    const bodyRows = previewRows.slice(1);
+
+    csvHeadElement.innerHTML = `
+      <tr>${headerCells.map((cell) => `<th>${escapeHtml(cell)}</th>`).join('')}</tr>
+    `;
+    csvBodyElement.innerHTML = bodyRows
+      .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`)
+      .join('');
+
+    if (rows.length > MAX_PREVIEW_ROWS) {
+      csvNoteElement.textContent = `Показани са първите ${MAX_PREVIEW_ROWS} реда от общо ${rows.length}.`;
+    } else {
+      csvNoteElement.textContent = `Редове: ${rows.length}.`;
+    }
+
+    fallbackElement.classList.add('d-none');
+  } catch {
+    csvHeadElement.innerHTML = '';
+    csvBodyElement.innerHTML = '';
+    csvNoteElement.textContent = '';
+    fallbackElement.classList.remove('d-none');
+  }
+}
+
+function parseAttachmentCsvRows(text) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (!inQuotes && char === ',') {
+      row.push(cell);
+      cell = '';
+      continue;
+    }
+
+    if (!inQuotes && (char === '\n' || char === '\r')) {
+      if (char === '\r' && next === '\n') {
+        i += 1;
+      }
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+      continue;
+    }
+
+    cell += char;
+  }
+
+  if (cell.length || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+async function loadAttachmentTextPreview(url, targetElement, fallbackElement) {
+  try {
+    const response = await fetch(url, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const text = await response.text();
+    targetElement.textContent = text || '(Празен файл)';
+    fallbackElement.classList.add('d-none');
+  } catch {
+    targetElement.textContent = 'Неуспешно зареждане на текстов преглед.';
+    fallbackElement.classList.remove('d-none');
+  }
+}
+
+function resolveAttachmentPreviewUrl(url) {
+  const extension = getFileExtensionFromUrl(url);
+  if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(extension)) {
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+  }
+
+  return url;
+}
+
+function getFileExtensionFromUrl(url) {
+  const value = String(url || '').trim();
+  if (!value) {
+    return '';
+  }
+
+  try {
+    const parsedUrl = new URL(value);
+    const filename = parsedUrl.pathname.split('/').pop() || '';
+    const extension = filename.includes('.') ? filename.split('.').pop() : '';
+    return String(extension || '').toLowerCase();
+  } catch {
+    return '';
+  }
 }
 
 function getFriendlySupabaseErrorMessage(error) {
@@ -587,11 +1239,13 @@ function openDutyProfileModal(container, dutyId) {
 
   const scheduleKeyNames = getScheduleKeyNames(duty);
   const trainNumbers = getTrainNumbersOrdered(duty);
+  const attachmentEntries = parseAttachmentEntries(duty?.duty_files);
 
   content.innerHTML = buildDutyProfileContent({
     duty,
     scheduleKeyNames,
     trainNumbers,
+    attachmentEntries,
     escapeHtml,
     intervalToTimeInput,
     formatInterval
@@ -618,7 +1272,8 @@ function openDutyEditModal(container, dutyId) {
     secondDay: Boolean(duty.second_day),
     breakStartTime: duty.break_start_time || '00:00:00',
     breakEndTime: duty.break_end_time || '00:00:00',
-    notes: duty.notes || ''
+    notes: duty.notes || '',
+    dutyFiles: duty.duty_files || ''
   });
 
   openModal(container.querySelector('#duty-modal'));
@@ -642,7 +1297,8 @@ function openDutyDuplicateModal(container, dutyId) {
     secondDay: Boolean(duty.second_day),
     breakStartTime: duty.break_start_time || '00:00:00',
     breakEndTime: duty.break_end_time || '00:00:00',
-    notes: duty.notes || ''
+    notes: duty.notes || '',
+    dutyFiles: duty.duty_files || ''
   });
 
   container.querySelector('#duty-id').value = '';

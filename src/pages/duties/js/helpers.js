@@ -33,7 +33,8 @@ export function closeModal(modalElement) {
   if (
     document.querySelector('#duty-modal')?.classList.contains('d-none') &&
     document.querySelector('#duty-delete-modal')?.classList.contains('d-none') &&
-    document.querySelector('#duty-profile-modal')?.classList.contains('d-none')
+    document.querySelector('#duty-profile-modal')?.classList.contains('d-none') &&
+    document.querySelector('#duty-attachment-preview-modal')?.classList.contains('d-none')
   ) {
     document.body.classList.remove('overflow-hidden');
   }

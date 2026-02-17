@@ -2,6 +2,7 @@ export function buildDutyProfileContent({
   duty,
   scheduleKeyNames,
   trainNumbers,
+  attachmentEntries,
   escapeHtml,
   intervalToTimeInput,
   formatInterval
@@ -77,6 +78,37 @@ export function buildDutyProfileContent({
         <div class="border rounded p-3 h-100">
           <div class="text-secondary small">Времетраене</div>
           <div class="fw-semibold">${escapeHtml(formatInterval(duty?.duration_interval))}</div>
+        </div>
+      </div>
+      <div class="col-md-12">
+        <div class="border rounded p-3 h-100">
+          <div class="text-secondary small mb-2">Прикачени файлове</div>
+          <div class="fw-semibold">
+            ${(attachmentEntries || []).length
+    ? (attachmentEntries || [])
+      .map((entry) => {
+        const label = entry?.label || 'Файл';
+        const url = entry?.url || '#';
+        return `
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <button
+              type="button"
+              class="btn btn-link btn-sm p-0 lh-1 text-decoration-none"
+              data-duty-profile-action="preview-attachment"
+              data-url="${escapeHtml(url)}"
+              data-label="${escapeHtml(label)}"
+              title="Преглед: ${escapeHtml(label)}"
+              aria-label="Преглед: ${escapeHtml(label)}"
+            >
+              👁
+            </button>
+            <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>
+          </div>
+        `;
+      })
+      .join('')
+    : '-'}
+          </div>
         </div>
       </div>
     </div>

@@ -1720,6 +1720,7 @@ function renderCrewSelectedDayDetails(container) {
           : row?.duties?.duty_trains
             ? [row.duties.duty_trains]
             : [];
+        const dutyFileEntries = parseTimetableEntriesForCrew(row?.duties?.duty_files);
 
         const trainRows = trains
           .map((item) => {
@@ -1757,6 +1758,30 @@ function renderCrewSelectedDayDetails(container) {
           })
           .join('');
 
+        const dutyFileRows = dutyFileEntries
+          .map((entry) => {
+            const encodedUrl = encodeURIComponent(entry.url);
+            const encodedLabel = encodeURIComponent(entry.label || 'Файл');
+            const previewLabel = entry.label || 'Файл';
+            return `
+              <span class="d-inline-flex align-items-center gap-1 me-2 small">
+                <span>${escapeHtml(previewLabel)}</span>
+                <button
+                  type="button"
+                  class="btn btn-link btn-sm p-0 lh-1 text-decoration-none"
+                  data-index-crew-action="preview-timetable"
+                  data-preview-url="${escapeHtml(encodedUrl)}"
+                  data-preview-label="${escapeHtml(encodedLabel)}"
+                  title="Преглед: ${escapeHtml(previewLabel)}"
+                  aria-label="Преглед: ${escapeHtml(previewLabel)}"
+                >
+                  👁
+                </button>
+              </span>
+            `;
+          })
+          .join('');
+
         return `
           <article class="border rounded p-2">
             <div class="d-flex align-items-start justify-content-between gap-2">
@@ -1782,6 +1807,7 @@ function renderCrewSelectedDayDetails(container) {
               <div><span class="text-secondary">Времетраене:</span> ${escapeHtml(timing.duration)}</div>
             </div>
             ${trainRows ? `<div class="small"><span class="fw-semibold">Разписания:</span> ${trainRows}</div>` : ''}
+            ${dutyFileRows ? `<div class="small"><span class="fw-semibold">Файлове:</span> ${dutyFileRows}</div>` : ''}
           </article>
         `;
       })
@@ -1879,7 +1905,7 @@ async function loadCrewMonthlySnapshot(container, employeeId, targetMonthKey) {
       .order('duty_id', { ascending: true }),
     supabase
       .from('actual_duties')
-      .select('id, date, assignment_role, reported_at, start_time_override, end_time_override, break_start_time_override, break_end_time_override, duties(name, start_time, end_time, second_day, break_start_time, break_end_time, duty_trains(sequence_order, trains(number, timetable_url)))')
+      .select('id, date, assignment_role, reported_at, start_time_override, end_time_override, break_start_time_override, break_end_time_override, duties(name, start_time, end_time, second_day, break_start_time, break_end_time, duty_files, duty_trains(sequence_order, trains(number, timetable_url)))')
       .eq('employee_id', employeeId)
       .gte('date', startDate)
       .lte('date', endDate)

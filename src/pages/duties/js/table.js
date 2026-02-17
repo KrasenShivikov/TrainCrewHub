@@ -6,7 +6,7 @@ import { dutiesState, PAGE_SIZE } from './state.js';
 export async function loadDuties(container) {
   const { data, error } = await supabase
     .from('duties')
-    .select('id, name, notes, duty_type_id, start_time, end_time, second_day, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, duty_types(name), schedule_key_duties(schedule_key_id, schedule_keys(name)), duty_trains(train_id, sequence_order, trains(number))')
+    .select('id, name, notes, duty_files, duty_type_id, start_time, end_time, second_day, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, duty_types(name), schedule_key_duties(schedule_key_id, schedule_keys(name)), duty_trains(train_id, sequence_order, trains(number))')
     .order('display_order', { ascending: true })
     .order('name', { ascending: true });
 
@@ -97,13 +97,18 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
         const scheduleKeyNames = getScheduleKeyNames(item);
         const scheduleKeyIds = getScheduleKeyIds(item);
         const trainIds = getTrainIds(item);
+        const attachmentCount = getAttachmentCount(item);
         const multiScheduleBadge =`<span class="badge text-bg-info" title="${escapeHtml(scheduleKeyNames.join(', '))}">${scheduleKeyIds.length} кл-гр</span>`;
+        const attachmentBadge = attachmentCount > 0
+          ? `<span class="badge text-bg-secondary" title="Прикачени файлове">${attachmentCount} док.</span>`
+          : '';
         return `
         <tr data-duty-id="${item.id}" draggable="true">
           <td class="text-secondary">↕</td>
           <td>
             <div class="d-flex align-items-center gap-2 flex-wrap">
               ${multiScheduleBadge}
+              ${attachmentBadge}
               <span class="duties-name-ellipsis" title="${escapeHtml(item.name ?? '-')}">${escapeHtml(item.name ?? '-')}</span>
             </div>
           </td>
@@ -227,6 +232,26 @@ function getTrainIds(item) {
     .sort((left, right) => left.sequenceOrder - right.sequenceOrder);
 
   return [...new Set(rows.map((row) => row.trainId))];
+}
+
+function getAttachmentCount(item) {
+  const raw = String(item?.duty_files || '').trim();
+  if (!raw) {
+    return 0;
+  }
+
+  if (raw.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((entry) => String(entry?.url || '').trim()).length;
+      }
+    } catch {
+      return 1;
+    }
+  }
+
+  return raw.split('\n').map((entry) => entry.trim()).filter(Boolean).length;
 }
 
 function syncDutyTypeFilterOptions(container) {
