@@ -48,6 +48,7 @@ body {
 
 #page-content .table-responsive {
   margin-top: 0.5rem;
+  -webkit-overflow-scrolling: touch;
 }
 
 .search-panel {
@@ -63,6 +64,8 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .duties-name-col {
@@ -232,6 +235,7 @@ body {
   justify-content: space-between;
   padding: 0.35rem;
   text-align: left;
+  touch-action: manipulation;
 }
 
 .index-crew-calendar-day.is-other-month {
@@ -259,8 +263,55 @@ body {
 }
 
 @media (max-width: 575.98px) {
+  .search-panel-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-panel-header .btn {
+    width: 100%;
+  }
+
+  .page-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .page-actions .btn {
+    width: 100%;
+  }
+
+  .table-mobile-wrap td,
+  .table-mobile-wrap th {
+    white-space: normal;
+  }
+
+  .table-mobile-wrap td.text-end,
+  .table-mobile-wrap th.text-end {
+    white-space: nowrap;
+  }
+
+  .duties-name-col {
+    width: 140px;
+    max-width: 140px;
+  }
+
+  #page-content .btn + .btn {
+    margin-left: 0;
+    margin-top: 0.35rem;
+  }
+
+  .btn-primary:hover,
+  .btn-outline-primary:hover,
+  .btn-outline-secondary:hover,
+  .btn-outline-danger:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
   .index-crew-calendar-day {
-    min-height: 3.3rem;
+    min-height: 3.6rem;
     padding: 0.25rem;
   }
 
