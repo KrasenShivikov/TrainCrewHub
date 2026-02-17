@@ -33,7 +33,8 @@ export function closeModal(modalElement) {
 
   if (
     document.querySelector('#user-profile-view-modal')?.classList.contains('d-none') &&
-    document.querySelector('#user-profile-edit-modal')?.classList.contains('d-none')
+    document.querySelector('#user-profile-edit-modal')?.classList.contains('d-none') &&
+    document.querySelector('#user-profile-reset-confirm-modal')?.classList.contains('d-none')
   ) {
     document.body.classList.remove('overflow-hidden');
   }

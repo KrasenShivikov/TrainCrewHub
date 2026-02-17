@@ -3,5 +3,6 @@ export const userProfilesState = {
   employees: [],
   searchQuery: '',
   isAdmin: false,
-  currentUserId: ''
+  currentUserId: '',
+  resetConfirmResolver: null
 };

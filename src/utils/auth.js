@@ -37,3 +37,21 @@ export async function isCurrentUserAdmin() {
 
   return isUserAdmin(userId);
 }
+
+export async function hasUserAssignedRole(userId) {
+  if (!userId) {
+    return false;
+  }
+
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('id')
+    .eq('user_id', userId)
+    .limit(1);
+
+  if (error) {
+    return false;
+  }
+
+  return Array.isArray(data) && data.length > 0;
+}

@@ -414,6 +414,7 @@ async function createRole(container) {
       display_name_bg: row.display_name_bg || getResourceDisplayName(row.resource),
       view_screen_scope: 'none',
       view_records_scope: 'none',
+      create_records_scope: 'none',
       edit_records_scope: 'none',
       delete_records_scope: 'none'
     }));
@@ -959,7 +960,7 @@ async function loadPermissionsForRole(container, role) {
 
   const { data, error } = await supabase
     .from('role_permissions')
-    .select('role, resource, display_name_bg, view_screen_scope, view_records_scope, edit_records_scope, delete_records_scope')
+    .select('role, resource, display_name_bg, view_screen_scope, view_records_scope, create_records_scope, edit_records_scope, delete_records_scope')
     .eq('role', normalizedRole)
     .order('resource', { ascending: true });
 
@@ -990,7 +991,7 @@ async function saveRolePermissions(container) {
     const existing = adminState.permissions.find((item) => item.resource === resource);
     const scopeValue = (field) => {
       const value = row.querySelector(`[data-permission-field="${field}"]`)?.value || 'none';
-      if (field === 'view_screen_scope') {
+      if (field === 'view_screen_scope' || field === 'create_records_scope') {
         return ['none', 'all'].includes(value) ? value : 'none';
       }
 
@@ -1003,6 +1004,7 @@ async function saveRolePermissions(container) {
       display_name_bg: existing?.display_name_bg || getResourceDisplayName(resource),
       view_screen_scope: scopeValue('view_screen_scope'),
       view_records_scope: scopeValue('view_records_scope'),
+      create_records_scope: scopeValue('create_records_scope'),
       edit_records_scope: scopeValue('edit_records_scope'),
       delete_records_scope: scopeValue('delete_records_scope'),
       updated_at: new Date().toISOString()

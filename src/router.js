@@ -3,6 +3,7 @@ import { renderLoginPage } from './pages/login/js/login.js';
 import { renderRegisterPage } from './pages/register/js/register.js';
 import { renderForgotPasswordPage } from './pages/forgot-password/js/forgot-password.js';
 import { renderResetPasswordPage } from './pages/reset-password/js/reset-password.js';
+import { renderPendingAccessPage } from './pages/pending-access/js/pending-access.js';
 import { renderScheduleKeysPage } from './pages/schedule-keys/js/schedule-keys.js';
 import { renderDutiesPage } from './pages/duties/js/duties.js';
 import { renderEmployeesPage } from './pages/employees/js/employees.js';
@@ -18,7 +19,7 @@ import { renderAdminPage } from './pages/admin/js/admin.js';
 import { renderDocumentsPage } from './pages/documents/js/documents.js';
 import { renderUserProfilesPage } from './pages/user-profiles/js/user-profiles.js';
 import { showToast } from './components/toast/toast.js';
-import { getCurrentUserSession, isUserAdmin } from './utils/auth.js';
+import { getCurrentUserSession, hasUserAssignedRole, isUserAdmin } from './utils/auth.js';
 import {
   applyResourceActionGuards,
   canViewResourceScreen,
@@ -49,6 +50,10 @@ const routes = {
   '/reset-password': {
     render: renderResetPasswordPage,
     title: 'TrainCrewHub / Reset Password'
+  },
+  '/pending-access': {
+    render: renderPendingAccessPage,
+    title: 'TrainCrewHub / Чака одобрение'
   },
   '/schedule-keys': {
     render: renderScheduleKeysPage,
@@ -158,6 +163,7 @@ async function renderResourceScopeBanner(contentRoot, resource) {
   const rows = [
     { label: 'Екран', key: 'view_screen' },
     { label: 'Виж записи', key: 'view_records' },
+    { label: 'Създаване', key: 'create_records' },
     { label: 'Редакция', key: 'edit_records' },
     { label: 'Изтриване', key: 'delete_records' }
   ];
@@ -192,11 +198,40 @@ function getRouteConfig(pathname) {
 
 async function resolveAccessPath(pathname, config) {
   const publicPaths = new Set(['/login', '/register', '/forgot-password', '/reset-password']);
+  let session = null;
+
   if (!publicPaths.has(pathname)) {
-    const session = await getCurrentUserSession();
+    session = await getCurrentUserSession();
     if (!session?.user?.id) {
       return '/login';
     }
+
+    const hasAssignedRole = await hasUserAssignedRole(session.user.id);
+    if (!hasAssignedRole) {
+      if (pathname === '/pending-access') {
+        return pathname;
+      }
+
+      showToast('Акаунтът ти чака одобрение от администратор.', 'warning');
+      return '/pending-access';
+    }
+  }
+
+  if (pathname === '/pending-access') {
+    if (!session) {
+      session = await getCurrentUserSession();
+    }
+
+    if (!session?.user?.id) {
+      return '/login';
+    }
+
+    const hasAssignedRole = await hasUserAssignedRole(session.user.id);
+    if (hasAssignedRole) {
+      return '/';
+    }
+
+    return pathname;
   }
 
   if (!config?.requiresAdmin) {
@@ -214,7 +249,7 @@ async function resolveAccessPath(pathname, config) {
     return '/';
   }
 
-  const session = await getCurrentUserSession();
+  session = session || (await getCurrentUserSession());
   if (!session?.user?.id) {
     return '/login';
   }

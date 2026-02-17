@@ -359,17 +359,20 @@ function setText(container, selector, value) {
   element.textContent = value;
 }
 
-function setWelcomeIdentity(container, { username = '', employeeName = '', employeeId = '' } = {}) {
-  const profileButton = container.querySelector('#index-open-employee-profile');
+function setWelcomeIdentity(container, { username = '', employeeName = '', employeeId = '', mode = 'default' } = {}) {
+  const employeesButton = container.querySelector('#index-open-employees');
+  const userProfilesButton = container.querySelector('#index-open-user-profiles');
+  const hasAuthenticatedUser = Boolean(username || employeeName || employeeId);
+  const canSeeEmployeeProfileButton = hasAuthenticatedUser && mode !== 'head_of_transport';
 
-  if (profileButton) {
-    if (employeeId) {
-      profileButton.classList.remove('d-none');
-      profileButton.setAttribute('href', `/employees?profile=${encodeURIComponent(employeeId)}`);
-    } else {
-      profileButton.classList.add('d-none');
-      profileButton.setAttribute('href', '/employees');
-    }
+  if (employeesButton) {
+    employeesButton.classList.toggle('d-none', !canSeeEmployeeProfileButton);
+    employeesButton.setAttribute('href', '/employees');
+  }
+
+  if (userProfilesButton) {
+    userProfilesButton.classList.toggle('d-none', !hasAuthenticatedUser);
+    userProfilesButton.setAttribute('href', '/user-profiles');
   }
 }
 
@@ -381,7 +384,7 @@ async function loadUserSnapshot(container) {
   if (!user?.id) {
     setText(container, '#index-welcome-title', 'Добре дошъл в TrainCrewHub');
     setText(container, '#index-welcome-subtitle', 'Влез в профила си, за да видиш персонална информация.');
-    setWelcomeIdentity(container, { username: '', employeeName: '', employeeId: '' });
+    setWelcomeIdentity(container, { username: '', employeeName: '', employeeId: '', mode: 'default' });
     return {
       userId: '',
       employeeId: '',
@@ -405,13 +408,15 @@ async function loadUserSnapshot(container) {
     ? `${profile.employees.first_name || ''} ${profile.employees.last_name || ''}`.trim()
     : '';
   const roles = [...new Set((roleRows || []).map((item) => String(item?.role || '').trim()).filter(Boolean))];
+  const mode = resolveUserMode(roles);
 
   setText(container, '#index-welcome-title', `Здравей, ${username}${employeeName ? ` | ${employeeName}` : ''}`);
   setText(container, '#index-welcome-subtitle', 'Тук виждаш твоя профил и бърз оперативен преглед за деня.');
   setWelcomeIdentity(container, {
     username,
     employeeName: employeeName || '',
-    employeeId: profile?.employee_id || ''
+    employeeId: profile?.employee_id || '',
+    mode
   });
 
   return {
@@ -419,7 +424,7 @@ async function loadUserSnapshot(container) {
     employeeId: profile?.employee_id || '',
     roles,
     crew: isCrewRole(roles),
-    mode: resolveUserMode(roles)
+    mode
   };
 }
 

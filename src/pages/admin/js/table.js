@@ -19,6 +19,11 @@ const VIEW_SCREEN_OPTIONS = [
   { value: 'all', label: 'Да' }
 ];
 
+const CREATE_RECORDS_OPTIONS = [
+  { value: 'none', label: 'Не' },
+  { value: 'all', label: 'Да' }
+];
+
 export function syncAdminSelectOptions(container) {
   const roleProfileSelect = container.querySelector('#admin-role-profile-id');
   const linkProfileSelect = container.querySelector('#admin-profile-link-id');
@@ -250,6 +255,7 @@ export function renderRolePermissionsTable(container, explicitEmptyMessage) {
       const resourceLabel = String(permission?.display_name_bg || '').trim() || getResourceDisplayName(resource);
       const viewScreenScope = normalizeScope(permission?.view_screen_scope);
       const viewRecordsScope = normalizeScope(permission?.view_records_scope);
+      const createRecordsScope = normalizeScope(permission?.create_records_scope);
       const editRecordsScope = normalizeScope(permission?.edit_records_scope);
       const deleteRecordsScope = normalizeScope(permission?.delete_records_scope);
 
@@ -261,6 +267,9 @@ export function renderRolePermissionsTable(container, explicitEmptyMessage) {
           </td>
           <td class="text-center">
             ${renderScopeSelect('view_records_scope', viewRecordsScope)}
+          </td>
+          <td class="text-center">
+            ${renderScopeSelect('create_records_scope', createRecordsScope)}
           </td>
           <td class="text-center">
             ${renderScopeSelect('edit_records_scope', editRecordsScope)}
@@ -275,7 +284,11 @@ export function renderRolePermissionsTable(container, explicitEmptyMessage) {
 }
 
 function renderScopeSelect(field, selectedValue) {
-  const optionsSource = field === 'view_screen_scope' ? VIEW_SCREEN_OPTIONS : ACCESS_SCOPE_OPTIONS;
+  const optionsSource = field === 'view_screen_scope'
+    ? VIEW_SCREEN_OPTIONS
+    : field === 'create_records_scope'
+      ? CREATE_RECORDS_OPTIONS
+      : ACCESS_SCOPE_OPTIONS;
   const optionsHtml = optionsSource
     .map((option) => {
       const selected = option.value === selectedValue ? 'selected' : '';

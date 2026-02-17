@@ -36,11 +36,49 @@ function setupPasswordToggles(container) {
   });
 }
 
+function getResetPasswordRedirectUrl() {
+  return `${window.location.origin}/reset-password`;
+}
+
+function resolveResetConfirm(container, accepted) {
+  const resolver = userProfilesState.resetConfirmResolver;
+  if (!resolver) {
+    return;
+  }
+
+  userProfilesState.resetConfirmResolver = null;
+  closeModal(container.querySelector('#user-profile-reset-confirm-modal'));
+  resolver(Boolean(accepted));
+}
+
+function askResetPasswordConfirmation(container, identityLabel) {
+  const modal = container.querySelector('#user-profile-reset-confirm-modal');
+  const message = container.querySelector('#user-profile-reset-confirm-message');
+
+  if (!modal || !message) {
+    return Promise.resolve(false);
+  }
+
+  if (userProfilesState.resetConfirmResolver) {
+    const previousResolver = userProfilesState.resetConfirmResolver;
+    userProfilesState.resetConfirmResolver = null;
+    previousResolver(false);
+  }
+
+  message.textContent = `Да се изпрати ли линк за смяна на парола до ${identityLabel}?`;
+  openModal(modal);
+
+  return new Promise((resolve) => {
+    userProfilesState.resetConfirmResolver = resolve;
+  });
+}
+
 function attachUserProfilesHandlers(container) {
   const searchInput = container.querySelector('#user-profiles-search');
   const tableBody = container.querySelector('#user-profiles-table-body');
   const viewModal = container.querySelector('#user-profile-view-modal');
   const editModal = container.querySelector('#user-profile-edit-modal');
+  const resetConfirmModal = container.querySelector('#user-profile-reset-confirm-modal');
 
   searchInput?.addEventListener('input', (event) => {
     userProfilesState.searchQuery = String(event.target?.value || '').trim().toLowerCase();
@@ -63,6 +101,11 @@ function attachUserProfilesHandlers(container) {
 
     if (action === 'edit') {
       openEditModal(container, profileId);
+      return;
+    }
+
+    if (action === 'reset-password') {
+      sendAdminResetPasswordLink(container, profileId, actionButton);
     }
   });
 
@@ -70,13 +113,70 @@ function attachUserProfilesHandlers(container) {
   container.querySelector('#user-profile-view-close-secondary')?.addEventListener('click', () => closeModal(viewModal));
   container.querySelector('#user-profile-edit-close')?.addEventListener('click', () => closeModal(editModal));
   container.querySelector('#user-profile-edit-cancel')?.addEventListener('click', () => closeModal(editModal));
+  container.querySelector('#user-profile-reset-confirm-close')?.addEventListener('click', () => resolveResetConfirm(container, false));
+  container.querySelector('#user-profile-reset-confirm-cancel')?.addEventListener('click', () => resolveResetConfirm(container, false));
+  container.querySelector('#user-profile-reset-confirm-accept')?.addEventListener('click', () => resolveResetConfirm(container, true));
+
+  resetConfirmModal?.addEventListener('click', (event) => {
+    if (event.target === resetConfirmModal) {
+      resolveResetConfirm(container, false);
+    }
+  });
 
   container.querySelector('#user-profile-edit-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     await saveUserProfile(container);
   });
 
-  setupModalEscapeHandler('user-profiles', [editModal, viewModal]);
+  setupModalEscapeHandler('user-profiles', [resetConfirmModal, editModal, viewModal]);
+}
+
+async function sendAdminResetPasswordLink(container, profileId, actionButton) {
+  if (!userProfilesState.isAdmin) {
+    showToast('Нямаш права за това действие.', 'warning');
+    return;
+  }
+
+  const profile = userProfilesState.rows.find((row) => row.id === profileId);
+  if (!profile) {
+    showToast('Профилът не е намерен.', 'warning');
+    return;
+  }
+
+  const email = String(profile.email || '').trim();
+  if (!email) {
+    showToast('Потребителят няма валиден имейл.', 'warning');
+    return;
+  }
+
+  const fullName = `${String(profile.first_name || '').trim()} ${String(profile.last_name || '').trim()}`.trim();
+  const identityLabel = fullName || profile.username || email;
+  const confirmed = await askResetPasswordConfirmation(container, identityLabel);
+  if (!confirmed) {
+    return;
+  }
+
+  const originalButtonHtml = actionButton?.innerHTML || 'Reset парола';
+  if (actionButton) {
+    actionButton.disabled = true;
+    actionButton.innerHTML = 'Изпращане...';
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: getResetPasswordRedirectUrl()
+  });
+
+  if (actionButton) {
+    actionButton.disabled = false;
+    actionButton.innerHTML = originalButtonHtml;
+  }
+
+  if (error) {
+    showToast(error.message || 'Линкът за смяна на парола не беше изпратен.', 'error');
+    return;
+  }
+
+  showToast('Изпратен е линк за смяна на парола към потребителя.', 'success');
 }
 
 async function loadUserProfilesData(container) {

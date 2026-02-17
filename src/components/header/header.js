@@ -1,7 +1,7 @@
 import { loadHtml } from '../../utils/loadHtml.js';
 import { supabase } from '../../services/supabaseClient.js';
 import { showToast } from '../toast/toast.js';
-import { isUserAdmin } from '../../utils/auth.js';
+import { hasUserAssignedRole, isUserAdmin } from '../../utils/auth.js';
 import { canViewResourceScreen, resetPermissionCache } from '../../utils/permissions.js';
 
 let authSubscription;
@@ -61,20 +61,33 @@ export async function renderHeader(container) {
     const { data } = await supabase.auth.getSession();
     const session = data.session;
     const isAuthenticated = Boolean(session);
+    const userId = session?.user?.id || '';
+    const hasAssignedRole = userId ? await hasUserAssignedRole(userId) : false;
+    const noRoleAccess = isAuthenticated && !hasAssignedRole;
 
     navRoot?.classList.toggle('d-none', !isAuthenticated);
 
     signInNavItem?.classList.toggle('d-none', isAuthenticated);
     registerNavItem?.classList.toggle('d-none', isAuthenticated);
-    myProfileNavItem?.classList.toggle('d-none', !isAuthenticated);
     logoutNavItem?.classList.toggle('d-none', !isAuthenticated);
 
+    if (noRoleAccess) {
+      container.querySelectorAll('#mainNav .navbar-nav > li').forEach((item) => {
+        item.classList.add('d-none');
+      });
+      logoutNavItem?.classList.remove('d-none');
+      adminNavItem?.classList.add('d-none');
+      myProfileNavItem?.classList.add('d-none');
+      return;
+    }
+
     let isAdmin = false;
-    if (session?.user?.id) {
-      isAdmin = await isUserAdmin(session.user.id);
+    if (userId) {
+      isAdmin = await isUserAdmin(userId);
     }
 
     adminNavItem?.classList.toggle('d-none', !isAdmin);
+    myProfileNavItem?.classList.toggle('d-none', !isAdmin);
 
     const resourceByPath = {
       '/schedule-keys': 'schedule_keys',

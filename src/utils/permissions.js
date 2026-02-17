@@ -88,7 +88,7 @@ async function loadPermissionCache() {
 
   const { data: permissionRows, error: permissionsError } = await supabase
     .from('role_permissions')
-    .select('resource, view_screen_scope, view_records_scope, edit_records_scope, delete_records_scope')
+    .select('resource, view_screen_scope, view_records_scope, create_records_scope, edit_records_scope, delete_records_scope')
     .in('role', roles);
 
   if (permissionsError) {
@@ -109,6 +109,7 @@ async function loadPermissionCache() {
     const current = nextPermissions.get(resource) || {
       view_screen_scope: 'none',
       view_records_scope: 'none',
+      create_records_scope: 'none',
       edit_records_scope: 'none',
       delete_records_scope: 'none'
     };
@@ -116,6 +117,7 @@ async function loadPermissionCache() {
     nextPermissions.set(resource, {
       view_screen_scope: maxScope(current.view_screen_scope, row?.view_screen_scope),
       view_records_scope: maxScope(current.view_records_scope, row?.view_records_scope),
+      create_records_scope: maxScope(current.create_records_scope, row?.create_records_scope),
       edit_records_scope: maxScope(current.edit_records_scope, row?.edit_records_scope),
       delete_records_scope: maxScope(current.delete_records_scope, row?.delete_records_scope)
     });
@@ -152,6 +154,10 @@ export async function getResourcePermissionScope(resource, action) {
     return normalizeScope(resourcePermissions.edit_records_scope);
   }
 
+  if (normalizedAction === 'create_records') {
+    return normalizeScope(resourcePermissions.create_records_scope);
+  }
+
   if (normalizedAction === 'delete_records') {
     return normalizeScope(resourcePermissions.delete_records_scope);
   }
@@ -170,14 +176,16 @@ export async function getResourceScopes(resource) {
     return {
       view_screen: 'none',
       view_records: 'none',
+      create_records: 'none',
       edit_records: 'none',
       delete_records: 'none'
     };
   }
 
-  const [viewScreenScope, viewRecordsScope, editRecordsScope, deleteRecordsScope] = await Promise.all([
+  const [viewScreenScope, viewRecordsScope, createRecordsScope, editRecordsScope, deleteRecordsScope] = await Promise.all([
     getResourcePermissionScope(normalizedResource, 'view_screen'),
     getResourcePermissionScope(normalizedResource, 'view_records'),
+    getResourcePermissionScope(normalizedResource, 'create_records'),
     getResourcePermissionScope(normalizedResource, 'edit_records'),
     getResourcePermissionScope(normalizedResource, 'delete_records')
   ]);
@@ -185,6 +193,7 @@ export async function getResourceScopes(resource) {
   return {
     view_screen: viewScreenScope,
     view_records: viewRecordsScope,
+    create_records: createRecordsScope,
     edit_records: editRecordsScope,
     delete_records: deleteRecordsScope
   };
@@ -211,22 +220,30 @@ export async function applyResourceActionGuards(container, resource) {
   }
 
   const editScope = await getResourcePermissionScope(normalizedResource, 'edit_records');
+  const createScope = await getResourcePermissionScope(normalizedResource, 'create_records');
   const deleteScope = await getResourcePermissionScope(normalizedResource, 'delete_records');
 
+  const lockCreate = createScope === 'none';
   const lockEdit = editScope === 'none';
   const lockDelete = deleteScope === 'none';
 
+  const createSelectors = [
+    'button[id^="open-create-"]',
+    'button[id^="open-add-"]'
+  ];
   const editSelectors = [
     '[data-action="edit"]',
     '[data-duty-action="edit"]',
     '[data-action="duplicate"]',
-    '[data-duty-action="duplicate"]',
-    'button[id^="open-create-"]',
-    'button[id^="open-add-"]'
+    '[data-duty-action="duplicate"]'
   ];
   const deleteSelectors = ['[data-action="delete"]', '[data-duty-action="delete"]'];
 
   const applyDisabledState = () => {
+    if (lockCreate) {
+      container.querySelectorAll(createSelectors.join(',')).forEach((button) => disableButton(button, true));
+    }
+
     if (lockEdit) {
       container.querySelectorAll(editSelectors.join(',')).forEach((button) => disableButton(button, true));
     }
@@ -239,6 +256,13 @@ export async function applyResourceActionGuards(container, resource) {
   const clickHandler = (event) => {
     const target = event.target;
     if (!target) {
+      return;
+    }
+
+    if (lockCreate && target.closest(createSelectors.join(','))) {
+      event.preventDefault();
+      event.stopPropagation();
+      showToast('Нямаш права за създаване.', 'warning');
       return;
     }
 

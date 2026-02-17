@@ -55,6 +55,16 @@ export function renderUserProfilesTable(container, explicitEmptyMessage) {
               >
                 Редакция
               </button>
+              ${userProfilesState.isAdmin ? `
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-warning"
+                  data-user-profile-action="reset-password"
+                  data-id="${row.id}"
+                >
+                  Reset парола
+                </button>
+              ` : ''}
             </div>
           </td>
         </tr>
