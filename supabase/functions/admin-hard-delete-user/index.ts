@@ -1,3 +1,7 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+
+const Deno = (globalThis as any).Deno as any;
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
