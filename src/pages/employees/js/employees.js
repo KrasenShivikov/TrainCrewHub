@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../employees.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { closeModal, escapeHtml, openModal, setupModalEscapeHandler } from './helpers.js';
@@ -9,7 +9,6 @@ const EMPLOYEE_PHOTOS_BUCKET = 'employee-photos';
 let photoPreviewObjectUrl = null;
 
 export async function renderEmployeesPage(container) {
-  const pageHtml = await loadHtml('../employees.html', import.meta.url);
   container.innerHTML = pageHtml;
   attachEmployeesHandlers(container);
   await loadPositionOptions(container);

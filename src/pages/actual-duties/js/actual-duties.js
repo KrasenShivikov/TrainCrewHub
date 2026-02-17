@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../actual-duties.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { calculateShiftDurationMinutes } from '../../../utils/dutyTime.js';
@@ -9,7 +9,6 @@ import { loadActualDuties, renderActualDutiesTable } from './table.js';
 let dutiesLookup = [];
 
 export async function renderActualDutiesPage(container) {
-  const pageHtml = await loadHtml('../actual-duties.html', import.meta.url);
   container.innerHTML = pageHtml;
 
   const dateFromQuery = getDateFromQuery();

@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../schedule.html?raw';
 import { applyPrintDepotLabel } from '../../../utils/printConfig.js';
 import { loadDutiesForScheduleDate } from '../../../utils/scheduleDuties.js';
 import { supabase } from '../../../services/supabaseClient.js';
@@ -131,7 +131,6 @@ async function confirmScheduleFromTimetable(container, selectedDate) {
 }
 
 export async function renderSchedulePage(container) {
-  const pageHtml = await loadHtml('../schedule.html', import.meta.url);
   container.innerHTML = pageHtml;
   applyPrintDepotLabel(container, '#schedule-print-left-label');
 

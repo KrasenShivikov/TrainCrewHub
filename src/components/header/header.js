@@ -1,4 +1,4 @@
-import { loadHtml } from '../../utils/loadHtml.js';
+import headerHtml from './header.html?raw';
 import { supabase } from '../../services/supabaseClient.js';
 import { showToast } from '../toast/toast.js';
 import { hasUserAssignedRole, isUserAdmin } from '../../utils/auth.js';
@@ -10,7 +10,6 @@ let documentClickHandler;
 let documentKeydownHandler;
 
 export async function renderHeader(container) {
-  const headerHtml = await loadHtml('./header.html', import.meta.url);
   container.innerHTML = headerHtml;
   const navRoot = container.querySelector('nav.navbar');
 

@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../reset-password.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 
@@ -63,7 +63,6 @@ async function establishRecoverySession() {
 }
 
 export async function renderResetPasswordPage(container) {
-  const pageHtml = await loadHtml('../reset-password.html', import.meta.url);
   container.innerHTML = pageHtml;
   setupPasswordToggles(container);
 

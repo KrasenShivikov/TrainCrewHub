@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../index.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { calculateShiftDurationMinutes, intervalToTimeInput } from '../../../utils/dutyTime.js';
@@ -496,7 +496,6 @@ function attachIndexHandlers(container, headOfTransportController, crewSnapshotC
 }
 
 export async function renderIndexPage(container) {
-  const pageHtml = await loadHtml('../index.html', import.meta.url);
   container.innerHTML = pageHtml;
   const headOfTransportController = createHeadOfTransportController({
     loadKpiSnapshot,

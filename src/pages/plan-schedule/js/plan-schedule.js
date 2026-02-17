@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../plan-schedule.html?raw';
 import { applyPrintDepotLabel } from '../../../utils/printConfig.js';
 import { loadDutiesForScheduleDate } from '../../../utils/scheduleDuties.js';
 import { supabase } from '../../../services/supabaseClient.js';
@@ -16,7 +16,6 @@ import {
 } from './board.js';
 
 export async function renderPlanSchedulePage(container) {
-  const pageHtml = await loadHtml('../plan-schedule.html', import.meta.url);
   container.innerHTML = pageHtml;
   applyPrintDepotLabel(container, '#plan-schedule-print-left-label');
 

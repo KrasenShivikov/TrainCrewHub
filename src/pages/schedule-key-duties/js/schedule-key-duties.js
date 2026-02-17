@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../schedule-key-duties.html?raw';
 import {
   calculateShiftDurationMinutes,
   intervalToTimeInput
@@ -23,7 +23,6 @@ import {
 } from './table.js';
 
 export async function renderScheduleKeyDutiesPage(container) {
-  const pageHtml = await loadHtml('../schedule-key-duties.html', import.meta.url);
   container.innerHTML = pageHtml;
   initializeScheduleKeyFormFields(container);
   attachScheduleKeyDutiesHandlers(container);

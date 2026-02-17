@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../forgot-password.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 
@@ -19,7 +19,6 @@ async function resolveIdentifierToEmail(identifier) {
 }
 
 export async function renderForgotPasswordPage(container) {
-  const pageHtml = await loadHtml('../forgot-password.html', import.meta.url);
   container.innerHTML = pageHtml;
 
   const form = container.querySelector('#forgot-password-form');

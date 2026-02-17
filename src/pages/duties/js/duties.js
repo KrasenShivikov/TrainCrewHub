@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../duties.html?raw';
 import {
   calculateShiftDurationMinutes,
   intervalToTimeInput
@@ -15,7 +15,6 @@ const DUTY_FILES_BUCKET = 'duty-files';
 const MAX_DUTY_FILE_ITEMS = 5;
 
 export async function renderDutiesPage(container) {
-  const pageHtml = await loadHtml('../duties.html', import.meta.url);
   container.innerHTML = pageHtml;
   initializeDutyFormFields(container);
   attachDutiesHandlers(container);

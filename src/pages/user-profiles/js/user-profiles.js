@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../user-profiles.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { getCurrentUserSession, isCurrentUserAdmin } from '../../../utils/auth.js';
@@ -7,7 +7,6 @@ import { userProfilesState } from './state.js';
 import { renderUserProfilesTable, syncEmployeeOptions } from './table.js';
 
 export async function renderUserProfilesPage(container) {
-  const pageHtml = await loadHtml('../user-profiles.html', import.meta.url);
   container.innerHTML = pageHtml;
 
   setupPasswordToggles(container);

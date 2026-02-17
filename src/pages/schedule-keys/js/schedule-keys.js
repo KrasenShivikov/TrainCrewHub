@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../schedule-keys.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { closeModal, openModal, setupModalEscapeHandler } from './helpers.js';
@@ -6,7 +6,6 @@ import { scheduleKeysState } from './state.js';
 import { loadScheduleKeys, renderScheduleKeysTable } from './table.js';
 
 export async function renderScheduleKeysPage(container) {
-  const pageHtml = await loadHtml('../schedule-keys.html', import.meta.url);
   container.innerHTML = pageHtml;
   attachScheduleKeysHandlers(container);
   await loadScheduleKeys(container);

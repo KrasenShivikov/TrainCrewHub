@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../pending-access.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 
@@ -29,8 +29,6 @@ function triggerPendingAccessRecheck() {
 
 export async function renderPendingAccessPage(container) {
   cleanupPendingAccessAutoRecheck();
-
-  const pageHtml = await loadHtml('../pending-access.html', import.meta.url);
   container.innerHTML = pageHtml;
 
   const refreshButton = container.querySelector('#pending-access-refresh');

@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../planned-duties.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { closeModal, openModal, setupModalEscapeHandler } from './helpers.js';
@@ -25,7 +25,6 @@ import {
 } from './bulk-delete.js';
 
 export async function renderPlannedDutiesPage(container) {
-  const pageHtml = await loadHtml('../planned-duties.html', import.meta.url);
   container.innerHTML = pageHtml;
   attachPlannedDutiesHandlers(container);
   await loadEmployeeOptions(container);

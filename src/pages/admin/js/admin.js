@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../admin.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { isPermissionBannerEnabled, setPermissionBannerEnabled } from '../../../utils/permissions.js';
@@ -28,7 +28,6 @@ const ROLE_SORT_PRIORITY = {
 let pendingRoleWarningAction = null;
 
 export async function renderAdminPage(container) {
-  const pageHtml = await loadHtml('../admin.html', import.meta.url);
   container.innerHTML = pageHtml;
   const bannerToggle = container.querySelector('#admin-permissions-banner-toggle');
   const permissionsRoleSelect = container.querySelector('#admin-permissions-role');

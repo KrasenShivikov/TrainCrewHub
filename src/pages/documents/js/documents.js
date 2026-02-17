@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../documents.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { closeModal, openModal, setupModalEscapeHandler } from './helpers.js';
@@ -14,7 +14,6 @@ import {
 const DOCUMENTS_BUCKET = 'documents-files';
 
 export async function renderDocumentsPage(container) {
-  const pageHtml = await loadHtml('../documents.html', import.meta.url);
   container.innerHTML = pageHtml;
   attachDocumentsHandlers(container);
   await refreshDocumentsData(container);

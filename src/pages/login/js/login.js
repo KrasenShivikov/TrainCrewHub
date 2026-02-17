@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../login.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { isUserProfileActive } from '../../../utils/auth.js';
@@ -19,7 +19,6 @@ async function waitForActiveSession({ attempts = 10, delayMs = 120 } = {}) {
 }
 
 export async function renderLoginPage(container) {
-  const pageHtml = await loadHtml('../login.html', import.meta.url);
   container.innerHTML = pageHtml;
   setupPasswordToggles(container);
   attachLoginFormListener(container);

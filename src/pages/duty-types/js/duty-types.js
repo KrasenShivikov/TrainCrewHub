@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../duty-types.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { closeModal, openModal, setupModalEscapeHandler } from './helpers.js';
@@ -6,7 +6,6 @@ import { dutyTypesState } from './state.js';
 import { loadDutyTypes, renderDutyTypesTable } from './table.js';
 
 export async function renderDutyTypesPage(container) {
-  const pageHtml = await loadHtml('../duty-types.html', import.meta.url);
   container.innerHTML = pageHtml;
   attachDutyTypesHandlers(container);
   await loadDutyTypes(container);

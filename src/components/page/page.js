@@ -1,9 +1,8 @@
-import { loadHtml } from '../../utils/loadHtml.js';
+import shellHtml from './page.html?raw';
 import { renderHeader } from '../header/header.js';
 import { renderFooter } from '../footer/footer.js';
 
 export async function renderPageShell(container) {
-  const shellHtml = await loadHtml('./page.html', import.meta.url);
   container.innerHTML = shellHtml;
 
   const headerRoot = container.querySelector('#app-header');

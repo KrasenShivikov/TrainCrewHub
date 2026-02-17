@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../employee-absences.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { closeModal, escapeHtml, openModal, setupModalEscapeHandler } from './helpers.js';
@@ -6,7 +6,6 @@ import { employeeAbsencesState } from './state.js';
 import { loadEmployeeAbsences, renderEmployeeAbsencesTable } from './table.js';
 
 export async function renderEmployeeAbsencesPage(container) {
-  const pageHtml = await loadHtml('../employee-absences.html', import.meta.url);
   container.innerHTML = pageHtml;
 
   attachEmployeeAbsencesHandlers(container);

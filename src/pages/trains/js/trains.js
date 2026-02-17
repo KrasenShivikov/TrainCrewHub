@@ -1,4 +1,4 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../trains.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { closeModal, openModal, setupModalEscapeHandler, toTimeInputValue } from './helpers.js';
@@ -9,7 +9,6 @@ const TRAIN_TIMETABLES_BUCKET = 'train-timetables';
 const MAX_TRAIN_TIMETABLE_ITEMS = 5;
 
 export async function renderTrainsPage(container) {
-  const pageHtml = await loadHtml('../trains.html', import.meta.url);
   container.innerHTML = pageHtml;
 
   attachTrainsHandlers(container);

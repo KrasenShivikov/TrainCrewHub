@@ -1,9 +1,8 @@
-import { loadHtml } from '../../../utils/loadHtml.js';
+import pageHtml from '../register.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 
 export async function renderRegisterPage(container) {
-  const pageHtml = await loadHtml('../register.html', import.meta.url);
   container.innerHTML = pageHtml;
   setupPasswordToggles(container);
   attachRegisterFormListener(container);
