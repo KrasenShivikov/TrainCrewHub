@@ -4,6 +4,9 @@ export const adminState = {
   roleCatalog: [],
   availableRoles: [],
   roles: [],
+  roleAuditLogs: [],
+  currentUserId: '',
+  currentUserProtectedAdminIds: [],
   permissionsRole: 'admin',
   permissions: []
 };

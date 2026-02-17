@@ -7,6 +7,7 @@ import { adminState } from './state.js';
 import { getRoleLabel } from './helpers.js';
 import {
   renderProfilesTable,
+  renderRoleAuditTable,
   renderRoleCatalogTable,
   renderRolePermissionsTable,
   renderRolesTable,
@@ -282,11 +283,15 @@ function openAssignRoleModalForUser(container, userId) {
 }
 
 async function loadAdminData(container) {
+  const { data: userData } = await supabase.auth.getUser();
+  adminState.currentUserId = userData?.user?.id || '';
+
   const [
     { data: profiles, error: profilesError },
     { data: employees, error: employeesError },
     { data: roles, error: rolesError },
-    { data: roleCatalogRows, error: roleCatalogError }
+    { data: roleCatalogRows, error: roleCatalogError },
+    { data: roleAuditLogsRows, error: roleAuditLogsError }
   ] = await Promise.all([
     supabase
       .from('user_profiles')
@@ -299,25 +304,41 @@ async function loadAdminData(container) {
       .order('first_name', { ascending: true }),
     supabase
       .from('user_roles')
-      .select('id, user_id, role')
+      .select('id, user_id, role, granted_by_user_id')
       .order('role', { ascending: true })
       .order('created_at', { ascending: false }),
     supabase
       .from('roles')
       .select('name, display_name_bg')
-      .order('name', { ascending: true })
+      .order('name', { ascending: true }),
+    supabase
+      .from('user_role_audit_logs')
+      .select('id, action, role, actor_user_id, target_user_id, occurred_at')
+      .order('occurred_at', { ascending: false })
+      .limit(100)
   ]);
 
-  if (profilesError || employeesError || rolesError || roleCatalogError) {
-    showToast(profilesError?.message || employeesError?.message || rolesError?.message || roleCatalogError?.message || 'Грешка при зареждане на админ панела.', 'error');
+  if (profilesError || employeesError || rolesError || roleCatalogError || roleAuditLogsError) {
+    showToast(
+      profilesError?.message
+        || employeesError?.message
+        || rolesError?.message
+        || roleCatalogError?.message
+        || roleAuditLogsError?.message
+        || 'Грешка при зареждане на админ панела.',
+      'error'
+    );
     adminState.profiles = [];
     adminState.employees = [];
     adminState.roleCatalog = [];
     adminState.availableRoles = [];
     adminState.roles = [];
+    adminState.roleAuditLogs = [];
+    adminState.currentUserProtectedAdminIds = [];
     syncAdminSelectOptions(container);
     renderRoleCatalogTable(container, 'Няма налични роли.');
     renderRolesTable(container, 'Няма данни за роли.');
+    renderRoleAuditTable(container, 'Няма записани промени по роли.');
     renderProfilesTable(container, 'Няма данни за профили.');
     return;
   }
@@ -326,12 +347,15 @@ async function loadAdminData(container) {
   adminState.employees = employees || [];
   adminState.roleCatalog = roleCatalogRows || [];
   adminState.roles = mapAllUsersWithRoles(roles || [], adminState.profiles);
+  adminState.roleAuditLogs = mapRoleAuditLogs(roleAuditLogsRows || [], adminState.profiles);
+  adminState.currentUserProtectedAdminIds = resolveCurrentUserProtectedAdminIds(adminState.roles);
   adminState.availableRoles = getMergedRoles(roleCatalogRows || [], roles || []);
   syncRoleSelectOptions(container);
 
   syncAdminSelectOptions(container);
   renderRoleCatalogTable(container);
   renderRolesTable(container);
+  renderRoleAuditTable(container);
   renderProfilesTable(container);
 }
 
@@ -483,6 +507,7 @@ async function addUserRole(container) {
     .insert({
       user_id: profileId,
       role,
+      granted_by_user_id: userData?.user?.id || null,
       created_from: userData?.user?.email || 'admin_panel'
     });
 
@@ -506,7 +531,7 @@ async function addUserRole(container) {
   if (roleSelect) {
     roleSelect.value = '';
   }
-  await loadRoles(container);
+  await Promise.all([loadRoles(container), loadRoleAuditLogs(container)]);
 }
 
 async function removeUserRole(container, roleId) {
@@ -516,12 +541,22 @@ async function removeUserRole(container, roleId) {
     .eq('id', roleId);
 
   if (error) {
+    if (String(error.message || '').toLowerCase().includes('last admin')) {
+      showToast('Не може да се премахне последната админ роля.', 'warning');
+      return;
+    }
+
+    if (String(error.message || '').toLowerCase().includes('grantor')) {
+      showToast('Не можеш да отнемеш админ права нагоре по grantor веригата.', 'warning');
+      return;
+    }
+
     showToast(error.message, 'error');
     return;
   }
 
   showToast('Ролята е премахната.', 'success');
-  await loadRoles(container);
+  await Promise.all([loadRoles(container), loadRoleAuditLogs(container)]);
 }
 
 async function saveProfileEmployeeLink(container) {
@@ -599,7 +634,7 @@ async function updateProfileEmployeeLink(container, profileId, employeeId) {
 async function loadRoles(container) {
   const { data, error } = await supabase
     .from('user_roles')
-    .select('id, user_id, role')
+    .select('id, user_id, role, granted_by_user_id')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -608,7 +643,79 @@ async function loadRoles(container) {
   }
 
   adminState.roles = mapRolesWithProfiles(data || [], adminState.profiles);
+  adminState.currentUserProtectedAdminIds = resolveCurrentUserProtectedAdminIds(adminState.roles);
   renderRolesTable(container);
+}
+
+async function loadRoleAuditLogs(container) {
+  const { data, error } = await supabase
+    .from('user_role_audit_logs')
+    .select('id, action, role, actor_user_id, target_user_id, occurred_at')
+    .order('occurred_at', { ascending: false })
+    .limit(100);
+
+  if (error) {
+    showToast(error.message, 'error');
+    return;
+  }
+
+  adminState.roleAuditLogs = mapRoleAuditLogs(data || [], adminState.profiles);
+  renderRoleAuditTable(container);
+}
+
+function mapRoleAuditLogs(logRows, profiles) {
+  const profilesById = new Map((profiles || []).map((profile) => [profile.id, profile]));
+
+  return (logRows || []).map((row) => {
+    const actorProfile = profilesById.get(row.actor_user_id);
+    const targetProfile = profilesById.get(row.target_user_id);
+    const role = String(row?.role || '').trim();
+
+    return {
+      ...row,
+      role_label: role ? getRoleLabel(role) : '-',
+      actor_label: actorProfile?.username || row?.actor_user_id || '-',
+      target_label: targetProfile?.username || row?.target_user_id || '-'
+    };
+  });
+}
+
+function resolveCurrentUserProtectedAdminIds(roles) {
+  const currentUserId = String(adminState.currentUserId || '').trim();
+  if (!currentUserId) {
+    return [];
+  }
+
+  const adminRows = (roles || []).filter((row) => String(row?.role || '').trim().toLowerCase() === 'admin');
+  const grantorByUserId = new Map(
+    adminRows.map((row) => [String(row?.user_id || '').trim(), String(row?.granted_by_user_id || '').trim()])
+  );
+
+  const adminRoleRow = (roles || []).find(
+    (row) => String(row?.user_id || '').trim() === currentUserId && String(row?.role || '').trim().toLowerCase() === 'admin'
+  );
+  const firstGrantorId = String(adminRoleRow?.granted_by_user_id || '').trim();
+  if (!firstGrantorId) {
+    return [];
+  }
+
+  const protectedIds = [];
+  const visited = new Set([currentUserId]);
+  let cursorId = firstGrantorId;
+
+  while (cursorId && !visited.has(cursorId)) {
+    protectedIds.push(cursorId);
+    visited.add(cursorId);
+
+    const nextGrantorId = String(grantorByUserId.get(cursorId) || '').trim();
+    if (!nextGrantorId || nextGrantorId === cursorId) {
+      break;
+    }
+
+    cursorId = nextGrantorId;
+  }
+
+  return protectedIds;
 }
 
 function mapRolesWithProfiles(roles, profiles) {
@@ -616,7 +723,8 @@ function mapRolesWithProfiles(roles, profiles) {
 
   return (roles || []).map((roleRow) => ({
     ...roleRow,
-    username: profilesById.get(roleRow.user_id)?.username || ''
+    username: profilesById.get(roleRow.user_id)?.username || '',
+    granted_by_username: profilesById.get(roleRow.granted_by_user_id)?.username || ''
   }));
 }
 
@@ -643,7 +751,8 @@ function mapAllUsersWithRoles(roles, profiles) {
         result.push({
           ...roleRow,
           username: profile.username,
-          user_id: profile.id
+          user_id: profile.id,
+          granted_by_username: profilesById.get(roleRow.granted_by_user_id)?.username || ''
         });
       });
     } else {
@@ -652,7 +761,9 @@ function mapAllUsersWithRoles(roles, profiles) {
         id: null,
         user_id: profile.id,
         role: null,
-        username: profile.username
+        username: profile.username,
+        granted_by_user_id: null,
+        granted_by_username: ''
       });
     }
   });

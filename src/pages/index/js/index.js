@@ -2014,7 +2014,90 @@ async function loadAdminKpiSnapshot(container) {
   setText(container, '#index-kpi-actual', String(uniqueUserIds.size));
   setText(container, '#index-kpi-absences', String(linkedProfilesResponse.count ?? 0));
   setText(container, '#index-kpi-employees', String(rolesCatalogResponse.count ?? 0));
+  await loadAdminPendingUsersSnapshot(container);
   setText(container, '#index-last-updated', `Последно обновяване: ${formatDateTime(new Date())}`);
+}
+
+async function loadAdminPendingUsersSnapshot(container) {
+  const panel = container.querySelector('#index-pending-users-panel');
+  const body = container.querySelector('#index-pending-users-body');
+
+  if (!panel || !body) {
+    return;
+  }
+
+  const [{ data: profiles, error: profilesError }, { data: roleRows, error: rolesError }] = await Promise.all([
+    supabase.from('user_profiles').select('id, username, created_at').order('created_at', { ascending: true }),
+    supabase.from('user_roles').select('user_id')
+  ]);
+
+  if (profilesError || rolesError) {
+    showToast('Списъкът с чакащи потребители не може да се зареди.', 'warning');
+    setText(container, '#index-pending-users-count', '0');
+    body.innerHTML = '<tr><td colspan="3" class="text-secondary">Грешка при зареждане.</td></tr>';
+    return;
+  }
+
+  const usersWithRoles = new Set((roleRows || []).map((item) => String(item?.user_id || '').trim()).filter(Boolean));
+  const pendingProfiles = (profiles || []).filter((profile) => !usersWithRoles.has(String(profile?.id || '').trim()));
+
+  setText(container, '#index-pending-users-count', String(pendingProfiles.length));
+
+  if (!pendingProfiles.length) {
+    body.innerHTML = '<tr><td colspan="3" class="text-secondary">Няма чакащи потребители.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = pendingProfiles
+    .map((profile) => {
+      const username = String(profile?.username || '').trim() || String(profile?.id || '-');
+      const createdAt = profile?.created_at || '';
+      const createdDate = createdAt ? new Date(createdAt) : null;
+      const createdLabel = createdDate && !Number.isNaN(createdDate.getTime())
+        ? formatDateTime(createdDate)
+        : '-';
+      const waitingLabel = formatWaitingDuration(createdAt);
+
+      return `
+        <tr>
+          <td>${escapeHtml(username)}</td>
+          <td>${escapeHtml(createdLabel)}</td>
+          <td>${escapeHtml(waitingLabel)}</td>
+        </tr>
+      `;
+    })
+    .join('');
+}
+
+function formatWaitingDuration(value) {
+  if (!value) {
+    return '-';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '-';
+  }
+
+  const elapsedMs = Math.max(Date.now() - date.getTime(), 0);
+  const totalMinutes = Math.floor(elapsedMs / 60000);
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) {
+    return `${days} д ${hours} ч`;
+  }
+
+  if (hours > 0) {
+    return `${hours} ч ${minutes} мин`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes} мин`;
+  }
+
+  return 'под 1 мин';
 }
 
 function attachIndexHandlers(container) {
@@ -2260,6 +2343,7 @@ function applyRoleLayout(container, userContext) {
   const certificatesPanel = container.querySelector('#index-certificates-panel');
   const absencesPanel = container.querySelector('#index-absences-panel');
   const workloadPanel = container.querySelector('#index-workload-panel');
+  const pendingUsersPanel = container.querySelector('#index-pending-users-panel');
   const workloadDateInput = container.querySelector('#index-workload-date');
   const soonDetails = container.querySelector('#index-certificates-soon-details');
   const expiredDetails = container.querySelector('#index-certificates-expired-details');
@@ -2282,6 +2366,7 @@ function applyRoleLayout(container, userContext) {
     certificatesPanel?.classList.add('d-none');
     absencesPanel?.classList.add('d-none');
     workloadPanel?.classList.add('d-none');
+    pendingUsersPanel?.classList.add('d-none');
     soonDetails?.classList.add('d-none');
     expiredDetails?.classList.add('d-none');
 
@@ -2295,6 +2380,7 @@ function applyRoleLayout(container, userContext) {
         setText(container, '#index-welcome-subtitle', 'Административен преглед на потребители, роли и системно състояние.');
         setText(container, '#index-management-title', 'Административен преглед');
         setKpiLabels(container, ['Профили', 'Потребители с роля', 'Профили със служител', 'Роли']);
+        pendingUsersPanel?.classList.remove('d-none');
       } else if (mode === 'manager') {
         quickActions.innerHTML = `
           <a href="/plan-schedule" data-link class="btn btn-outline-primary">План-График</a>

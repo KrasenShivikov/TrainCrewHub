@@ -169,6 +169,32 @@
         </div>
       </section>
 
+      <section class="border rounded p-3 mt-3 d-none" id="index-pending-users-panel">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+          <h3 class="h6 mb-0">Чакащи потребители за роля</h3>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-warning" id="index-pending-users-count">0</span>
+            <a href="/admin" data-link class="btn btn-sm btn-outline-primary">Към роли</a>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Потребител</th>
+                <th>Създаден на</th>
+                <th>Чака от</th>
+              </tr>
+            </thead>
+            <tbody id="index-pending-users-body">
+              <tr>
+                <td colspan="3" class="text-secondary">Няма чакащи потребители.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <p class="text-secondary small mt-3 mb-0" id="index-last-updated">-</p>
     </div>
   </section>

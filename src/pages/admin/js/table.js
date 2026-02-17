@@ -85,18 +85,39 @@ export function renderRolesTable(container, explicitEmptyMessage) {
   }
 
   emptyState.classList.add('d-none');
+  const adminRolesCount = adminState.roles.filter(
+    (item) => String(item?.role || '').trim().toLowerCase() === 'admin'
+  ).length;
 
   body.innerHTML = adminState.roles
     .map((row) => {
       const username = row?.username || row?.user_id || '-';
       const role = row?.role ? resolveRoleLabel(row.role) : '-';
+      const grantedBy = row?.granted_by_username || row?.granted_by_user_id || '-';
       const userId = row?.user_id || '';
       const hasRole = Boolean(row?.role);
+      const isAdminRole = String(row?.role || '').trim().toLowerCase() === 'admin';
+      const isLastAdminRole = isAdminRole && adminRolesCount <= 1;
+      const isGrantorProtectedAdmin =
+        isAdminRole && userId && adminState.currentUserProtectedAdminIds.includes(userId);
+      const removeDisabled = !hasRole || isLastAdminRole || isGrantorProtectedAdmin;
+      const roleBadges = [
+        hasRole ? `<span class="badge text-bg-secondary">${escapeHtml(role)}</span>` : '<span class="text-secondary">-</span>',
+        isGrantorProtectedAdmin ? '<span class="badge text-bg-info">Твой grantor lineage</span>' : ''
+      ]
+        .filter(Boolean)
+        .join(' ');
+      const removeTitle = isLastAdminRole
+        ? 'Не може да се премахне последният администратор.'
+        : isGrantorProtectedAdmin
+          ? 'Не можеш да премахнеш админ права нагоре по grantor веригата.'
+          : '';
 
       return `
         <tr>
           <td>${escapeHtml(username)}</td>
-          <td>${hasRole ? `<span class="badge text-bg-secondary">${escapeHtml(role)}</span>` : '<span class="text-secondary">-</span>'}</td>
+          <td>${roleBadges}</td>
+          <td>${hasRole ? escapeHtml(grantedBy) : '<span class="text-secondary">-</span>'}</td>
           <td class="text-end">
             <div class="d-inline-flex gap-2">
               <button
@@ -113,7 +134,8 @@ export function renderRolesTable(container, explicitEmptyMessage) {
                 class="btn btn-sm btn-outline-danger"
                 data-admin-action="remove-role"
                 data-role-id="${row.id || ''}"
-                ${!hasRole ? 'disabled' : ''}
+                ${removeDisabled ? 'disabled' : ''}
+                title="${removeTitle}"
               >
                 Премахни
               </button>
@@ -283,6 +305,45 @@ export function renderRolePermissionsTable(container, explicitEmptyMessage) {
     .join('');
 }
 
+export function renderRoleAuditTable(container, explicitEmptyMessage) {
+  const body = container.querySelector('#admin-role-audit-body');
+  const emptyState = container.querySelector('#admin-role-audit-empty');
+
+  if (!body || !emptyState) {
+    return;
+  }
+
+  if (!adminState.roleAuditLogs.length) {
+    body.innerHTML = '';
+    emptyState.classList.remove('d-none');
+    emptyState.textContent = explicitEmptyMessage || 'Няма записани промени по роли.';
+    return;
+  }
+
+  emptyState.classList.add('d-none');
+
+  body.innerHTML = adminState.roleAuditLogs
+    .map((row) => {
+      const action = String(row?.action || '').trim();
+      const actionLabel = action === 'grant' ? 'Добавяне' : action === 'revoke' ? 'Премахване' : 'Обновяване';
+      const roleLabel = row?.role_label || '-';
+      const actorLabel = row?.actor_label || '-';
+      const targetLabel = row?.target_label || '-';
+      const occurredAt = formatDateTime(row?.occurred_at);
+
+      return `
+        <tr>
+          <td>${escapeHtml(occurredAt)}</td>
+          <td>${escapeHtml(actionLabel)}</td>
+          <td>${escapeHtml(roleLabel)}</td>
+          <td>${escapeHtml(actorLabel)}</td>
+          <td>${escapeHtml(targetLabel)}</td>
+        </tr>
+      `;
+    })
+    .join('');
+}
+
 function renderScopeSelect(field, selectedValue) {
   const optionsSource = field === 'view_screen_scope'
     ? VIEW_SCREEN_OPTIONS
@@ -321,4 +382,17 @@ function resolveRoleLabel(roleName) {
 
   const bg = String(roleMeta?.display_name_bg || '').trim();
   return bg || getRoleLabel(normalizedRole);
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return '-';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '-';
+  }
+
+  return date.toLocaleString('bg-BG');
 }
