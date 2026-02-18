@@ -104,7 +104,10 @@ export function openModal(modalElement) {
 export function closeModal(modalElement) {
   modalElement?.classList.add('d-none');
 
-  const hasOpenModal = Boolean(document.querySelector('#schedule-actual-edit-modal:not(.d-none)'));
+  const hasOpenModal = Boolean(
+    document.querySelector('#schedule-actual-edit-modal:not(.d-none)') ||
+    document.querySelector('#schedule-confirm-modal:not(.d-none)')
+  );
   if (!hasOpenModal) {
     document.body.classList.remove('overflow-hidden');
   }

@@ -2,14 +2,19 @@
   --app-bg: var(--bs-body-bg);
   --app-text: var(--bs-emphasis-color);
   --app-surface: var(--bs-body-bg);
-  --app-nav-shadow: var(--bs-box-shadow-sm);
-  --app-card-shadow: var(--bs-box-shadow-sm);
-  --app-nav-link-active-bg: rgba(255, 255, 255, 0.14);
+  --app-nav-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  --app-card-shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.06);
+  --app-card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.09), 0 12px 32px rgba(0, 0, 0, 0.1);
+  --app-nav-link-active-bg: rgba(255, 255, 255, 0.18);
+  --app-nav-link-active-indicator: rgba(255, 255, 255, 0.9);
   --app-table-hover-bg: rgba(var(--bs-primary-rgb), 0.04);
   --app-control-height: 2.5rem;
   --app-content-gap: 1rem;
   --app-section-gap: 1.25rem;
   --app-block-gap: 0.75rem;
+  --app-radius: var(--bs-border-radius);
+  --app-radius-lg: var(--bs-border-radius-xl);
+  --app-transition: 0.18s ease;
 }
 
 body {
@@ -58,15 +63,6 @@ a {
   -webkit-overflow-scrolling: touch;
 }
 
-.search-panel {
-  border: 1px solid var(--bs-border-color);
-  border-radius: var(--bs-border-radius);
-  background: var(--bs-body-bg);
-  padding: 1rem;
-  margin-bottom: 1rem;
-  box-shadow: var(--bs-box-shadow-sm);
-}
-
 .search-panel-header {
   display: flex;
   justify-content: space-between;
@@ -92,55 +88,83 @@ a {
 
 .navbar {
   box-shadow: var(--app-nav-shadow);
+  background: linear-gradient(135deg, #1a56b0 0%, var(--bs-primary) 60%, #2563eb 100%) !important;
 }
 
 .navbar .navbar-brand {
-  letter-spacing: 0.2px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  opacity: 0.97;
 }
 
 .navbar .nav-link {
   border-radius: var(--bs-border-radius);
   padding: 0.4rem 0.65rem;
   font-weight: 500;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color var(--app-transition), color var(--app-transition);
+  position: relative;
 }
 
-.navbar .nav-link:hover,
-.navbar .nav-link.active {
+.navbar .nav-link:hover {
   background: var(--app-nav-link-active-bg);
 }
 
 .navbar .nav-link.active {
+  background: var(--app-nav-link-active-bg);
   font-weight: 700;
+}
+
+.navbar .nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--app-nav-link-active-indicator);
+  opacity: 0.85;
 }
 
 .navbar .dropdown-menu {
   border: 1px solid var(--bs-border-color);
   border-radius: var(--bs-border-radius-lg);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.08);
   padding: 0.4rem;
+  animation: dropdownFadeIn 0.15s ease;
+}
+
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .navbar .dropdown-item {
   border-radius: var(--bs-border-radius);
-  padding: 0.45rem 0.65rem;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.93rem;
+  transition: background var(--app-transition);
 }
 
 .navbar .dropdown-item:hover,
 .navbar .dropdown-item.active {
   background: var(--bs-primary-bg-subtle);
+  color: var(--bs-primary-text-emphasis);
 }
 
 .card {
   border-color: var(--bs-border-color) !important;
-  border-radius: var(--bs-border-radius-xl) !important;
+  border-radius: var(--app-radius-lg) !important;
   box-shadow: var(--app-card-shadow) !important;
   background: var(--app-surface);
+  transition: box-shadow var(--app-transition);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .card:hover {
-    box-shadow: var(--bs-box-shadow) !important;
+    box-shadow: var(--app-card-shadow-hover) !important;
   }
 }
 
@@ -160,21 +184,45 @@ a {
   border-radius: var(--bs-border-radius) !important;
   font-weight: 600;
   min-height: var(--app-control-height);
+  letter-spacing: 0.01em;
+  transition: transform var(--app-transition), box-shadow var(--app-transition), background-color var(--app-transition), border-color var(--app-transition), color var(--app-transition);
 }
 
-.btn-primary,
-.btn-outline-primary,
-.btn-outline-secondary,
-.btn-outline-danger {
-  transition: transform 0.15s ease, box-shadow 0.2s ease;
+.btn-sm {
+  min-height: unset;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
-.btn-primary:hover,
+.btn-primary {
+  box-shadow: 0 2px 6px rgba(var(--bs-primary-rgb), 0.35);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 4px 14px rgba(var(--bs-primary-rgb), 0.38);
+  transform: translateY(-1px);
+}
+
 .btn-outline-primary:hover,
 .btn-outline-secondary:hover,
-.btn-outline-danger:hover {
+.btn-outline-success:hover,
+.btn-outline-danger:hover,
+.btn-outline-warning:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.btn:active,
+.btn-primary:active {
+  transform: translateY(0) !important;
+  box-shadow: none !important;
+}
+
+.btn:disabled,
+.btn.disabled {
+  opacity: 0.5;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .form-control,
@@ -182,12 +230,13 @@ a {
   border-radius: var(--bs-border-radius) !important;
   border-color: var(--bs-border-color);
   min-height: var(--app-control-height);
+  transition: border-color var(--app-transition), box-shadow var(--app-transition);
 }
 
 .form-control:focus,
 .form-select:focus {
   border-color: var(--bs-primary);
-  box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.15);
+  box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.12);
 }
 
 .form-control.is-invalid,
@@ -195,9 +244,31 @@ a {
   border-color: var(--bs-danger);
 }
 
+.form-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.015em;
+  color: var(--bs-secondary-color);
+  margin-bottom: 0.3rem;
+}
+
+.form-control::placeholder {
+  color: var(--bs-secondary-color);
+  opacity: 0.65;
+}
+
 .form-text,
 .invalid-feedback {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+}
+
+.form-check-input:checked {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.form-check-input:focus {
+  box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.12);
 }
 
 .table {
@@ -211,11 +282,21 @@ a {
 .table thead th {
   background: var(--bs-light-bg-subtle);
   font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
   vertical-align: middle;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
 }
 
 .table tbody td {
   vertical-align: middle;
+}
+
+.table tbody tr {
+  transition: background var(--app-transition);
 }
 
 .table tbody tr:hover {
@@ -237,9 +318,11 @@ a {
 
 .index-crew-calendar-weekdays span {
   text-align: center;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--bs-secondary-color);
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .index-crew-calendar-day {
@@ -254,19 +337,35 @@ a {
   padding: 0.35rem;
   text-align: left;
   touch-action: manipulation;
+  transition: border-color var(--app-transition), box-shadow var(--app-transition), background var(--app-transition);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .index-crew-calendar-day:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.1);
+  }
 }
 
 .index-crew-calendar-day.is-other-month {
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
 .index-crew-calendar-day.is-selected {
   border-color: var(--bs-primary);
-  box-shadow: 0 0 0 0.1rem rgba(var(--bs-primary-rgb), 0.15);
+  background: var(--bs-primary-bg-subtle);
+  box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.2);
 }
 
-.index-crew-calendar-day.is-today {
-  background: var(--bs-primary-bg-subtle);
+.index-crew-calendar-day.is-today .index-crew-calendar-day-number {
+  background: var(--bs-primary);
+  color: #fff;
+  border-radius: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .index-crew-calendar-day-number {
@@ -327,7 +426,6 @@ a {
     transform: none;
     box-shadow: none;
   }
-
   .index-crew-calendar-day {
     min-height: 3.6rem;
     padding: 0.25rem;
@@ -352,6 +450,85 @@ a {
 .card.w-100 {
   border-radius: var(--bs-border-radius-xl) !important;
   border-color: var(--bs-border-color);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18) !important;
+  animation: modalSlideIn 0.2s ease;
+}
+
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ───── Empty state ───── */
+#page-content p.text-secondary:first-of-type:not(.mb-4) {
+  line-height: 1.7;
+}
+
+p.text-secondary.d-none ~ * { /* just makes sure empty state siblings don't lose rhythm */ }
+
+[id$="-empty"].text-secondary {
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  border: 1.5px dashed var(--bs-border-color);
+  border-radius: var(--app-radius);
+  color: var(--bs-secondary-color);
+}
+
+/* ───── Pagination ───── */
+.pagination {
+  gap: 0.2rem;
+}
+
+.page-item .page-link {
+  border-radius: var(--app-radius) !important;
+  font-weight: 500;
+  transition: background var(--app-transition), color var(--app-transition), box-shadow var(--app-transition);
+}
+
+.page-item.active .page-link {
+  box-shadow: 0 2px 8px rgba(var(--bs-primary-rgb), 0.3);
+}
+
+/* ───── Badge refinements ───── */
+.badge {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: 6px;
+}
+
+/* ───── Page heading strip ───── */
+.card-body .h3,
+.card-body h1.h3 {
+  letter-spacing: -0.01em;
+}
+
+/* ───── Section description subtitle ───── */
+.card-body > p.text-secondary:first-of-type {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+}
+
+/* ───── Spinner on buttons ───── */
+.spinner-border-sm {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+/* ───── Toast container ───── */
+#toast-container {
+  z-index: 1090;
+}
+
+/* ───── Search panel ───── */
+.search-panel {
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--app-radius-lg);
+  background: var(--bs-body-bg);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 10px rgba(0, 0, 0, 0.04);
 }
 
 #app-footer > div {

@@ -130,6 +130,18 @@ async function confirmScheduleFromTimetable(container, selectedDate) {
   showToast('Графикът е потвърден от разписание.', 'success');
 }
 
+function openConfirmModal(container) {
+  const confirmModal = container.querySelector('#schedule-confirm-modal');
+  openModal(confirmModal);
+}
+
+function closeConfirmModal(container) {
+  const confirmModal = container.querySelector('#schedule-confirm-modal');
+  if (confirmModal?.classList.contains('d-none') === false) {
+    closeModal(confirmModal);
+  }
+}
+
 export async function renderSchedulePage(container) {
   container.innerHTML = pageHtml;
   applyPrintDepotLabel(container, '#schedule-print-left-label');
@@ -141,6 +153,9 @@ export async function renderSchedulePage(container) {
   const orientationInput = container.querySelector('#schedule-print-orientation');
   const compactInput = container.querySelector('#schedule-print-compact');
   const fitOnePageInput = container.querySelector('#schedule-print-fit-one-page');
+  const confirmModalCloseButton = container.querySelector('#schedule-confirm-modal-close');
+  const confirmModalCancelButton = container.querySelector('#schedule-confirm-modal-cancel');
+  const confirmModalConfirmButton = container.querySelector('#schedule-confirm-modal-confirm');
   const dateFromQuery = getDateFromQuery();
 
   if (dateInput && dateFromQuery) {
@@ -156,11 +171,8 @@ export async function renderSchedulePage(container) {
     await loadScheduleData(container);
   });
 
-  confirmFromTimetableButton?.addEventListener('click', async () => {
-    const selectedDate = dateInput?.value || '';
-    confirmFromTimetableButton.disabled = true;
-    await confirmScheduleFromTimetable(container, selectedDate);
-    confirmFromTimetableButton.disabled = false;
+  confirmFromTimetableButton?.addEventListener('click', () => {
+    openConfirmModal(container);
   });
 
   goToActualButton?.addEventListener('click', () => {
@@ -188,6 +200,22 @@ export async function renderSchedulePage(container) {
 
     window.addEventListener('afterprint', cleanupPrintLayout, { once: true });
     window.print();
+  });
+
+  confirmModalCloseButton?.addEventListener('click', () => {
+    closeConfirmModal(container);
+  });
+
+  confirmModalCancelButton?.addEventListener('click', () => {
+    closeConfirmModal(container);
+  });
+
+  confirmModalConfirmButton?.addEventListener('click', async () => {
+    closeConfirmModal(container);
+    const selectedDate = dateInput?.value || '';
+    confirmFromTimetableButton.disabled = true;
+    await confirmScheduleFromTimetable(container, selectedDate);
+    confirmFromTimetableButton.disabled = false;
   });
 
   await loadScheduleData(container);
