@@ -110,27 +110,8 @@ export function renderEmployeeAbsencesTable(container, explicitEmptyMessage) {
           <td>${escapeHtml(item.notes ?? '')}</td>
           <td class="text-end">
             <div class="d-inline-flex gap-2">
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-primary"
-                data-action="edit"
-                data-id="${item.id}"
-                data-employee-id="${item.employee_id ?? ''}"
-                data-reason-id="${item.reason_id ?? ''}"
-                data-start-date="${escapeHtml(item.start_date ?? '')}"
-                data-end-date="${escapeHtml(item.end_date ?? '')}"
-                data-notes="${escapeHtml(item.notes ?? '')}"
-              >
-                Редакция
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-danger"
-                data-action="delete"
-                data-id="${item.id}"
-              >
-                Изтрий
-              </button>
+              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-employee-id="${item.employee_id ?? ''}" data-reason-id="${item.reason_id ?? ''}" data-start-date="${escapeHtml(item.start_date ?? '')}" data-end-date="${escapeHtml(item.end_date ?? '')}" data-notes="${escapeHtml(item.notes ?? '')}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>

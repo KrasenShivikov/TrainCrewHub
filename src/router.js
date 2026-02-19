@@ -15,6 +15,7 @@ import { renderSchedulePage } from './pages/schedule/js/schedule.js';
 import { renderDutyTypesPage } from './pages/duty-types/js/duty-types.js';
 import { renderScheduleKeyDutiesPage } from './pages/schedule-key-duties/js/schedule-key-duties.js';
 import { renderTrainsPage } from './pages/trains/js/trains.js';
+import { renderTrainsForDutiesPage } from './pages/trains-for-duties/js/trains-for-duties.js';
 import { renderAdminPage } from './pages/admin/js/admin.js';
 import { renderDocumentsPage } from './pages/documents/js/documents.js';
 import { renderUserProfilesPage } from './pages/user-profiles/js/user-profiles.js';
@@ -109,6 +110,11 @@ const routes = {
     render: renderScheduleKeyDutiesPage,
     title: 'TrainCrewHub / Повески към Ключ-График',
     resource: 'duties'
+  },
+  '/trains-for-duties': {
+    render: renderTrainsForDutiesPage,
+    title: 'TrainCrewHub / Влакове към Повески',
+    resource: 'duty_trains'
   },
   '/documents': {
     render: renderDocumentsPage,

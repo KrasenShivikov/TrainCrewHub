@@ -140,30 +140,10 @@ export function renderScheduleKeyDutiesTable(container, explicitEmptyMessage) {
           <td>${escapeHtml(formatInterval(item.duration_interval))}</td>
           <td class="text-end">
             <div class="d-inline-flex gap-2">
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-secondary"
-                data-duty-action="profile"
-                data-id="${item.id}"
-              >
-                Профил
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-primary"
-                data-duty-action="edit"
-                data-id="${item.id}"
-              >
-                Редакция
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-danger"
-                data-duty-action="delete"
-                data-id="${item.id}"
-              >
-                Изтрий
-              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-duty-action="profile" data-id="${item.id}" title="Профил" aria-label="Профил"><i class="bi bi-person-vcard"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-duty-action="trains" data-id="${item.id}" data-name="${escapeHtml(item.name ?? '')}" title="Влакове" aria-label="Влакове"><i class="bi bi-train-front"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-primary" data-duty-action="edit" data-id="${item.id}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-duty-action="delete" data-id="${item.id}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>

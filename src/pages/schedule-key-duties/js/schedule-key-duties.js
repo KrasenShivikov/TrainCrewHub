@@ -269,6 +269,18 @@ function attachScheduleKeyDutiesHandlers(container) {
       return;
     }
 
+    if (action === 'trains') {
+      const dutyId = actionButton.getAttribute('data-id');
+      const dutyName = actionButton.getAttribute('data-name');
+      const params = new URLSearchParams({
+        dutyId,
+        dutyName
+      });
+      window.history.pushState({}, '', `/trains-for-duties?${params.toString()}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      return;
+    }
+
     if (action === 'edit') {
       const dutyId = actionButton.getAttribute('data-id');
       openEditDutyModal(container, dutyId);

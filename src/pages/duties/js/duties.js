@@ -317,6 +317,18 @@ function attachDutiesHandlers(container) {
       return;
     }
 
+    if (action === 'trains') {
+      const id = actionButton.getAttribute('data-id');
+      const name = actionButton.getAttribute('data-name');
+      const params = new URLSearchParams({
+        dutyId: id,
+        dutyName: name
+      });
+      window.history.pushState({}, '', `/trains-for-duties?${params.toString()}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      return;
+    }
+
     if (action === 'duplicate') {
       const id = actionButton.getAttribute('data-id');
       openDutyDuplicateModal(container, id);

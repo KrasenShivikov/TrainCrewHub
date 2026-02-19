@@ -71,31 +71,10 @@ export function renderUserProfilesTable(container, explicitEmptyMessage) {
           <td>${escapeHtml(employeeName)}</td>
           <td class="text-end">
             <div class="d-inline-flex gap-2">
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-secondary"
-                data-user-profile-action="view"
-                data-id="${row.id}"
-              >
-                Преглед
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-primary"
-                data-user-profile-action="edit"
-                data-id="${row.id}"
-              >
-                Редакция
-              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-user-profile-action="view" data-id="${row.id}" title="Преглед" aria-label="Преглед"><i class="bi bi-eye"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-primary" data-user-profile-action="edit" data-id="${row.id}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
               ${userProfilesState.isAdmin ? `
-                <button
-                  type="button"
-                  class="btn btn-sm btn-outline-warning"
-                  data-user-profile-action="reset-password"
-                  data-id="${row.id}"
-                >
-                  Reset парола
-                </button>
+                <button type="button" class="btn btn-sm btn-outline-warning" data-user-profile-action="reset-password" data-id="${row.id}" title="Reset парола" aria-label="Reset парола"><i class="bi bi-key"></i></button>
               ` : ''}
             </div>
           </td>

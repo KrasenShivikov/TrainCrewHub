@@ -118,38 +118,11 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
           <td>${escapeHtml(formatDuration(item.duration_interval))}</td>
           <td class="text-end">
             <div class="d-inline-flex gap-2">
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-secondary"
-                data-action="profile"
-                data-id="${item.id}"
-              >
-                Профил
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-primary"
-                data-action="edit"
-                data-id="${item.id}"
-              >
-                Редакция
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-secondary"
-                data-action="duplicate"
-                data-id="${item.id}"
-              >
-                Копирай
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-danger"
-                data-action="delete"
-                data-id="${item.id}"
-              >
-                Изтрий
-              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="profile" data-id="${item.id}" title="Профил" aria-label="Профил"><i class="bi bi-person-vcard"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="trains" data-id="${item.id}" data-name="${escapeHtml(item.name ?? '')}" title="Влакове" aria-label="Влакове"><i class="bi bi-train-front"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="duplicate" data-id="${item.id}" title="Копирай" aria-label="Копирай"><i class="bi bi-copy"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>

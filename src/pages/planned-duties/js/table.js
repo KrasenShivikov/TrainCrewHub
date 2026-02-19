@@ -169,27 +169,9 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
           <td>${escapeHtml(item.duties?.name ?? '-')}</td>
           <td class="text-end">
             <div class="d-inline-flex gap-2">
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-primary"
-                data-action="edit"
-                data-id="${item.id}"
-                data-date="${escapeHtml(item.date ?? '')}"
-                data-employee-id="${item.employee_id ?? ''}"
-                data-duty-id="${item.duty_id ?? ''}"
-                data-assignment-role="${item.assignment_role ?? 'conductor'}"
-                data-duty-schedule-key-id="${dutyScheduleKeyId}"
-              >
-                Редакция
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-danger"
-                data-action="delete"
-                data-id="${item.id}"
-              >
-                Изтрий
-              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="trains" data-duty-id="${item.duty_id ?? ''}" data-duty-name="${escapeHtml(item.duties?.name ?? '')}" title="Влакове" aria-label="Влакове"><i class="bi bi-train-front"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-date="${escapeHtml(item.date ?? '')}" data-employee-id="${item.employee_id ?? ''}" data-duty-id="${item.duty_id ?? ''}" data-assignment-role="${item.assignment_role ?? 'conductor'}" data-duty-schedule-key-id="${dutyScheduleKeyId}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>

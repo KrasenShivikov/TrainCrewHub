@@ -291,6 +291,18 @@ function attachPlannedDutiesHandlers(container) {
     }
 
     const action = actionButton.getAttribute('data-action');
+    if (action === 'trains') {
+      const dutyId = actionButton.getAttribute('data-duty-id');
+      const dutyName = actionButton.getAttribute('data-duty-name');
+      const params = new URLSearchParams({
+        dutyId,
+        dutyName
+      });
+      window.history.pushState({}, '', `/trains-for-duties?${params.toString()}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      return;
+    }
+
     if (action === 'edit') {
       populatePlannedDutyForm(container, {
         id: actionButton.getAttribute('data-id'),
