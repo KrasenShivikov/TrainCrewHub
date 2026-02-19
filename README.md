@@ -75,6 +75,180 @@ How you apply migrations depends on your workflow (Supabase CLI vs MCP/Studio). 
 
 The project uses Supabase Storage for files (e.g. train timetables, employee photos, documents). Make sure the required buckets and policies from the migrations exist in your Supabase project.
 
+## Database schema (overview)
+
+The authoritative schema is the migrations in `supabase/migrations/`. Below is a high-level overview of the main entities and relationships.
+
+### ER diagram (Mermaid)
+
+```mermaid
+erDiagram
+   POSITIONS {
+      uuid id PK
+      text title
+   }
+   EMPLOYEES {
+      uuid id PK
+      uuid position_id FK
+   }
+   ABSENCE_REASONS {
+      uuid id PK
+   }
+   EMPLOYEE_ABSENCES {
+      uuid id PK
+      uuid employee_id FK
+      uuid reason_id FK
+   }
+   SCHEDULE_KEYS {
+      uuid id PK
+   }
+   DUTY_TYPES {
+      uuid id PK
+   }
+   DUTIES {
+      uuid id PK
+      uuid schedule_key_id FK
+      uuid duty_type_id FK
+   }
+   SCHEDULE_KEY_DUTIES {
+      uuid schedule_key_id PK
+      uuid duty_id PK
+   }
+   TRAINS {
+      uuid id PK
+   }
+   DUTY_TRAINS {
+      uuid duty_id PK
+      uuid train_id PK
+   }
+   PLANNED_DUTIES {
+      uuid id PK
+      uuid employee_id FK
+      uuid duty_id FK
+   }
+   ACTUAL_DUTIES {
+      uuid id PK
+      uuid employee_id FK
+      uuid duty_id FK
+   }
+   DOCUMENT_CATEGORIES {
+      uuid id PK
+   }
+   DOCUMENTS {
+      uuid id PK
+      uuid category_id FK
+   }
+   AUTH_USERS {
+      uuid id PK
+   }
+   USER_PROFILES {
+      uuid id PK
+      uuid employee_id FK
+   }
+   USER_ROLES {
+      uuid id PK
+      uuid user_id FK
+      text role FK
+   }
+   ROLES {
+      text name PK
+   }
+   ROLE_PERMISSIONS {
+      uuid id PK
+      text role FK
+   }
+   USER_ROLE_AUDIT_LOGS {
+      uuid id PK
+      uuid actor_user_id FK
+      uuid target_user_id FK
+   }
+   SCHEDULE_PUBLICATIONS {
+      date schedule_date PK
+   }
+   SCHEDULE_CHANGE_EVENTS {
+      bigint id PK
+      uuid actual_duty_id
+   }
+
+   POSITIONS ||--o{ EMPLOYEES : has
+   ABSENCE_REASONS ||--o{ EMPLOYEE_ABSENCES : reason
+   EMPLOYEES ||--o{ EMPLOYEE_ABSENCES : has
+
+   SCHEDULE_KEYS ||--o{ DUTIES : default_key
+   DUTY_TYPES ||--o{ DUTIES : type
+   SCHEDULE_KEYS ||--o{ SCHEDULE_KEY_DUTIES : maps
+   DUTIES ||--o{ SCHEDULE_KEY_DUTIES : maps
+
+   DUTIES ||--o{ DUTY_TRAINS : includes
+   TRAINS ||--o{ DUTY_TRAINS : includes
+
+   EMPLOYEES ||--o{ PLANNED_DUTIES : assigned
+   DUTIES ||--o{ PLANNED_DUTIES : planned
+
+   EMPLOYEES ||--o{ ACTUAL_DUTIES : assigned
+   DUTIES ||--o{ ACTUAL_DUTIES : actual
+   ACTUAL_DUTIES ||--o{ SCHEDULE_CHANGE_EVENTS : logs
+
+   DOCUMENT_CATEGORIES ||--o{ DOCUMENTS : contains
+
+   AUTH_USERS ||--|| USER_PROFILES : profile
+   EMPLOYEES ||--o{ USER_PROFILES : linked_employee
+
+   AUTH_USERS ||--o{ USER_ROLES : has
+   ROLES ||--o{ USER_ROLES : role
+   ROLES ||--o{ ROLE_PERMISSIONS : permissions
+
+   AUTH_USERS ||--o{ USER_ROLE_AUDIT_LOGS : actor
+   AUTH_USERS ||--o{ USER_ROLE_AUDIT_LOGS : target
+```
+
+Notes:
+- The diagram is intentionally simplified (not every column/index/constraint is shown).
+- `AUTH_USERS` represents `auth.users` in Supabase.
+
+### Reference & people
+
+- `positions` (job titles)
+- `employees` → `positions` (`employees.position_id`)
+- `absence_reasons`
+- `employee_absences` → `employees`, `absence_reasons`
+
+### Scheduling
+
+- `schedule_keys` (date ranges + type)
+- `duty_types`
+- `duties` → `schedule_keys` (`duties.schedule_key_id`, optional) and → `duty_types` (`duties.duty_type_id`)
+- `schedule_key_duties` (many-to-many) → `schedule_keys` + `duties`
+
+### Trains
+
+- `trains` (includes `timetable_url` / timetable file references)
+- `duty_trains` (many-to-many) → `duties` + `trains` + `sequence_order`
+
+### Assignments
+
+- `planned_duties` → `employees` + `duties` (by `date`, includes `assignment_role`)
+- `actual_duties` → `employees` + `duties` (by `date`, includes `assignment_role` and time overrides)
+
+### Documents
+
+- `document_categories`
+- `documents` → `document_categories`
+
+### Auth & permissions
+
+- Supabase Auth users live in `auth.users`
+- `user_profiles` is 1:1 with `auth.users` and can link to `employees` (`user_profiles.employee_id`)
+- `user_roles` assigns app roles to users (FK to `auth.users`)
+- `roles` is a roles catalog used by `user_roles` / `role_permissions`
+- `role_permissions` stores per-role permissions by resource
+- `user_role_audit_logs` records role changes
+
+### Schedule audit / publishing
+
+- `schedule_publications` stores per-date confirmation state
+- `schedule_change_events` logs changes in `actual_duties`
+
 ## Deployment (Netlify)
 
 Configuration is in `netlify.toml`:
