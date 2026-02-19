@@ -2,6 +2,7 @@ import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml } from './helpers.js';
 import { employeeAbsencesState } from './state.js';
+import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
 
 function getEmployeeFullName(employee) {
   if (!employee) {
@@ -33,6 +34,20 @@ export function renderEmployeeAbsencesTable(container, explicitEmptyMessage) {
   const tableBody = container.querySelector('#employee-absences-table-body');
   const emptyState = container.querySelector('#employee-absences-empty');
 
+  bindPaginationButtons(container, {
+    rootSelector: '#employee-absences-pagination',
+    prevSelector: '#employee-absences-pagination-prev',
+    nextSelector: '#employee-absences-pagination-next',
+    onPrev: () => {
+      employeeAbsencesState.page = Math.max(1, (employeeAbsencesState.page || 1) - 1);
+      renderEmployeeAbsencesTable(container);
+    },
+    onNext: () => {
+      employeeAbsencesState.page = (employeeAbsencesState.page || 1) + 1;
+      renderEmployeeAbsencesTable(container);
+    }
+  });
+
   const filteredRows = employeeAbsencesState.rows.filter((item) => {
     const employeeName = getEmployeeFullName(item.employees).toLowerCase();
     const reasonName = (item.absence_reasons?.name || '').toLowerCase();
@@ -59,6 +74,23 @@ export function renderEmployeeAbsencesTable(container, explicitEmptyMessage) {
     return matchesSearch && matchesFrom && matchesTo;
   });
 
+  const { pageItems, page, totalItems, totalPages } = paginateRows(
+    filteredRows,
+    employeeAbsencesState.page,
+    employeeAbsencesState.pageSize
+  );
+  employeeAbsencesState.page = page;
+
+  syncPaginationUi(container, {
+    rootSelector: '#employee-absences-pagination',
+    prevSelector: '#employee-absences-pagination-prev',
+    nextSelector: '#employee-absences-pagination-next',
+    labelSelector: '#employee-absences-pagination-label',
+    page,
+    totalItems,
+    totalPages
+  });
+
   if (!filteredRows.length) {
     tableBody.innerHTML = '';
     emptyState.classList.remove('d-none');
@@ -67,7 +99,7 @@ export function renderEmployeeAbsencesTable(container, explicitEmptyMessage) {
   }
 
   emptyState.classList.add('d-none');
-  tableBody.innerHTML = filteredRows
+  tableBody.innerHTML = pageItems
     .map(
       (item) => `
         <tr>

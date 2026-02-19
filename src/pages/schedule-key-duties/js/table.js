@@ -2,6 +2,7 @@ import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml, formatInterval } from './helpers.js';
 import { scheduleKeyDutiesState } from './state.js';
+import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
 
 const DUTY_SELECT = 'id, name, notes, duty_type_id, schedule_key_id, start_time, end_time, second_day, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, duty_types(name), schedule_key_duties(schedule_key_id, schedule_keys(name)), duty_trains(train_id, sequence_order, trains(number))';
 
@@ -73,7 +74,40 @@ export function renderScheduleKeyDutiesTable(container, explicitEmptyMessage) {
   const dutiesBody = container.querySelector('#schedule-key-duties-body');
   const emptyState = container.querySelector('#schedule-key-duties-empty');
 
-  if (!scheduleKeyDutiesState.duties.length) {
+  bindPaginationButtons(container, {
+    rootSelector: '#schedule-key-duties-pagination',
+    prevSelector: '#schedule-key-duties-pagination-prev',
+    nextSelector: '#schedule-key-duties-pagination-next',
+    onPrev: () => {
+      scheduleKeyDutiesState.page = Math.max(1, (scheduleKeyDutiesState.page || 1) - 1);
+      renderScheduleKeyDutiesTable(container);
+    },
+    onNext: () => {
+      scheduleKeyDutiesState.page = (scheduleKeyDutiesState.page || 1) + 1;
+      renderScheduleKeyDutiesTable(container);
+    }
+  });
+
+  const rows = scheduleKeyDutiesState.duties || [];
+
+  const { pageItems, page, totalItems, totalPages } = paginateRows(
+    rows,
+    scheduleKeyDutiesState.page,
+    scheduleKeyDutiesState.pageSize
+  );
+  scheduleKeyDutiesState.page = page;
+
+  syncPaginationUi(container, {
+    rootSelector: '#schedule-key-duties-pagination',
+    prevSelector: '#schedule-key-duties-pagination-prev',
+    nextSelector: '#schedule-key-duties-pagination-next',
+    labelSelector: '#schedule-key-duties-pagination-label',
+    page,
+    totalItems,
+    totalPages
+  });
+
+  if (!rows.length) {
     dutiesBody.innerHTML = '';
     emptyState.classList.remove('d-none');
     emptyState.textContent = explicitEmptyMessage || 'Няма повески към този Ключ-График.';
@@ -83,7 +117,7 @@ export function renderScheduleKeyDutiesTable(container, explicitEmptyMessage) {
   const reorderEnabled = scheduleKeyDutiesState.reorderEnabled !== false;
 
   emptyState.classList.add('d-none');
-  dutiesBody.innerHTML = scheduleKeyDutiesState.duties
+  dutiesBody.innerHTML = pageItems
     .map(
       (item) => {
         const scheduleKeyIds = getScheduleKeyIds(item);

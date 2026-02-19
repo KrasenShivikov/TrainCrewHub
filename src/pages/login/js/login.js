@@ -35,7 +35,7 @@ function setupPasswordToggles(container) {
 
       const shouldShow = input.type === 'password';
       input.type = shouldShow ? 'text' : 'password';
-      button.textContent = shouldShow ? '🙈' : '👁';
+      button.innerHTML = shouldShow ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
       button.setAttribute('aria-label', shouldShow ? 'Скрий паролата' : 'Покажи паролата');
     });
   });

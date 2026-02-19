@@ -2,5 +2,7 @@ export const trainsState = {
   rows: [],
   searchQuery: '',
   originFilter: '',
-  destinationFilter: ''
+  destinationFilter: '',
+  page: 1,
+  pageSize: 20
 };

@@ -2,5 +2,7 @@ export const documentsState = {
   categories: [],
   documents: [],
   searchQuery: '',
-  categoryFilter: ''
+  categoryFilter: '',
+  page: 1,
+  pageSize: 20
 };

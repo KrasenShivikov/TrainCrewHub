@@ -1,9 +1,24 @@
 import { escapeHtml, getEmployeeDisplayName } from './helpers.js';
 import { userProfilesState } from './state.js';
+import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
 
 export function renderUserProfilesTable(container, explicitEmptyMessage) {
   const tableBody = container.querySelector('#user-profiles-table-body');
   const emptyState = container.querySelector('#user-profiles-empty');
+
+  bindPaginationButtons(container, {
+    rootSelector: '#user-profiles-pagination',
+    prevSelector: '#user-profiles-pagination-prev',
+    nextSelector: '#user-profiles-pagination-next',
+    onPrev: () => {
+      userProfilesState.page = Math.max(1, (userProfilesState.page || 1) - 1);
+      renderUserProfilesTable(container);
+    },
+    onNext: () => {
+      userProfilesState.page = (userProfilesState.page || 1) + 1;
+      renderUserProfilesTable(container);
+    }
+  });
 
   const filteredRows = (userProfilesState.rows || []).filter((row) => {
     const searchable = [
@@ -19,6 +34,23 @@ export function renderUserProfilesTable(container, explicitEmptyMessage) {
     return !userProfilesState.searchQuery || searchable.includes(userProfilesState.searchQuery);
   });
 
+  const { pageItems, page, totalItems, totalPages } = paginateRows(
+    filteredRows,
+    userProfilesState.page,
+    userProfilesState.pageSize
+  );
+  userProfilesState.page = page;
+
+  syncPaginationUi(container, {
+    rootSelector: '#user-profiles-pagination',
+    prevSelector: '#user-profiles-pagination-prev',
+    nextSelector: '#user-profiles-pagination-next',
+    labelSelector: '#user-profiles-pagination-label',
+    page,
+    totalItems,
+    totalPages
+  });
+
   if (!filteredRows.length) {
     tableBody.innerHTML = '';
     emptyState.classList.remove('d-none');
@@ -27,7 +59,7 @@ export function renderUserProfilesTable(container, explicitEmptyMessage) {
   }
 
   emptyState.classList.add('d-none');
-  tableBody.innerHTML = filteredRows
+  tableBody.innerHTML = pageItems
     .map((row) => {
       const fullName = `${String(row?.first_name || '').trim()} ${String(row?.last_name || '').trim()}`.trim() || '-';
       const employeeName = getEmployeeDisplayName(row);

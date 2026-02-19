@@ -89,7 +89,7 @@ export async function addSelectedPlannedToActualDuties(container, reloadCallback
 
   if (!selectedIds.length) {
     showToast('Избери поне едно планиране за прехвърляне към Актуални.', 'warning');
-    return;
+    return false;
   }
 
   const selectedMap = new Set(selectedIds);
@@ -97,7 +97,7 @@ export async function addSelectedPlannedToActualDuties(container, reloadCallback
 
   if (!selectedRows.length) {
     showToast('Няма валидни избрани планирания за прехвърляне.', 'warning');
-    return;
+    return false;
   }
 
   const payload = selectedRows
@@ -111,7 +111,7 @@ export async function addSelectedPlannedToActualDuties(container, reloadCallback
 
   if (!payload.length) {
     showToast('Избраните записи са невалидни за прехвърляне.', 'warning');
-    return;
+    return false;
   }
 
   const originalText = addButton?.innerHTML || 'Към Актуални';
@@ -140,11 +140,12 @@ export async function addSelectedPlannedToActualDuties(container, reloadCallback
 
   if (upsertError) {
     showToast(upsertError.message, 'error');
-    return;
+    return false;
   }
 
   const movedCount = payload.length;
   plannedDutiesState.selectedIds = [];
   await reloadCallback();
   showToast(`Прехвърлени към Актуални: ${movedCount}. Съществуващите са пропуснати.`, 'success');
+  return true;
 }

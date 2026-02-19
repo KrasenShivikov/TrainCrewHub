@@ -1,7 +1,7 @@
 import pageHtml from '../planned-duties.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
-import { closeModal, openModal, setupModalEscapeHandler } from './helpers.js';
+import { closeModal, openModal, setupModalEscapeHandler, syncDisabledHints } from './helpers.js';
 import { plannedDutiesState } from './state.js';
 import { loadPlannedDuties, renderPlannedDutiesTable } from './table.js';
 import {
@@ -62,12 +62,17 @@ function attachPlannedDutiesHandlers(container) {
   const autoModal = container.querySelector('#planned-duty-auto-modal');
   const deleteModal = container.querySelector('#planned-duty-delete-modal');
   const bulkDeleteModal = container.querySelector('#planned-duty-bulk-delete-modal');
+  const confirmActualModal = container.querySelector('#planned-duty-confirm-actual-modal');
   const modalCloseButton = container.querySelector('#planned-duty-modal-close');
   const autoModalCloseButton = container.querySelector('#planned-duty-auto-modal-close');
   const deleteConfirmButton = container.querySelector('#planned-duty-delete-confirm');
   const deleteCancelButton = container.querySelector('#planned-duty-delete-cancel');
   const bulkDeleteConfirmButton = container.querySelector('#planned-duty-bulk-delete-confirm');
   const bulkDeleteCancelButton = container.querySelector('#planned-duty-bulk-delete-cancel');
+  const confirmActualCloseButton = container.querySelector('#planned-duty-confirm-actual-close');
+  const confirmActualCancelButton = container.querySelector('#planned-duty-confirm-actual-cancel');
+  const confirmActualConfirmButton = container.querySelector('#planned-duty-confirm-actual-confirm');
+  const confirmActualCount = container.querySelector('#planned-duty-confirm-actual-count');
   const selectAllInput = container.querySelector('#planned-duties-select-all');
   const searchInput = container.querySelector('#planned-duties-search');
   const dateFilterInput = container.querySelector('#planned-duties-date-filter');
@@ -94,9 +99,41 @@ function attachPlannedDutiesHandlers(container) {
       return;
     }
 
-    await addSelectedPlannedToActualDuties(container, async () => {
+    if (!plannedDutiesState.selectedIds.length) {
+      showToast('Избери поне едно планиране за прехвърляне към Актуални.', 'warning');
+      return;
+    }
+
+    if (confirmActualCount) {
+      confirmActualCount.textContent = String(plannedDutiesState.selectedIds.length);
+    }
+
+    openModal(confirmActualModal);
+  });
+
+  confirmActualCloseButton?.addEventListener('click', () => {
+    closeModal(confirmActualModal);
+  });
+
+  confirmActualCancelButton?.addEventListener('click', () => {
+    closeModal(confirmActualModal);
+  });
+
+  confirmActualConfirmButton?.addEventListener('click', async () => {
+    const originalText = confirmActualConfirmButton.innerHTML;
+    confirmActualConfirmButton.disabled = true;
+    confirmActualConfirmButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Прехвърляне...';
+
+    const success = await addSelectedPlannedToActualDuties(container, async () => {
       await loadPlannedDuties(container);
     });
+
+    confirmActualConfirmButton.disabled = false;
+    confirmActualConfirmButton.innerHTML = originalText;
+
+    if (success) {
+      closeModal(confirmActualModal);
+    }
   });
 
   autoPlanButton?.addEventListener('click', async () => {
@@ -211,6 +248,7 @@ function attachPlannedDutiesHandlers(container) {
   });
 
   setupModalEscapeHandler('planned-duties', [
+    confirmActualModal,
     deleteModal,
     bulkDeleteModal,
     autoModal,
@@ -395,4 +433,12 @@ function updateGoToPlanScheduleState(button, selectedDate) {
   }
 
   button.disabled = !selectedDate;
+
+  syncDisabledHints(document, [
+    {
+      wrapperSelector: '#planned-duties-go-to-plan-schedule-hint',
+      buttonSelector: '#go-to-plan-schedule',
+      disabledTitle: 'Избери дата от филтъра „Филтър по дата“, за да активираш бутона.'
+    }
+  ]);
 }

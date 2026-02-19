@@ -1,5 +1,18 @@
-<div class="bg-white border-top py-3">
-  <div class="container text-muted small text-center">
-    TrainCrewHub Crew Management Platform
+<footer id="app-footer-inner" class="border-top py-3" style="background:var(--app-surface,#fff);">
+  <div class="container-xl px-3 px-lg-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <span class="d-inline-flex align-items-center gap-2 text-muted" style="font-size:0.8rem;">
+        <i class="bi bi-train-front-fill text-primary" style="font-size:0.95rem;"></i>
+        <span class="fw-semibold text-body">TrainCrewHub</span>
+        <span class="vr opacity-25 mx-1"></span>
+        <span>Платформа за управление на влакови екипажи</span>
+      </span>
+      <span class="text-muted" style="font-size:0.75rem;">
+        &copy; <span id="footer-year"></span> TrainCrewHub
+      </span>
+    </div>
   </div>
-</div>
+</footer>
+<script>
+  (function(){ var el = document.getElementById('footer-year'); if(el) el.textContent = new Date().getFullYear(); })();
+</script>

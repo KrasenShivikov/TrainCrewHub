@@ -2,6 +2,7 @@ import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml } from './helpers.js';
 import { actualDutiesState } from './state.js';
+import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
 
 function getEmployeeFullName(employee) {
   if (!employee) {
@@ -33,6 +34,21 @@ export function renderActualDutiesTable(container, explicitEmptyMessage) {
   const emptyState = container.querySelector('#actual-duties-empty');
   const selectAllInput = container.querySelector('#actual-duties-select-all');
   const bulkDeleteButton = container.querySelector('#open-bulk-delete-actual-duty');
+  const bulkDeleteHint = container.querySelector('#actual-duties-bulk-delete-hint');
+
+  bindPaginationButtons(container, {
+    rootSelector: '#actual-duties-pagination',
+    prevSelector: '#actual-duties-pagination-prev',
+    nextSelector: '#actual-duties-pagination-next',
+    onPrev: () => {
+      actualDutiesState.page = Math.max(1, (actualDutiesState.page || 1) - 1);
+      renderActualDutiesTable(container);
+    },
+    onNext: () => {
+      actualDutiesState.page = (actualDutiesState.page || 1) + 1;
+      renderActualDutiesTable(container);
+    }
+  });
 
   const selectionEnabled = actualDutiesState.selectionEnabled !== false;
 
@@ -61,6 +77,23 @@ export function renderActualDutiesTable(container, explicitEmptyMessage) {
     return matchesSearch && matchesDate && matchesRole;
   });
 
+  const { pageItems, page, totalItems, totalPages } = paginateRows(
+    filteredRows,
+    actualDutiesState.page,
+    actualDutiesState.pageSize
+  );
+  actualDutiesState.page = page;
+
+  syncPaginationUi(container, {
+    rootSelector: '#actual-duties-pagination',
+    prevSelector: '#actual-duties-pagination-prev',
+    nextSelector: '#actual-duties-pagination-next',
+    labelSelector: '#actual-duties-pagination-label',
+    page,
+    totalItems,
+    totalPages
+  });
+
   if (!filteredRows.length) {
     actualDutiesState.visibleRowIds = [];
     tableBody.innerHTML = '';
@@ -76,15 +109,24 @@ export function renderActualDutiesTable(container, explicitEmptyMessage) {
 
     if (bulkDeleteButton) {
       bulkDeleteButton.disabled = !selectionEnabled || actualDutiesState.selectedIds.length === 0;
-      bulkDeleteButton.textContent = actualDutiesState.selectedIds.length
+      const bulkLabel = actualDutiesState.selectedIds.length
         ? `Изтрий избраните (${actualDutiesState.selectedIds.length})`
         : 'Изтрий избраните';
+      bulkDeleteButton.innerHTML = `<i class="bi bi-trash me-1"></i>${bulkLabel}`;
+    }
+
+    if (bulkDeleteHint && bulkDeleteButton) {
+      const title = bulkDeleteButton.disabled
+        ? 'Избери поне един запис от таблицата (чекбокс), за да активираш бутона.'
+        : '';
+      bulkDeleteHint.setAttribute('title', title);
+      bulkDeleteHint.classList.toggle('cursor-help', Boolean(title));
     }
 
     return;
   }
 
-  actualDutiesState.visibleRowIds = filteredRows.map((row) => row.id);
+  actualDutiesState.visibleRowIds = pageItems.map((row) => row.id);
 
   emptyState.classList.add('d-none');
 
@@ -93,7 +135,7 @@ export function renderActualDutiesTable(container, explicitEmptyMessage) {
     selectAllInput.closest('th')?.classList.toggle('d-none', !selectionEnabled);
   }
 
-  tableBody.innerHTML = filteredRows
+  tableBody.innerHTML = pageItems
     .map((item) => {
       const dutyScheduleKeyId = getFirstDutyScheduleKeyId(item);
       const isSelected = selectionEnabled && actualDutiesState.selectedIds.includes(item.id);
@@ -161,19 +203,28 @@ export function renderActualDutiesTable(container, explicitEmptyMessage) {
     })
     .join('');
 
-  const selectedVisibleCount = filteredRows.filter((row) => actualDutiesState.selectedIds.includes(row.id)).length;
+  const selectedVisibleCount = pageItems.filter((row) => actualDutiesState.selectedIds.includes(row.id)).length;
 
   if (selectAllInput) {
     selectAllInput.disabled = !selectionEnabled;
-    selectAllInput.checked = selectionEnabled && selectedVisibleCount > 0 && selectedVisibleCount === filteredRows.length;
-    selectAllInput.indeterminate = selectionEnabled && selectedVisibleCount > 0 && selectedVisibleCount < filteredRows.length;
+    selectAllInput.checked = selectionEnabled && pageItems.length > 0 && selectedVisibleCount === pageItems.length;
+    selectAllInput.indeterminate = selectionEnabled && selectedVisibleCount > 0 && selectedVisibleCount < pageItems.length;
   }
 
   if (bulkDeleteButton) {
     bulkDeleteButton.disabled = !selectionEnabled || actualDutiesState.selectedIds.length === 0;
-    bulkDeleteButton.textContent = actualDutiesState.selectedIds.length
+    const bulkLabel = actualDutiesState.selectedIds.length
       ? `Изтрий избраните (${actualDutiesState.selectedIds.length})`
       : 'Изтрий избраните';
+    bulkDeleteButton.innerHTML = `<i class="bi bi-trash me-1"></i>${bulkLabel}`;
+  }
+
+  if (bulkDeleteHint && bulkDeleteButton) {
+    const title = bulkDeleteButton.disabled
+      ? 'Избери поне един запис от таблицата (чекбокс), за да активираш бутона.'
+      : '';
+    bulkDeleteHint.setAttribute('title', title);
+    bulkDeleteHint.classList.toggle('cursor-help', Boolean(title));
   }
 }
 

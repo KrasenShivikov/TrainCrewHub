@@ -2,6 +2,7 @@ import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml } from './helpers.js';
 import { dutyTypesState } from './state.js';
+import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
 
 export async function loadDutyTypes(container) {
   const { data, error } = await supabase
@@ -25,6 +26,20 @@ export function renderDutyTypesTable(container, explicitEmptyMessage) {
   const emptyState = container.querySelector('#duty-types-empty');
   const actionsEnabled = dutyTypesState.actionsEnabled !== false;
 
+  bindPaginationButtons(container, {
+    rootSelector: '#duty-types-pagination',
+    prevSelector: '#duty-types-pagination-prev',
+    nextSelector: '#duty-types-pagination-next',
+    onPrev: () => {
+      dutyTypesState.page = Math.max(1, (dutyTypesState.page || 1) - 1);
+      renderDutyTypesTable(container);
+    },
+    onNext: () => {
+      dutyTypesState.page = (dutyTypesState.page || 1) + 1;
+      renderDutyTypesTable(container);
+    }
+  });
+
   container.querySelector('thead th.text-end')?.classList.toggle('d-none', !actionsEnabled);
 
   const filteredRows = dutyTypesState.rows.filter((item) => {
@@ -35,6 +50,23 @@ export function renderDutyTypesTable(container, explicitEmptyMessage) {
     return (item.name || '').toLowerCase().includes(dutyTypesState.searchQuery);
   });
 
+  const { pageItems, page, totalItems, totalPages } = paginateRows(
+    filteredRows,
+    dutyTypesState.page,
+    dutyTypesState.pageSize
+  );
+  dutyTypesState.page = page;
+
+  syncPaginationUi(container, {
+    rootSelector: '#duty-types-pagination',
+    prevSelector: '#duty-types-pagination-prev',
+    nextSelector: '#duty-types-pagination-next',
+    labelSelector: '#duty-types-pagination-label',
+    page,
+    totalItems,
+    totalPages
+  });
+
   if (!filteredRows.length) {
     tableBody.innerHTML = '';
     emptyState.classList.remove('d-none');
@@ -43,7 +75,7 @@ export function renderDutyTypesTable(container, explicitEmptyMessage) {
   }
 
   emptyState.classList.add('d-none');
-  tableBody.innerHTML = filteredRows
+  tableBody.innerHTML = pageItems
     .map(
       (item) => `
         <tr>

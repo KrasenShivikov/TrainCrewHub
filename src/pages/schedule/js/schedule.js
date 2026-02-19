@@ -1,5 +1,6 @@
 import pageHtml from '../schedule.html?raw';
 import { applyPrintDepotLabel } from '../../../utils/printConfig.js';
+import { countBulgarianWorkdays, getMonthBounds, toMonthKey, toIsoDateFromDate } from '../../index/js/date-utils.js';
 import { loadDutiesForScheduleDate } from '../../../utils/scheduleDuties.js';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
@@ -142,17 +143,48 @@ function closeConfirmModal(container) {
   }
 }
 
+function formatMinutesAsHours(minutes) {
+  const h = Math.floor(Math.abs(minutes) / 60);
+  const m = Math.abs(minutes) % 60;
+  return m > 0 ? `${h}:${String(m).padStart(2, '0')}` : `${h}`;
+}
+
+function renderNormDisplay(container) {
+  const el = container.querySelector('#schedule-norm-display');
+  if (!el) {
+    return;
+  }
+
+  const today = new Date();
+  const todayIso = toIsoDateFromDate(today);
+  const monthKey = toMonthKey(today);
+  const { startDate } = getMonthBounds(monthKey);
+  const workdays = countBulgarianWorkdays(startDate, todayIso);
+  const normMinutes = workdays * 8 * 60;
+  const normFormatted = formatMinutesAsHours(normMinutes);
+
+  el.innerHTML = `
+    <div class="schedule-print-norm-inner">
+      <div class="schedule-print-norm-label">Норма до днес</div>
+      <div class="schedule-print-norm-value">${normFormatted} ч.</div>
+      <div class="schedule-print-norm-sub">${workdays} работни дни</div>
+    </div>
+  `;
+}
+
 export async function renderSchedulePage(container) {
   container.innerHTML = pageHtml;
   applyPrintDepotLabel(container, '#schedule-print-left-label');
+  renderNormDisplay(container);
 
   const dateInput = container.querySelector('#schedule-date');
   const confirmFromTimetableButton = container.querySelector('#schedule-confirm-from-timetable');
   const goToActualButton = container.querySelector('#schedule-go-to-actual');
   const printButton = container.querySelector('#schedule-print');
-  const orientationInput = container.querySelector('#schedule-print-orientation');
-  const compactInput = container.querySelector('#schedule-print-compact');
-  const fitOnePageInput = container.querySelector('#schedule-print-fit-one-page');
+  const printModal = container.querySelector('#schedule-print-modal');
+  const printModalClose = container.querySelector('#sch-print-modal-close');
+  const printModalCancel = container.querySelector('#sch-print-modal-cancel');
+  const printModalGo = container.querySelector('#sch-print-modal-go');
   const confirmModalCloseButton = container.querySelector('#schedule-confirm-modal-close');
   const confirmModalCancelButton = container.querySelector('#schedule-confirm-modal-cancel');
   const confirmModalConfirmButton = container.querySelector('#schedule-confirm-modal-confirm');
@@ -187,17 +219,29 @@ export async function renderSchedulePage(container) {
     window.dispatchEvent(new PopStateEvent('popstate'));
   });
 
-  printButton?.addEventListener('click', () => {
+  function openPrintModal() {
+    printModal?.classList.remove('d-none');
+  }
+
+  function closePrintModal() {
+    printModal?.classList.add('d-none');
+  }
+
+  printButton?.addEventListener('click', openPrintModal);
+  printModalClose?.addEventListener('click', closePrintModal);
+  printModalCancel?.addEventListener('click', closePrintModal);
+
+  printModalGo?.addEventListener('click', () => {
+    const orientationInput = container.querySelector('input[name="sch-orientation"]:checked');
+    const compactInput = container.querySelector('#sch-print-compact');
+    const fitOnePageInput = container.querySelector('#sch-print-fit-one-page');
+
     const orientation = orientationInput?.value === 'portrait' ? 'portrait' : 'landscape';
     const compact = compactInput?.checked ?? true;
     const fitOnePage = fitOnePageInput?.checked ?? true;
 
-    preparePrintLayout(container, {
-      orientation,
-      compact,
-      fitOnePage
-    });
-
+    closePrintModal();
+    preparePrintLayout(container, { orientation, compact, fitOnePage });
     window.addEventListener('afterprint', cleanupPrintLayout, { once: true });
     window.print();
   });

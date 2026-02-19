@@ -7,6 +7,8 @@ export const actualDutiesState = {
   visibleRowIds: [],
   selectionEnabled: true,
   crewEditTimeOnly: false,
+  page: 1,
+  pageSize: 20,
   plannedRows: [],
   plannedSearchQuery: '',
   plannedDateFilter: '',

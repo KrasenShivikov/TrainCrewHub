@@ -14,29 +14,38 @@ export function preparePrintLayout(container, { orientation, compact, fitOnePage
     sheet.classList.toggle('print-portrait-page', orientation === 'portrait');
   }
 
+  root.classList.toggle('print-orientation-landscape', orientation === 'landscape');
+  root.classList.toggle('print-orientation-portrait', orientation === 'portrait');
+
   if (!fitOnePage || !sheet) {
     root.style.setProperty('--plan-print-scale', '1');
     return;
   }
 
+  // Reset scale first, then force reflow so measurement reflects compact classes
   root.style.setProperty('--plan-print-scale', '1');
+  void sheet.offsetHeight;
 
   const rect = sheet.getBoundingClientRect();
   const pageWidthMm = orientation === 'portrait' ? 210 : 297;
   const pageHeightMm = orientation === 'portrait' ? 297 : 210;
-  const printableWidthPx = (pageWidthMm - 20) * MM_TO_PX;
-  const printableHeightPx = (pageHeightMm - 20) * MM_TO_PX;
+  const marginMm = 10;
+  const printableWidthPx = (pageWidthMm - marginMm * 2) * MM_TO_PX;
+  const printableHeightPx = (pageHeightMm - marginMm * 2) * MM_TO_PX;
 
   const scaleX = printableWidthPx / Math.max(rect.width, 1);
   const scaleY = printableHeightPx / Math.max(rect.height, 1);
   const scale = Math.min(scaleX, scaleY, 1);
 
-  root.style.setProperty('--plan-print-scale', String(Math.max(0.6, scale)));
+  root.style.setProperty('--plan-print-scale', String(Math.max(0.3, scale)));
 }
 
 export function cleanupPrintLayout() {
   const root = document.documentElement;
-  root.classList.remove('print-preparing', 'print-compact', 'print-fit-one-page', 'print-hide-second-day');
+  root.classList.remove(
+    'print-preparing', 'print-compact', 'print-fit-one-page', 'print-hide-second-day',
+    'print-orientation-landscape', 'print-orientation-portrait'
+  );
   root.style.setProperty('--plan-print-scale', '1');
 
   document.querySelectorAll('.plan-schedule-sheet').forEach((sheet) => {

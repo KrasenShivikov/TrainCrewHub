@@ -2,7 +2,7 @@
   <div class="card-body p-4 p-md-5">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h1 class="h3 mb-0">Влакове</h1>
-      <button id="open-create-train" type="button" class="btn btn-primary">Нов влак</button>
+      <button id="open-create-train" type="button" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Нов влак</button>
     </div>
 
     <p class="text-secondary">Управление на влаковете, използвани в повеските.</p>
@@ -10,7 +10,7 @@
     <section class="search-panel mb-4" aria-label="Панел за търсене">
       <div class="search-panel-header">
         <h2 class="h6 mb-0">Панел за търсене</h2>
-        <button id="trains-filter-reset" type="button" class="btn btn-sm btn-outline-secondary">Изчисти филтрите</button>
+        <button id="trains-filter-reset" type="button" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle me-1"></i>Изчисти филтрите</button>
       </div>
 
       <div class="row g-3 align-items-end">
@@ -51,6 +51,12 @@
     </div>
 
     <p id="trains-empty" class="text-secondary d-none mb-0"></p>
+
+    <nav id="trains-pagination" class="d-none d-flex align-items-center justify-content-between mt-3" aria-label="Пейджиране">
+      <button id="trains-pagination-prev" type="button" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left me-1"></i>Назад</button>
+      <div id="trains-pagination-label" class="text-secondary small"></div>
+      <button id="trains-pagination-next" type="button" class="btn btn-sm btn-outline-secondary">Напред<i class="bi bi-chevron-right ms-1"></i></button>
+    </nav>
   </div>
 </section>
 
@@ -89,18 +95,10 @@
               <label for="train-arrival-time" class="form-label">Пристигане</label>
               <input id="train-arrival-time" class="form-control" type="time" required />
             </div>
-            <div class="col-md-6">
+            <div class="col-12">
               <label for="train-timetable-file" class="form-label">Файл с разписание</label>
               <input id="train-timetable-file" class="form-control" type="file" multiple accept=".pdf,.csv,.xlsx,.xls,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp" />
               <div class="form-text">Можеш да избереш един или повече файлове (до 5 общо за влак); всички се качват в Storage.</div>
-            </div>
-            <div class="col-md-6">
-              <label for="train-timetable-url" class="form-label">Добави външен линк (по избор)</label>
-              <input id="train-timetable-url" class="form-control" type="url" placeholder="https://..." />
-              <div class="mt-2">
-                <label for="train-timetable-label" class="form-label">Име на външния линк</label>
-                <input id="train-timetable-label" class="form-control" type="text" placeholder="Пример: Разписание Пловдив - София" />
-              </div>
               <div id="train-current-timetable-wrap" class="form-text mt-2 d-none">
                 <span class="d-block mb-1">Текущи файлове/линкове:</span>
                 <div id="train-current-timetable-links" class="d-flex flex-wrap gap-2"></div>

@@ -21,9 +21,10 @@ export async function renderPlanSchedulePage(container) {
 
   const dateInput = container.querySelector('#plan-schedule-date');
   const printButton = container.querySelector('#plan-schedule-print');
-  const orientationInput = container.querySelector('#plan-schedule-print-orientation');
-  const compactInput = container.querySelector('#plan-schedule-print-compact');
-  const fitOnePageInput = container.querySelector('#plan-schedule-print-fit-one-page');
+  const printModal = container.querySelector('#plan-schedule-print-modal');
+  const printModalClose = container.querySelector('#ps-print-modal-close');
+  const printModalCancel = container.querySelector('#ps-print-modal-cancel');
+  const printModalGo = container.querySelector('#ps-print-modal-go');
   const dateFromQuery = getDateFromQuery();
 
   if (dateInput && dateFromQuery) {
@@ -36,17 +37,29 @@ export async function renderPlanSchedulePage(container) {
     await loadPlanScheduleData(container);
   });
 
-  printButton?.addEventListener('click', () => {
+  function openPrintModal() {
+    printModal?.classList.remove('d-none');
+  }
+
+  function closePrintModal() {
+    printModal?.classList.add('d-none');
+  }
+
+  printButton?.addEventListener('click', openPrintModal);
+  printModalClose?.addEventListener('click', closePrintModal);
+  printModalCancel?.addEventListener('click', closePrintModal);
+
+  printModalGo?.addEventListener('click', () => {
+    const orientationInput = container.querySelector('input[name="ps-orientation"]:checked');
+    const compactInput = container.querySelector('#ps-print-compact');
+    const fitOnePageInput = container.querySelector('#ps-print-fit-one-page');
+
     const orientation = orientationInput?.value === 'portrait' ? 'portrait' : 'landscape';
     const compact = compactInput?.checked ?? true;
     const fitOnePage = fitOnePageInput?.checked ?? true;
 
-    preparePrintLayout(container, {
-      orientation,
-      compact,
-      fitOnePage
-    });
-
+    closePrintModal();
+    preparePrintLayout(container, { orientation, compact, fitOnePage });
     window.addEventListener('afterprint', cleanupPrintLayout, { once: true });
     window.print();
   });

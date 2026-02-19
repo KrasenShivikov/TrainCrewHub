@@ -22,7 +22,6 @@ function attachScheduleKeysHandlers(container) {
   const deleteConfirmButton = container.querySelector('#schedule-key-delete-confirm');
   const deleteCancelButton = container.querySelector('#schedule-key-delete-cancel');
   const filterNameInput = container.querySelector('#filter-name');
-  const filterTypeInput = container.querySelector('#filter-type');
   const filterCrewRoleInput = container.querySelector('#filter-crew-role');
   const filterActiveInput = container.querySelector('#filter-active');
   const filterValidFromInput = container.querySelector('#filter-valid-from');
@@ -56,11 +55,6 @@ function attachScheduleKeysHandlers(container) {
     renderScheduleKeysTable(container);
   });
 
-  filterTypeInput?.addEventListener('change', (event) => {
-    scheduleKeysState.filters.type = event.target.value;
-    renderScheduleKeysTable(container);
-  });
-
   filterCrewRoleInput?.addEventListener('change', (event) => {
     scheduleKeysState.filters.crewRole = event.target.value;
     renderScheduleKeysTable(container);
@@ -84,7 +78,6 @@ function attachScheduleKeysHandlers(container) {
   filterResetButton?.addEventListener('click', () => {
     scheduleKeysState.filters = {
       name: '',
-      type: '',
       crewRole: '',
       isActive: '',
       validFrom: '',
@@ -92,7 +85,6 @@ function attachScheduleKeysHandlers(container) {
     };
 
     if (filterNameInput) filterNameInput.value = '';
-    if (filterTypeInput) filterTypeInput.value = '';
     if (filterCrewRoleInput) filterCrewRoleInput.value = '';
     if (filterActiveInput) filterActiveInput.value = '';
     if (filterValidFromInput) filterValidFromInput.value = '';
@@ -164,14 +156,14 @@ async function saveScheduleKey(container) {
   const saveButton = container.querySelector('#schedule-key-save-btn');
 
   const name = nameInput.value.trim();
-  const type = typeInput.value;
+  const type = typeInput?.value || 'seasonal';
   const crewRole = crewRoleInput.value;
   const isActive = activeInput.checked;
   const validFrom = validFromInput.value;
   const validTo = validToInput.value;
   const editingId = idInput.value;
 
-  if (!name || !type || !crewRole || !validFrom || !validTo) {
+  if (!name || !crewRole || !validFrom || !validTo) {
     showToast('Моля, попълни всички задължителни полета.', 'warning');
     return;
   }

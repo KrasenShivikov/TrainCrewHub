@@ -963,6 +963,15 @@ function updateGoToScheduleState(button, selectedDate) {
   }
 
   button.disabled = !selectedDate;
+
+  const hint = document.querySelector('#actual-duties-go-to-schedule-hint');
+  if (hint) {
+    const title = button.disabled
+      ? 'Избери дата от филтъра „Филтър по дата“, за да активираш бутона.'
+      : '';
+    hint.setAttribute('title', title);
+    hint.classList.toggle('cursor-help', Boolean(title));
+  }
 }
 
 function getDateFromQuery() {

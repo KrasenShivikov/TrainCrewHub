@@ -2,7 +2,7 @@
   <div class="card-body p-4 p-md-5">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h1 class="h3 mb-0">Типове повески</h1>
-      <button id="open-create-duty-type" type="button" class="btn btn-primary">Нов тип</button>
+      <button id="open-create-duty-type" type="button" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Нов тип</button>
     </div>
 
     <p class="text-secondary">Управление на типовете за повески.</p>
@@ -33,6 +33,12 @@
     </div>
 
     <p id="duty-types-empty" class="text-secondary d-none mb-0"></p>
+
+    <nav id="duty-types-pagination" class="d-none d-flex align-items-center justify-content-between mt-3" aria-label="Пейджиране">
+      <button id="duty-types-pagination-prev" type="button" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left me-1"></i>Назад</button>
+      <div id="duty-types-pagination-label" class="text-secondary small"></div>
+      <button id="duty-types-pagination-next" type="button" class="btn btn-sm btn-outline-secondary">Напред<i class="bi bi-chevron-right ms-1"></i></button>
+    </nav>
   </div>
 </section>
 

@@ -34,7 +34,8 @@ export function closeModal(modalElement) {
     document.querySelector('#planned-duty-modal')?.classList.contains('d-none') &&
     document.querySelector('#planned-duty-delete-modal')?.classList.contains('d-none') &&
     document.querySelector('#planned-duty-auto-modal')?.classList.contains('d-none') &&
-    document.querySelector('#planned-duty-bulk-delete-modal')?.classList.contains('d-none')
+    document.querySelector('#planned-duty-bulk-delete-modal')?.classList.contains('d-none') &&
+    document.querySelector('#planned-duty-confirm-actual-modal')?.classList.contains('d-none')
   ) {
     document.body.classList.remove('overflow-hidden');
   }
@@ -47,4 +48,23 @@ export function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
+}
+
+export function syncDisabledHints(container, hints) {
+  if (!container || !Array.isArray(hints)) {
+    return;
+  }
+
+  hints.forEach((hint) => {
+    const wrapper = container.querySelector(hint.wrapperSelector);
+    const button = container.querySelector(hint.buttonSelector);
+    if (!wrapper || !button) {
+      return;
+    }
+
+    const title = button.disabled ? hint.disabledTitle : '';
+    wrapper.setAttribute('title', title);
+
+    wrapper.classList.toggle('cursor-help', Boolean(title));
+  });
 }

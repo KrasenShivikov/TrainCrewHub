@@ -2,7 +2,7 @@
   <div class="card-body p-4 p-md-5">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h1 class="h3 mb-0">Отсъствия</h1>
-      <button id="open-create-employee-absence" type="button" class="btn btn-primary">Ново отсъствие</button>
+      <button id="open-create-employee-absence" type="button" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Ново отсъствие</button>
     </div>
 
     <p class="text-secondary">Управление на отсъствия на служители.</p>
@@ -10,7 +10,7 @@
     <section class="search-panel mb-4" aria-label="Панел за търсене">
       <div class="search-panel-header">
         <h2 class="h6 mb-0">Панел за търсене</h2>
-        <button id="employee-absences-filter-reset" type="button" class="btn btn-sm btn-outline-secondary">Изчисти филтрите</button>
+        <button id="employee-absences-filter-reset" type="button" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle me-1"></i>Изчисти филтрите</button>
       </div>
 
       <div class="row g-3 align-items-end">
@@ -46,6 +46,12 @@
     </div>
 
     <p id="employee-absences-empty" class="text-secondary d-none mb-0"></p>
+
+    <nav id="employee-absences-pagination" class="d-none d-flex align-items-center justify-content-between mt-3" aria-label="Пейджиране">
+      <button id="employee-absences-pagination-prev" type="button" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left me-1"></i>Назад</button>
+      <div id="employee-absences-pagination-label" class="text-secondary small"></div>
+      <button id="employee-absences-pagination-next" type="button" class="btn btn-sm btn-outline-secondary">Напред<i class="bi bi-chevron-right ms-1"></i></button>
+    </nav>
   </div>
 </section>
 

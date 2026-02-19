@@ -2,6 +2,7 @@ import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml } from './helpers.js';
 import { employeesState } from './state.js';
+import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
 
 export async function loadEmployees(container) {
   const { data, error } = await supabase
@@ -26,6 +27,20 @@ export function renderEmployeesTable(container, explicitEmptyMessage) {
   const emptyState = container.querySelector('#employees-empty');
   syncEmployeesFilterOptions(container);
 
+  bindPaginationButtons(container, {
+    rootSelector: '#employees-pagination',
+    prevSelector: '#employees-pagination-prev',
+    nextSelector: '#employees-pagination-next',
+    onPrev: () => {
+      employeesState.page = Math.max(1, (employeesState.page || 1) - 1);
+      renderEmployeesTable(container);
+    },
+    onNext: () => {
+      employeesState.page = (employeesState.page || 1) + 1;
+      renderEmployeesTable(container);
+    }
+  });
+
   const filteredRows = employeesState.rows.filter((item) => {
     const fullName = `${item.first_name || ''} ${item.last_name || ''}`.toLowerCase();
     const positionTitle = (item.positions?.title || '').toLowerCase();
@@ -38,6 +53,23 @@ export function renderEmployeesTable(container, explicitEmptyMessage) {
     return matchesSearch && matchesPosition && matchesActive;
   });
 
+  const { pageItems, page, totalItems, totalPages } = paginateRows(
+    filteredRows,
+    employeesState.page,
+    employeesState.pageSize
+  );
+  employeesState.page = page;
+
+  syncPaginationUi(container, {
+    rootSelector: '#employees-pagination',
+    prevSelector: '#employees-pagination-prev',
+    nextSelector: '#employees-pagination-next',
+    labelSelector: '#employees-pagination-label',
+    page,
+    totalItems,
+    totalPages
+  });
+
   if (!filteredRows.length) {
     tableBody.innerHTML = '';
     emptyState.classList.remove('d-none');
@@ -46,7 +78,7 @@ export function renderEmployeesTable(container, explicitEmptyMessage) {
   }
 
   emptyState.classList.add('d-none');
-  tableBody.innerHTML = filteredRows
+  tableBody.innerHTML = pageItems
     .map((item) => {
       const linkedProfiles = Array.isArray(item.user_profiles)
         ? item.user_profiles

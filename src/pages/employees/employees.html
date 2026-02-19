@@ -2,7 +2,7 @@
   <div class="card-body p-4 p-md-5">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h1 class="h3 mb-0">Служители</h1>
-      <button id="open-create-employee" type="button" class="btn btn-primary">Нов служител</button>
+      <button id="open-create-employee" type="button" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Нов служител</button>
     </div>
 
     <p class="text-secondary">Управление на служители и срокове на документи.</p>
@@ -10,7 +10,7 @@
     <section class="search-panel mb-4" aria-label="Панел за търсене">
       <div class="search-panel-header">
         <h2 class="h6 mb-0">Панел за търсене</h2>
-        <button id="employees-filter-reset" type="button" class="btn btn-sm btn-outline-secondary">Изчисти филтрите</button>
+        <button id="employees-filter-reset" type="button" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle me-1"></i>Изчисти филтрите</button>
       </div>
 
       <div class="row g-3 align-items-end">
@@ -51,6 +51,12 @@
     </div>
 
     <p id="employees-empty" class="text-secondary d-none mb-0"></p>
+
+    <nav id="employees-pagination" class="d-none d-flex align-items-center justify-content-between mt-3" aria-label="Пейджиране">
+      <button id="employees-pagination-prev" type="button" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left me-1"></i>Назад</button>
+      <div id="employees-pagination-label" class="text-secondary small"></div>
+      <button id="employees-pagination-next" type="button" class="btn btn-sm btn-outline-secondary">Напред<i class="bi bi-chevron-right ms-1"></i></button>
+    </nav>
   </div>
 </section>
 

@@ -1,7 +1,21 @@
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
-import { escapeHtml } from './helpers.js';
+import { escapeHtml, syncDisabledHints } from './helpers.js';
 import { plannedDutiesState } from './state.js';
+import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
+
+const ACTION_HINTS = [
+  {
+    wrapperSelector: '#planned-duties-add-to-actual-hint',
+    buttonSelector: '#add-selected-to-actual-duty',
+    disabledTitle: 'Избери поне едно планиране от таблицата (чекбокс), за да активираш бутона.'
+  },
+  {
+    wrapperSelector: '#planned-duties-bulk-delete-hint',
+    buttonSelector: '#open-bulk-delete-planned-duty',
+    disabledTitle: 'Избери поне едно планиране от таблицата (чекбокс), за да активираш бутона.'
+  }
+];
 
 function getEmployeeFullName(employee) {
   if (!employee) {
@@ -35,6 +49,20 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
   const bulkDeleteButton = container.querySelector('#open-bulk-delete-planned-duty');
   const addToActualButton = container.querySelector('#add-selected-to-actual-duty');
 
+  bindPaginationButtons(container, {
+    rootSelector: '#planned-duties-pagination',
+    prevSelector: '#planned-duties-pagination-prev',
+    nextSelector: '#planned-duties-pagination-next',
+    onPrev: () => {
+      plannedDutiesState.page = Math.max(1, (plannedDutiesState.page || 1) - 1);
+      renderPlannedDutiesTable(container);
+    },
+    onNext: () => {
+      plannedDutiesState.page = (plannedDutiesState.page || 1) + 1;
+      renderPlannedDutiesTable(container);
+    }
+  });
+
   const selectionEnabled = plannedDutiesState.selectionEnabled !== false;
 
   if (!selectionEnabled) {
@@ -62,6 +90,23 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
     return matchesSearch && matchesDate && matchesRole;
   });
 
+  const { pageItems, page, totalItems, totalPages } = paginateRows(
+    filteredRows,
+    plannedDutiesState.page,
+    plannedDutiesState.pageSize
+  );
+  plannedDutiesState.page = page;
+
+  syncPaginationUi(container, {
+    rootSelector: '#planned-duties-pagination',
+    prevSelector: '#planned-duties-pagination-prev',
+    nextSelector: '#planned-duties-pagination-next',
+    labelSelector: '#planned-duties-pagination-label',
+    page,
+    totalItems,
+    totalPages
+  });
+
   if (!filteredRows.length) {
     plannedDutiesState.visibleRowIds = [];
     tableBody.innerHTML = '';
@@ -75,20 +120,24 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
     }
     if (bulkDeleteButton) {
       bulkDeleteButton.disabled = !selectionEnabled || plannedDutiesState.selectedIds.length === 0;
-      bulkDeleteButton.textContent = plannedDutiesState.selectedIds.length
+      const bulkLabel = plannedDutiesState.selectedIds.length
         ? `Изтрий избраните (${plannedDutiesState.selectedIds.length})`
         : 'Изтрий избраните';
+      bulkDeleteButton.innerHTML = `<i class="bi bi-trash me-1"></i>${bulkLabel}`;
     }
     if (addToActualButton) {
       addToActualButton.disabled = !selectionEnabled || plannedDutiesState.selectedIds.length === 0;
-      addToActualButton.textContent = plannedDutiesState.selectedIds.length
+      const actualLabel = plannedDutiesState.selectedIds.length
         ? `Към Актуални (${plannedDutiesState.selectedIds.length})`
         : 'Към Актуални';
+      addToActualButton.innerHTML = `<i class="bi bi-clipboard2-check me-1"></i>${actualLabel}`;
     }
+
+    syncDisabledHints(container, ACTION_HINTS);
     return;
   }
 
-  plannedDutiesState.visibleRowIds = filteredRows.map((row) => row.id);
+  plannedDutiesState.visibleRowIds = pageItems.map((row) => row.id);
 
   emptyState.classList.add('d-none');
   if (selectAllInput) {
@@ -96,7 +145,7 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
     selectAllInput.closest('th')?.classList.toggle('d-none', !selectionEnabled);
   }
 
-  tableBody.innerHTML = filteredRows
+  tableBody.innerHTML = pageItems
     .map(
       (item) => {
         const dutyScheduleKeyId = getFirstDutyScheduleKeyId(item);
@@ -149,26 +198,30 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
     )
     .join('');
 
-  const selectedVisibleCount = filteredRows.filter((row) => plannedDutiesState.selectedIds.includes(row.id)).length;
+  const selectedVisibleCount = pageItems.filter((row) => plannedDutiesState.selectedIds.includes(row.id)).length;
   if (selectAllInput) {
     selectAllInput.disabled = !selectionEnabled;
-    selectAllInput.checked = selectionEnabled && selectedVisibleCount > 0 && selectedVisibleCount === filteredRows.length;
-    selectAllInput.indeterminate = selectionEnabled && selectedVisibleCount > 0 && selectedVisibleCount < filteredRows.length;
+    selectAllInput.checked = selectionEnabled && pageItems.length > 0 && selectedVisibleCount === pageItems.length;
+    selectAllInput.indeterminate = selectionEnabled && selectedVisibleCount > 0 && selectedVisibleCount < pageItems.length;
   }
 
   if (bulkDeleteButton) {
     bulkDeleteButton.disabled = !selectionEnabled || plannedDutiesState.selectedIds.length === 0;
-    bulkDeleteButton.textContent = plannedDutiesState.selectedIds.length
+    const bulkLabel = plannedDutiesState.selectedIds.length
       ? `Изтрий избраните (${plannedDutiesState.selectedIds.length})`
       : 'Изтрий избраните';
+    bulkDeleteButton.innerHTML = `<i class="bi bi-trash me-1"></i>${bulkLabel}`;
   }
 
   if (addToActualButton) {
     addToActualButton.disabled = !selectionEnabled || plannedDutiesState.selectedIds.length === 0;
-    addToActualButton.textContent = plannedDutiesState.selectedIds.length
+    const actualLabel = plannedDutiesState.selectedIds.length
       ? `Към Актуални (${plannedDutiesState.selectedIds.length})`
       : 'Към Актуални';
+    addToActualButton.innerHTML = `<i class="bi bi-clipboard2-check me-1"></i>${actualLabel}`;
   }
+
+  syncDisabledHints(container, ACTION_HINTS);
 }
 
 function getFirstDutyScheduleKeyId(item) {

@@ -31,8 +31,6 @@ function attachTrainsHandlers(container) {
   const originFilterInput = container.querySelector('#trains-origin-filter');
   const destinationFilterInput = container.querySelector('#trains-destination-filter');
   const filterResetButton = container.querySelector('#trains-filter-reset');
-  const timetableUrlInput = container.querySelector('#train-timetable-url');
-  const timetableLabelInput = container.querySelector('#train-timetable-label');
   const timetableFileInput = container.querySelector('#train-timetable-file');
   const currentTimetableLinks = container.querySelector('#train-current-timetable-links');
 
@@ -87,12 +85,6 @@ function attachTrainsHandlers(container) {
     if (destinationFilterInput) destinationFilterInput.value = '';
 
     renderTrainsTable(container);
-  });
-
-  timetableUrlInput?.addEventListener('input', () => {
-  });
-
-  timetableLabelInput?.addEventListener('input', () => {
   });
 
   timetableFileInput?.addEventListener('change', () => {
@@ -212,8 +204,6 @@ async function saveTrain(container) {
   const destinationStationInput = container.querySelector('#train-destination-station');
   const departureTimeInput = container.querySelector('#train-departure-time');
   const arrivalTimeInput = container.querySelector('#train-arrival-time');
-  const timetableUrlInput = container.querySelector('#train-timetable-url');
-  const timetableLabelInput = container.querySelector('#train-timetable-label');
   const timetableFileInput = container.querySelector('#train-timetable-file');
   const existingTimetableUrlInput = container.querySelector('#train-existing-timetable-url');
   const draftTimetableUrlInput = container.querySelector('#train-draft-timetable-url');
@@ -226,18 +216,11 @@ async function saveTrain(container) {
   const arrivalTime = arrivalTimeInput.value;
   const previousEntries = parseTimetableEntries(existingTimetableUrlInput.value);
   const draftEntries = parseTimetableEntries(draftTimetableUrlInput.value);
-  const manualTimetableUrl = timetableUrlInput.value.trim() || '';
-  const manualTimetableLabel = timetableLabelInput.value.trim() || '';
   const timetableFiles = Array.from(timetableFileInput?.files || []);
   const editingId = idInput.value;
 
   if (!number || !originStation || !destinationStation || !departureTime || !arrivalTime) {
     showToast('Моля, попълни всички задължителни полета.', 'warning');
-    return;
-  }
-
-  if (manualTimetableLabel && !manualTimetableUrl) {
-    showToast('За да зададеш име, въведи и линк.', 'warning');
     return;
   }
 
@@ -248,13 +231,6 @@ async function saveTrain(container) {
   const recordId = editingId || crypto.randomUUID();
   const nextEntries = dedupeTimetableEntries(draftEntries);
   const uploadedObjectPaths = [];
-
-  if (manualTimetableUrl) {
-    nextEntries.push({
-      url: manualTimetableUrl,
-      label: manualTimetableLabel || deriveTimetableLabel(manualTimetableUrl, nextEntries.length)
-    });
-  }
 
   const projectedTotalItems = nextEntries.length + timetableFiles.length;
   if (projectedTotalItems > MAX_TRAIN_TIMETABLE_ITEMS) {
@@ -351,8 +327,6 @@ function populateTrainForm(container, train) {
   container.querySelector('#train-departure-time').value = toTimeInputValue(train.departureTime);
   container.querySelector('#train-arrival-time').value = toTimeInputValue(train.arrivalTime);
   container.querySelector('#train-timetable-file').value = '';
-  container.querySelector('#train-timetable-url').value = '';
-  container.querySelector('#train-timetable-label').value = '';
   updateCurrentTimetablePreview(container, entries);
 
   container.querySelector('#train-form-title').textContent = 'Редакция на влак';
@@ -369,8 +343,6 @@ function resetTrainForm(container) {
   container.querySelector('#train-departure-time').value = '';
   container.querySelector('#train-arrival-time').value = '';
   container.querySelector('#train-timetable-file').value = '';
-  container.querySelector('#train-timetable-url').value = '';
-  container.querySelector('#train-timetable-label').value = '';
   updateCurrentTimetablePreview(container, []);
 
   container.querySelector('#train-form-title').textContent = 'Нов влак';

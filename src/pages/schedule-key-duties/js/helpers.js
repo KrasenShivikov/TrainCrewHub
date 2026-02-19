@@ -65,6 +65,9 @@ export function closeModal(modalElement) {
   const createModalHidden = document
     .querySelector('#schedule-key-duty-create-modal')
     ?.classList.contains('d-none');
+  const attachModalHidden = document
+    .querySelector('#schedule-key-duty-attach-modal')
+    ?.classList.contains('d-none');
   const editModalHidden = document
     .querySelector('#schedule-key-duty-edit-modal')
     ?.classList.contains('d-none');
@@ -75,7 +78,7 @@ export function closeModal(modalElement) {
     .querySelector('#schedule-key-duty-profile-modal')
     ?.classList.contains('d-none');
 
-  if (createModalHidden && editModalHidden && deleteModalHidden && profileModalHidden) {
+  if (createModalHidden && attachModalHidden && editModalHidden && deleteModalHidden && profileModalHidden) {
     document.body.classList.remove('overflow-hidden');
   }
 }

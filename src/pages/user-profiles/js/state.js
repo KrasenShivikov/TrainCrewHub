@@ -4,5 +4,7 @@ export const userProfilesState = {
   searchQuery: '',
   isAdmin: false,
   currentUserId: '',
-  resetConfirmResolver: null
+  resetConfirmResolver: null,
+  page: 1,
+  pageSize: 20
 };

@@ -5,5 +5,7 @@ export const plannedDutiesState = {
   roleFilter: '',
   selectedIds: [],
   visibleRowIds: [],
-  selectionEnabled: true
+  selectionEnabled: true,
+  page: 1,
+  pageSize: 20
 };

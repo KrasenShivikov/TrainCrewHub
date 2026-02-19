@@ -19,7 +19,7 @@ function setupPasswordToggles(container) {
 
       const shouldShow = input.type === 'password';
       input.type = shouldShow ? 'text' : 'password';
-      button.textContent = shouldShow ? '🙈' : '👁';
+      button.innerHTML = shouldShow ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
 
       const isConfirmField = targetId.includes('confirm');
       const showLabel = isConfirmField ? 'Покажи потвърждението на паролата' : 'Покажи паролата';

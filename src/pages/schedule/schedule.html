@@ -4,11 +4,11 @@
       <h1 class="h3 mb-0">Разпределение</h1>
       <div class="d-flex gap-2 page-actions">
         <button id="schedule-confirm-from-timetable" type="button" class="btn btn-primary">
-          Потвърди от разписание
+          <i class="bi bi-check-circle me-1"></i>Потвърди от разписание
           <span id="schedule-confirm-required-badge" class="badge text-bg-warning ms-2 d-none">Нужно е повторно потвърждение</span>
         </button>
-        <button id="schedule-go-to-actual" type="button" class="btn btn-outline-secondary">Към Реални повески</button>
-        <button id="schedule-print" type="button" class="btn btn-outline-secondary">Печат</button>
+        <button id="schedule-go-to-actual" type="button" class="btn btn-outline-secondary"><i class="bi bi-arrow-right me-1"></i>Към Реални повески</button>
+        <button id="schedule-print" type="button" class="btn btn-outline-secondary"><i class="bi bi-printer me-1"></i>Печат</button>
       </div>
     </div>
 
@@ -20,25 +20,6 @@
         <input id="schedule-date" type="date" class="form-control" />
         <div id="schedule-publication-status" class="form-text mt-2">Статус: непотвърдено</div>
         <div class="form-text">Повторно потвърждение е нужно само при смяна на служителя в реална повеска.</div>
-      </div>
-      <div class="col-md-3">
-        <label for="schedule-print-orientation" class="form-label">Ориентация за печат</label>
-        <select id="schedule-print-orientation" class="form-select">
-          <option value="landscape" selected>Landscape</option>
-          <option value="portrait">Portrait</option>
-        </select>
-      </div>
-      <div class="col-md-2">
-        <div class="form-check mt-2 mt-md-4 pt-0 pt-md-2">
-          <input class="form-check-input" type="checkbox" id="schedule-print-compact" checked />
-          <label class="form-check-label" for="schedule-print-compact">Компактен</label>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="form-check mt-2 mt-md-4 pt-0 pt-md-2">
-          <input class="form-check-input" type="checkbox" id="schedule-print-fit-one-page" checked />
-          <label class="form-check-label" for="schedule-print-fit-one-page">Събери на 1 страница</label>
-        </div>
       </div>
     </div>
 
@@ -52,6 +33,7 @@
           <h2 class="h3 mb-1">РАЗПРЕДЕЛЕНИЕ</h2>
           <p id="schedule-sheet-date" class="mb-0 text-secondary"></p>
         </div>
+        <div id="schedule-norm-display" class="schedule-print-norm-display"></div>
       </header>
 
       <section class="mb-4">
@@ -131,6 +113,68 @@
             <button id="schedule-actual-edit-save" type="submit" class="btn btn-primary">Запази</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="schedule-print-modal" class="d-none position-fixed top-0 start-0 w-100 h-100" style="z-index:1060;background:rgba(0,0,0,0.45);backdrop-filter:blur(3px);">
+  <div class="d-flex align-items-center justify-content-center h-100 p-3">
+    <div class="card w-100" style="max-width:460px;">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div class="d-flex align-items-center gap-2">
+            <span class="d-inline-flex align-items-center justify-content-center rounded" style="width:34px;height:34px;background:var(--bs-primary-bg-subtle);">
+              <i class="bi bi-printer text-primary"></i>
+            </span>
+            <h2 class="h5 mb-0">Настройки за печат</h2>
+          </div>
+          <button id="sch-print-modal-close" type="button" class="btn-close" aria-label="Затвори"></button>
+        </div>
+
+        <div class="mb-3">
+          <div class="form-label">Ориентация на страницата</div>
+          <div class="d-flex gap-2">
+            <div class="flex-fill">
+              <input type="radio" class="btn-check" name="sch-orientation" id="sch-orientation-landscape" value="landscape" checked>
+              <label class="btn btn-outline-secondary w-100 d-flex flex-column align-items-center gap-1 py-3" for="sch-orientation-landscape">
+                <i class="bi bi-tablet-landscape fs-4"></i>
+                <span style="font-size:0.8rem;">Хоризонтална</span>
+              </label>
+            </div>
+            <div class="flex-fill">
+              <input type="radio" class="btn-check" name="sch-orientation" id="sch-orientation-portrait" value="portrait">
+              <label class="btn btn-outline-secondary w-100 d-flex flex-column align-items-center gap-1 py-3" for="sch-orientation-portrait">
+                <i class="bi bi-tablet fs-4"></i>
+                <span style="font-size:0.8rem;">Вертикална</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="list-group list-group-flush border rounded mb-1">
+          <label class="list-group-item d-flex align-items-start gap-3 py-3 cursor-pointer">
+            <input class="form-check-input flex-shrink-0 mt-1" type="checkbox" id="sch-print-compact" checked>
+            <div>
+              <div class="fw-semibold" style="font-size:0.875rem;">Компактен режим</div>
+              <div class="text-muted" style="font-size:0.78rem;">По-малки редове за повече повески на страница</div>
+            </div>
+          </label>
+          <label class="list-group-item d-flex align-items-start gap-3 py-3 cursor-pointer">
+            <input class="form-check-input flex-shrink-0 mt-1" type="checkbox" id="sch-print-fit-one-page" checked>
+            <div>
+              <div class="fw-semibold" style="font-size:0.875rem;">Събери на 1 страница</div>
+              <div class="text-muted" style="font-size:0.78rem;">Автоматично мащабиране за побиране на 1 страница</div>
+            </div>
+          </label>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+          <button id="sch-print-modal-cancel" type="button" class="btn btn-outline-secondary">Отказ</button>
+          <button id="sch-print-modal-go" type="button" class="btn btn-primary">
+            <i class="bi bi-printer me-1"></i>Изпрати на печат
+          </button>
+        </div>
       </div>
     </div>
   </div>

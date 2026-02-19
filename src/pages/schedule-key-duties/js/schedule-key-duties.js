@@ -52,10 +52,17 @@ function initializeScheduleKeyFormFields(container) {
 
 function attachScheduleKeyDutiesHandlers(container) {
   const openCreateButton = container.querySelector('#open-create-schedule-key-duty');
+  const openAttachButton = container.querySelector('#open-attach-schedule-key-duty');
   const createModal = container.querySelector('#schedule-key-duty-create-modal');
+  const attachModal = container.querySelector('#schedule-key-duty-attach-modal');
   const createForm = container.querySelector('#schedule-key-duty-create-form');
   const createModalCloseButton = container.querySelector('#schedule-key-duty-create-modal-close');
+  const attachModalCloseButton = container.querySelector('#schedule-key-duty-attach-modal-close');
   const createCancelButton = container.querySelector('#schedule-key-duty-create-cancel');
+  const attachCancelButton = container.querySelector('#schedule-key-duty-attach-cancel');
+  const attachSearchInput = container.querySelector('#schedule-key-duty-attach-search');
+  const attachTypeSelect = container.querySelector('#schedule-key-duty-attach-type');
+  const attachList = container.querySelector('#schedule-key-duty-attach-list');
   const dutiesBody = container.querySelector('#schedule-key-duties-body');
   const editModal = container.querySelector('#schedule-key-duty-edit-modal');
   const deleteModal = container.querySelector('#schedule-key-duty-delete-modal');
@@ -74,17 +81,53 @@ function attachScheduleKeyDutiesHandlers(container) {
     openModal(createModal);
   });
 
+  openAttachButton?.addEventListener('click', async () => {
+    await loadAttachDutyCatalog(container);
+    renderAttachDutyList(container);
+    openModal(attachModal);
+  });
+
   createModalCloseButton?.addEventListener('click', () => {
     closeModal(createModal);
+  });
+
+  attachModalCloseButton?.addEventListener('click', () => {
+    closeModal(attachModal);
   });
 
   createCancelButton?.addEventListener('click', () => {
     closeModal(createModal);
   });
 
+  attachCancelButton?.addEventListener('click', () => {
+    closeModal(attachModal);
+  });
+
   createForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
     await saveDutyForScheduleKey(container);
+  });
+
+  attachSearchInput?.addEventListener('input', () => {
+    renderAttachDutyList(container);
+  });
+
+  attachTypeSelect?.addEventListener('change', () => {
+    renderAttachDutyList(container);
+  });
+
+  attachList?.addEventListener('click', async (event) => {
+    const button = event.target.closest('button[data-attach-duty-id]');
+    if (!button) {
+      return;
+    }
+
+    const dutyId = button.getAttribute('data-attach-duty-id') || '';
+    if (!dutyId) {
+      return;
+    }
+
+    await attachExistingDutyToScheduleKey(container, dutyId, button);
   });
 
   editForm?.addEventListener('submit', async (event) => {
@@ -131,6 +174,7 @@ function attachScheduleKeyDutiesHandlers(container) {
     profileModal,
     deleteModal,
     editModal,
+    attachModal,
     createModal
   ]);
 
@@ -238,6 +282,7 @@ async function initScheduleKeyContext(container) {
   if (!scheduleKeyDutiesState.scheduleKeyId) {
     renderScheduleKeyDutiesTable(container, 'Няма избран Ключ-График. Върни се и избери запис.');
     container.querySelector('#open-create-schedule-key-duty').classList.add('d-none');
+    container.querySelector('#open-attach-schedule-key-duty').classList.add('d-none');
     return;
   }
 
@@ -263,6 +308,7 @@ async function initScheduleKeyContext(container) {
 async function loadDutyTypeOptions(container) {
   const createSelect = container.querySelector('#schedule-key-duty-create-type');
   const editSelect = container.querySelector('#schedule-key-duty-edit-type');
+  const attachTypeSelect = container.querySelector('#schedule-key-duty-attach-type');
 
   const { data, error } = await supabase
     .from('duty_types')
@@ -280,6 +326,157 @@ async function loadDutyTypeOptions(container) {
 
   createSelect.innerHTML = '<option value="">Избери тип</option>' + options;
   editSelect.innerHTML = '<option value="">Избери тип</option>' + options;
+  if (attachTypeSelect) {
+    attachTypeSelect.innerHTML = '<option value="">Всички типове</option>' + options;
+  }
+}
+
+async function loadAttachDutyCatalog(container) {
+  const list = container.querySelector('#schedule-key-duty-attach-list');
+  const emptyState = container.querySelector('#schedule-key-duty-attach-empty');
+
+  if (!scheduleKeyDutiesState.scheduleKeyId) {
+    scheduleKeyDutiesState.attachCatalog = [];
+    if (list) list.innerHTML = '';
+    if (emptyState) {
+      emptyState.textContent = 'Няма избран ключ-график.';
+      emptyState.classList.remove('d-none');
+    }
+    return;
+  }
+
+  if (list) {
+    list.innerHTML = '<div class="list-group-item text-secondary">Зареждане...</div>';
+  }
+  if (emptyState) emptyState.classList.add('d-none');
+
+  const excludedDutyIds = new Set((scheduleKeyDutiesState.duties || []).map((item) => item?.id).filter(Boolean));
+
+  const { data, error } = await supabase
+    .from('duties')
+    .select('id, name, start_time, end_time, duty_type_id, duty_types(name)')
+    .order('name', { ascending: true });
+
+  if (error) {
+    scheduleKeyDutiesState.attachCatalog = [];
+    if (list) list.innerHTML = '';
+    if (emptyState) {
+      emptyState.textContent = 'Грешка при зареждане на повеските.';
+      emptyState.classList.remove('d-none');
+    }
+    showToast(error.message, 'error');
+    return;
+  }
+
+  scheduleKeyDutiesState.attachCatalog = (data || []).filter(
+    (item) => item?.id && !excludedDutyIds.has(item.id)
+  );
+}
+
+function renderAttachDutyList(container) {
+  const list = container.querySelector('#schedule-key-duty-attach-list');
+  const emptyState = container.querySelector('#schedule-key-duty-attach-empty');
+  const searchInput = container.querySelector('#schedule-key-duty-attach-search');
+  const typeSelect = container.querySelector('#schedule-key-duty-attach-type');
+
+  if (!list || !emptyState) {
+    return;
+  }
+
+  const searchTerm = (searchInput?.value || '').trim().toLowerCase();
+  const selectedTypeId = typeSelect?.value || '';
+  const catalog = Array.isArray(scheduleKeyDutiesState.attachCatalog)
+    ? scheduleKeyDutiesState.attachCatalog
+    : [];
+
+  const filtered = catalog.filter((item) => {
+    if (selectedTypeId && item?.duty_type_id !== selectedTypeId) {
+      return false;
+    }
+
+    if (!searchTerm) {
+      return true;
+    }
+
+    return String(item?.name || '').toLowerCase().includes(searchTerm);
+  });
+
+  if (!catalog.length) {
+    list.innerHTML = '';
+    emptyState.textContent = 'Няма свободни повески за прикачване.';
+    emptyState.classList.remove('d-none');
+    return;
+  }
+
+  if (!filtered.length) {
+    list.innerHTML = '';
+    emptyState.textContent = 'Няма резултати по зададените филтри.';
+    emptyState.classList.remove('d-none');
+    return;
+  }
+
+  emptyState.classList.add('d-none');
+  list.innerHTML = filtered
+    .map((item) => {
+      const start = (item.start_time || '').slice(0, 5) || '--:--';
+      const end = (item.end_time || '').slice(0, 5) || '--:--';
+      const typeName = item?.duty_types?.name || '';
+
+      return `
+        <div class="list-group-item d-flex justify-content-between align-items-start gap-3 flex-wrap">
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <strong>${escapeHtml(item.name || '-')}</strong>
+              ${typeName ? `<span class="badge text-bg-light">${escapeHtml(typeName)}</span>` : ''}
+            </div>
+            <div class="text-secondary small">${escapeHtml(start)} - ${escapeHtml(end)}</div>
+          </div>
+          <div>
+            <button type="button" class="btn btn-sm btn-primary" data-attach-duty-id="${item.id}"><i class="bi bi-link-45deg me-1"></i>Прикачи</button>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+async function attachExistingDutyToScheduleKey(container, dutyId, buttonEl) {
+  if (!scheduleKeyDutiesState.scheduleKeyId || !dutyId) {
+    showToast('Избери повеска за прикачване.', 'warning');
+    return;
+  }
+
+  const button = buttonEl;
+  const originalText = button?.innerHTML || '';
+  if (button) {
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Прикачане...';
+  }
+
+  const { error } = await supabase
+    .from('schedule_key_duties')
+    .insert({
+      duty_id: dutyId,
+      schedule_key_id: scheduleKeyDutiesState.scheduleKeyId
+    });
+
+  if (button) {
+    button.disabled = false;
+    button.innerHTML = originalText;
+  }
+
+  if (error) {
+    showToast(error.message, 'error');
+    return;
+  }
+
+  scheduleKeyDutiesState.attachCatalog = (scheduleKeyDutiesState.attachCatalog || []).filter(
+    (item) => item?.id !== dutyId
+  );
+
+  renderAttachDutyList(container);
+  showToast('Повеската е прикачена към ключ-графика.', 'success');
+  await loadDutiesForScheduleKey(container);
 }
 
 async function loadScheduleKeyOptions(container) {
@@ -797,24 +994,111 @@ function getTrainNumbersOrdered(duty) {
 }
 
 function openDeleteDutyModal(container, dutyId) {
+  const modal = container.querySelector('#schedule-key-duty-delete-modal');
+  const title = container.querySelector('#schedule-key-duty-delete-title');
+  const message = container.querySelector('#schedule-key-duty-delete-message');
+  const confirmButton = container.querySelector('#schedule-key-duty-delete-confirm');
+
+  const duty = scheduleKeyDutiesState.duties.find((item) => item.id === dutyId);
+  const currentScheduleKeyId = scheduleKeyDutiesState.scheduleKeyId;
+  const scheduleKeyIds = duty ? getScheduleKeyIds(duty) : [];
+  const remainingScheduleKeyIds = scheduleKeyIds.filter((id) => id !== currentScheduleKeyId);
+
+  const shouldDelete = Boolean(duty?.schedule_key_id === currentScheduleKeyId && remainingScheduleKeyIds.length === 0);
+  const newPrimaryScheduleKeyId = duty?.schedule_key_id === currentScheduleKeyId ? (remainingScheduleKeyIds[0] || '') : '';
+
+  if (modal) {
+    modal.dataset.action = shouldDelete ? 'delete' : 'detach';
+    modal.dataset.newPrimaryScheduleKeyId = newPrimaryScheduleKeyId;
+  }
+
+  if (title) {
+    title.textContent = shouldDelete ? 'Потвърди изтриване' : 'Потвърди разкачане';
+  }
+
+  if (message) {
+    message.textContent = shouldDelete
+      ? 'Сигурен ли си, че искаш да изтриеш тази повеска?'
+      : 'Сигурен ли си, че искаш да разкачиш тази повеска от текущия ключ-график?';
+  }
+
+  if (confirmButton) {
+    confirmButton.textContent = shouldDelete ? 'Изтрий' : 'Разкачи';
+    confirmButton.classList.toggle('btn-danger', shouldDelete);
+    confirmButton.classList.toggle('btn-warning', !shouldDelete);
+  }
+
   container.querySelector('#schedule-key-duty-delete-id').value = dutyId;
-  openModal(container.querySelector('#schedule-key-duty-delete-modal'));
+  openModal(modal);
 }
 
 async function confirmDeleteDutyForScheduleKey(container, dutyId) {
   const deleteButton = container.querySelector('#schedule-key-duty-delete-confirm');
+  const modal = container.querySelector('#schedule-key-duty-delete-modal');
   const originalText = deleteButton.innerHTML;
-  deleteButton.disabled = true;
-  deleteButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Изтриване...';
+  const action = modal?.dataset?.action || 'detach';
+  const newPrimaryScheduleKeyId = modal?.dataset?.newPrimaryScheduleKeyId || '';
 
-  const { error } = await supabase
-    .from('duties')
-    .delete()
-    .eq('id', dutyId)
-    .eq('schedule_key_id', scheduleKeyDutiesState.scheduleKeyId);
+  const duty = scheduleKeyDutiesState.duties.find((item) => item.id === dutyId);
+  const currentScheduleKeyId = scheduleKeyDutiesState.scheduleKeyId;
+
+  deleteButton.disabled = true;
+  deleteButton.innerHTML = action === 'delete'
+    ? '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Изтриване...'
+    : '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Разкачане...';
+
+  let error = null;
+
+  if (action === 'delete') {
+    const { error: clearMappingError } = await supabase
+      .from('schedule_key_duties')
+      .delete()
+      .eq('duty_id', dutyId);
+
+    if (clearMappingError) {
+      error = clearMappingError;
+    }
+
+    if (!error) {
+      const result = await supabase
+        .from('duties')
+        .delete()
+        .eq('id', dutyId)
+        .eq('schedule_key_id', currentScheduleKeyId);
+
+      error = result.error;
+    }
+  } else {
+    const { error: detachError } = await supabase
+      .from('schedule_key_duties')
+      .delete()
+      .eq('duty_id', dutyId)
+      .eq('schedule_key_id', currentScheduleKeyId);
+
+    if (detachError) {
+      error = detachError;
+    }
+
+    if (!error && duty?.schedule_key_id === currentScheduleKeyId) {
+      if (!newPrimaryScheduleKeyId) {
+        error = { message: 'Не е намерен друг ключ-график за прехвърляне на повеската.' };
+      } else {
+        const result = await supabase
+          .from('duties')
+          .update({ schedule_key_id: newPrimaryScheduleKeyId })
+          .eq('id', dutyId);
+
+        error = result.error;
+      }
+    }
+  }
 
   deleteButton.disabled = false;
   deleteButton.innerHTML = originalText;
+  if (deleteButton) {
+    deleteButton.classList.remove('btn-warning');
+    deleteButton.classList.add('btn-danger');
+  }
 
   if (error) {
     showToast(error.message, 'error');
@@ -822,6 +1106,6 @@ async function confirmDeleteDutyForScheduleKey(container, dutyId) {
   }
 
   closeModal(container.querySelector('#schedule-key-duty-delete-modal'));
-  showToast('Повеската е изтрита.', 'success');
+  showToast(action === 'delete' ? 'Повеската е изтрита.' : 'Повеската е разкачена от ключ-графика.', 'success');
   await loadDutiesForScheduleKey(container);
 }

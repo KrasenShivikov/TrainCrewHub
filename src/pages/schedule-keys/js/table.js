@@ -2,6 +2,7 @@ import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml } from './helpers.js';
 import { scheduleKeysState } from './state.js';
+import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
 
 export async function loadScheduleKeys(container) {
   const { data, error } = await supabase
@@ -24,12 +25,24 @@ export function renderScheduleKeysTable(container, explicitEmptyMessage) {
   const tableBody = container.querySelector('#schedule-keys-table-body');
   const emptyState = container.querySelector('#schedule-keys-empty');
 
+  bindPaginationButtons(container, {
+    rootSelector: '#schedule-keys-pagination',
+    prevSelector: '#schedule-keys-pagination-prev',
+    nextSelector: '#schedule-keys-pagination-next',
+    onPrev: () => {
+      scheduleKeysState.page = Math.max(1, (scheduleKeysState.page || 1) - 1);
+      renderScheduleKeysTable(container);
+    },
+    onNext: () => {
+      scheduleKeysState.page = (scheduleKeysState.page || 1) + 1;
+      renderScheduleKeysTable(container);
+    }
+  });
+
   const filteredRows = scheduleKeysState.rows.filter((item) => {
     const matchesName =
       !scheduleKeysState.filters.name ||
       (item.name || '').toLowerCase().includes(scheduleKeysState.filters.name);
-
-    const matchesType = !scheduleKeysState.filters.type || item.type === scheduleKeysState.filters.type;
 
     const matchesCrewRole =
       !scheduleKeysState.filters.crewRole || item.crew_role === scheduleKeysState.filters.crewRole;
@@ -44,7 +57,24 @@ export function renderScheduleKeysTable(container, explicitEmptyMessage) {
     const matchesValidTo =
       !scheduleKeysState.filters.validTo || item.valid_to === scheduleKeysState.filters.validTo;
 
-    return matchesName && matchesType && matchesCrewRole && matchesActive && matchesValidFrom && matchesValidTo;
+    return matchesName && matchesCrewRole && matchesActive && matchesValidFrom && matchesValidTo;
+  });
+
+  const { pageItems, page, totalItems, totalPages } = paginateRows(
+    filteredRows,
+    scheduleKeysState.page,
+    scheduleKeysState.pageSize
+  );
+  scheduleKeysState.page = page;
+
+  syncPaginationUi(container, {
+    rootSelector: '#schedule-keys-pagination',
+    prevSelector: '#schedule-keys-pagination-prev',
+    nextSelector: '#schedule-keys-pagination-next',
+    labelSelector: '#schedule-keys-pagination-label',
+    page,
+    totalItems,
+    totalPages
   });
 
   if (!filteredRows.length) {
@@ -55,12 +85,11 @@ export function renderScheduleKeysTable(container, explicitEmptyMessage) {
   }
 
   emptyState.classList.add('d-none');
-  tableBody.innerHTML = filteredRows
+  tableBody.innerHTML = pageItems
     .map(
       (item) => `
         <tr>
           <td>${escapeHtml(item.name ?? '-')}</td>
-          <td>${escapeHtml(item.type ?? '-')}</td>
           <td>${escapeHtml(item.crew_role ?? '-')}</td>
           <td>${item.is_active ? 'Да' : 'Не'}</td>
           <td>${escapeHtml(item.valid_from ?? '-')}</td>

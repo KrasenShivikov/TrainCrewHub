@@ -1,8 +1,15 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-  <div class="container">
-    <a class="navbar-brand fw-semibold" href="/" data-link>TrainCrewHub</a>
+<nav class="navbar navbar-expand-lg navbar-dark app-navbar">
+  <div class="container-xl px-3 px-lg-4">
+
+    <!-- Brand -->
+    <a class="navbar-brand d-flex align-items-center gap-2" href="/" data-link>
+      <span class="app-navbar-logo-icon"><i class="bi bi-train-front-fill"></i></span>
+      <span class="app-navbar-logo-text">TrainCrewHub</span>
+    </a>
+
+    <!-- Toggler -->
     <button
-      class="navbar-toggler"
+      class="navbar-toggler border-0 shadow-none"
       type="button"
       data-bs-toggle="collapse"
       data-bs-target="#mainNav"
@@ -12,78 +19,153 @@
     >
       <span class="navbar-toggler-icon"></span>
     </button>
+
+    <!-- Nav links -->
     <div class="collapse navbar-collapse" id="mainNav">
-      <ul class="navbar-nav ms-auto gap-lg-2">
+      <ul class="navbar-nav me-auto gap-0 gap-lg-1 mt-2 mt-lg-0">
+
         <li class="nav-item">
-          <a class="nav-link" href="/" data-link>Home</a>
-        </li>
-        <li class="nav-item dropdown">
-          <a
-            class="nav-link dropdown-toggle"
-            href="#"
-            role="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-          >
-            Графици
+          <a class="nav-link app-nav-link" href="/" data-link>
+            <i class="bi bi-house-door"></i>
+            <span>Начало</span>
           </a>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="/schedule-keys" data-link>Ключ-График</a></li>
-            <li><a class="dropdown-item" href="/plan-schedule" data-link>План График</a></li>
-            <li><a class="dropdown-item" href="/schedule" data-link>График</a></li>
+        </li>
+
+        <li class="nav-item dropdown">
+          <a class="nav-link app-nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-calendar3"></i>
+            <span>Графици</span>
+          </a>
+          <ul class="dropdown-menu app-dropdown">
+            <li>
+              <a class="dropdown-item app-dropdown-item" href="/schedule-keys" data-link>
+                <i class="bi bi-calendar-event app-dropdown-icon"></i>
+                <div><div class="app-dropdown-label">Ключ-График</div><div class="app-dropdown-desc">Управление на ключове</div></div>
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item app-dropdown-item" href="/plan-schedule" data-link>
+                <i class="bi bi-layout-text-sidebar app-dropdown-icon"></i>
+                <div><div class="app-dropdown-label">План График</div><div class="app-dropdown-desc">Планиране на графика</div></div>
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item app-dropdown-item" href="/schedule" data-link>
+                <i class="bi bi-calendar-check app-dropdown-icon"></i>
+                <div><div class="app-dropdown-label">График</div><div class="app-dropdown-desc">Преглед на текущия график</div></div>
+              </a>
+            </li>
           </ul>
         </li>
+
         <li class="nav-item dropdown">
-          <a
-            class="nav-link dropdown-toggle"
-            href="#"
-            role="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-          >
-            Повески
+          <a class="nav-link app-nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-clipboard-check"></i>
+            <span>Повески</span>
           </a>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="/trains" data-link>Влакове</a></li>
-            <li><a class="dropdown-item" href="/duties" data-link>Повески</a></li>
-            <li><a class="dropdown-item" href="/duty-types" data-link>Типове повески</a></li>
-            <li><a class="dropdown-item" href="/planned-duties" data-link>Планирани повески</a></li>
-            <li><a class="dropdown-item" href="/actual-duties" data-link>Реални повески</a></li>
+          <ul class="dropdown-menu app-dropdown">
+            <li>
+              <a class="dropdown-item app-dropdown-item" href="/trains" data-link>
+                <i class="bi bi-train-front app-dropdown-icon"></i>
+                <div><div class="app-dropdown-label">Влакове</div><div class="app-dropdown-desc">Разписание и информация</div></div>
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item app-dropdown-item" href="/duties" data-link>
+                <i class="bi bi-list-task app-dropdown-icon"></i>
+                <div><div class="app-dropdown-label">Повески</div><div class="app-dropdown-desc">Каталог с повески</div></div>
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item app-dropdown-item" href="/duty-types" data-link>
+                <i class="bi bi-tags app-dropdown-icon"></i>
+                <div><div class="app-dropdown-label">Типове повески</div><div class="app-dropdown-desc">Категории и типове</div></div>
+              </a>
+            </li>
+            <li><hr class="dropdown-divider my-1"></li>
+            <li>
+              <a class="dropdown-item app-dropdown-item" href="/planned-duties" data-link>
+                <i class="bi bi-calendar2-plus app-dropdown-icon"></i>
+                <div><div class="app-dropdown-label">Планирани повески</div><div class="app-dropdown-desc">Планирано изпълнение</div></div>
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item app-dropdown-item" href="/actual-duties" data-link>
+                <i class="bi bi-clipboard2-check app-dropdown-icon"></i>
+                <div><div class="app-dropdown-label">Реални повески</div><div class="app-dropdown-desc">Реално изпълнение</div></div>
+              </a>
+            </li>
           </ul>
         </li>
+
         <li class="nav-item dropdown">
-          <a
-            class="nav-link dropdown-toggle"
-            href="#"
-            role="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-          >
-            Персонал
+          <a class="nav-link app-nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-people"></i>
+            <span>Персонал</span>
           </a>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="/employees" data-link>Служители</a></li>
-            <li><a class="dropdown-item" href="/employee-absences" data-link>Отсъствия</a></li>
-            <li><a class="dropdown-item" href="/user-profiles" data-link>Потребителски профили</a></li>
+          <ul class="dropdown-menu app-dropdown">
+            <li>
+              <a class="dropdown-item app-dropdown-item" href="/employees" data-link>
+                <i class="bi bi-person-badge app-dropdown-icon"></i>
+                <div><div class="app-dropdown-label">Служители</div><div class="app-dropdown-desc">Управление на персонала</div></div>
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item app-dropdown-item" href="/employee-absences" data-link>
+                <i class="bi bi-person-dash app-dropdown-icon"></i>
+                <div><div class="app-dropdown-label">Отсъствия</div><div class="app-dropdown-desc">Отпуски и болнични</div></div>
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item app-dropdown-item" href="/user-profiles" data-link>
+                <i class="bi bi-shield-person app-dropdown-icon"></i>
+                <div><div class="app-dropdown-label">Потребителски профили</div><div class="app-dropdown-desc">Права и роли</div></div>
+              </a>
+            </li>
           </ul>
         </li>
+
         <li class="nav-item">
-          <a class="nav-link" href="/documents" data-link>Документи</a>
+          <a class="nav-link app-nav-link" href="/documents" data-link>
+            <i class="bi bi-file-earmark-text"></i>
+            <span>Документи</span>
+          </a>
         </li>
+
         <li class="nav-item d-none" id="nav-admin">
-          <a class="nav-link" href="/admin" data-link>Админ</a>
+          <a class="nav-link app-nav-link" href="/admin" data-link>
+            <i class="bi bi-gear"></i>
+            <span>Админ</span>
+          </a>
         </li>
+
+      </ul>
+
+      <!-- Right side: auth -->
+      <ul class="navbar-nav gap-0 gap-lg-1 mt-2 mt-lg-0">
         <li class="nav-item" id="nav-sign-in">
-          <a class="nav-link" href="/login" data-link>Sign In</a>
+          <a class="nav-link app-nav-link" href="/login" data-link>
+            <i class="bi bi-box-arrow-in-right"></i>
+            <span>Вход</span>
+          </a>
         </li>
         <li class="nav-item" id="nav-register">
-          <a class="nav-link" href="/register" data-link>Register</a>
+          <a class="nav-link app-nav-link" href="/register" data-link>
+            <i class="bi bi-person-plus"></i>
+            <span>Регистрация</span>
+          </a>
         </li>
         <li class="nav-item d-none" id="nav-my-profile">
-          <a class="nav-link" href="/user-profiles" data-link>Профили</a>
+          <a class="nav-link app-nav-link" href="/user-profiles" data-link>
+            <i class="bi bi-person-circle"></i>
+            <span>Профили</span>
+          </a>
         </li>
         <li class="nav-item d-none" id="nav-logout">
-          <button type="button" class="nav-link btn btn-link p-0 border-0 text-decoration-none">Logout</button>
+          <button type="button" class="nav-link app-nav-link btn btn-link p-0 border-0 text-decoration-none">
+            <i class="bi bi-box-arrow-right"></i>
+            <span>Изход</span>
+          </button>
         </li>
       </ul>
     </div>

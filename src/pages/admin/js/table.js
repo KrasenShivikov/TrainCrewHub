@@ -6,6 +6,7 @@ import {
   getRoleLabel
 } from './helpers.js';
 import { getResourceDisplayName } from '../../../utils/permissions.js';
+import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
 
 const ACCESS_SCOPE_OPTIONS = [
   { value: 'none', label: 'без достъп' },
@@ -73,6 +74,20 @@ export function renderRolesTable(container, explicitEmptyMessage) {
   const body = container.querySelector('#admin-roles-body');
   const emptyState = container.querySelector('#admin-roles-empty');
 
+  bindPaginationButtons(container, {
+    rootSelector: '#admin-roles-pagination',
+    prevSelector: '#admin-roles-pagination-prev',
+    nextSelector: '#admin-roles-pagination-next',
+    onPrev: () => {
+      adminState.rolesPage = Math.max(1, (adminState.rolesPage || 1) - 1);
+      renderRolesTable(container);
+    },
+    onNext: () => {
+      adminState.rolesPage = (adminState.rolesPage || 1) + 1;
+      renderRolesTable(container);
+    }
+  });
+
   if (!body || !emptyState) {
     return;
   }
@@ -81,15 +96,41 @@ export function renderRolesTable(container, explicitEmptyMessage) {
     body.innerHTML = '';
     emptyState.classList.remove('d-none');
     emptyState.textContent = explicitEmptyMessage || 'Няма добавени роли.';
+    syncPaginationUi(container, {
+      rootSelector: '#admin-roles-pagination',
+      prevSelector: '#admin-roles-pagination-prev',
+      nextSelector: '#admin-roles-pagination-next',
+      labelSelector: '#admin-roles-pagination-label',
+      page: 1,
+      totalItems: 0,
+      totalPages: 1
+    });
     return;
   }
+
+  const { pageItems, page, totalItems, totalPages } = paginateRows(
+    adminState.roles,
+    adminState.rolesPage,
+    adminState.pageSize
+  );
+  adminState.rolesPage = page;
+
+  syncPaginationUi(container, {
+    rootSelector: '#admin-roles-pagination',
+    prevSelector: '#admin-roles-pagination-prev',
+    nextSelector: '#admin-roles-pagination-next',
+    labelSelector: '#admin-roles-pagination-label',
+    page,
+    totalItems,
+    totalPages
+  });
 
   emptyState.classList.add('d-none');
   const adminRolesCount = adminState.roles.filter(
     (item) => String(item?.role || '').trim().toLowerCase() === 'admin'
   ).length;
 
-  body.innerHTML = adminState.roles
+  body.innerHTML = pageItems
     .map((row) => {
       const username = row?.username || row?.user_id || '-';
       const role = row?.role ? resolveRoleLabel(row.role) : '-';
@@ -151,6 +192,20 @@ export function renderRoleCatalogTable(container, explicitEmptyMessage) {
   const body = container.querySelector('#admin-role-catalog-body');
   const emptyState = container.querySelector('#admin-role-catalog-empty');
 
+  bindPaginationButtons(container, {
+    rootSelector: '#admin-role-catalog-pagination',
+    prevSelector: '#admin-role-catalog-pagination-prev',
+    nextSelector: '#admin-role-catalog-pagination-next',
+    onPrev: () => {
+      adminState.roleCatalogPage = Math.max(1, (adminState.roleCatalogPage || 1) - 1);
+      renderRoleCatalogTable(container);
+    },
+    onNext: () => {
+      adminState.roleCatalogPage = (adminState.roleCatalogPage || 1) + 1;
+      renderRoleCatalogTable(container);
+    }
+  });
+
   if (!body || !emptyState) {
     return;
   }
@@ -159,11 +214,37 @@ export function renderRoleCatalogTable(container, explicitEmptyMessage) {
     body.innerHTML = '';
     emptyState.classList.remove('d-none');
     emptyState.textContent = explicitEmptyMessage || 'Няма налични роли.';
+    syncPaginationUi(container, {
+      rootSelector: '#admin-role-catalog-pagination',
+      prevSelector: '#admin-role-catalog-pagination-prev',
+      nextSelector: '#admin-role-catalog-pagination-next',
+      labelSelector: '#admin-role-catalog-pagination-label',
+      page: 1,
+      totalItems: 0,
+      totalPages: 1
+    });
     return;
   }
 
+  const { pageItems, page, totalItems, totalPages } = paginateRows(
+    adminState.roleCatalog,
+    adminState.roleCatalogPage,
+    adminState.pageSize
+  );
+  adminState.roleCatalogPage = page;
+
+  syncPaginationUi(container, {
+    rootSelector: '#admin-role-catalog-pagination',
+    prevSelector: '#admin-role-catalog-pagination-prev',
+    nextSelector: '#admin-role-catalog-pagination-next',
+    labelSelector: '#admin-role-catalog-pagination-label',
+    page,
+    totalItems,
+    totalPages
+  });
+
   emptyState.classList.add('d-none');
-  body.innerHTML = adminState.roleCatalog
+  body.innerHTML = pageItems
     .map((role) => {
       const code = String(role?.name || '').trim();
       const labelBg = String(role?.display_name_bg || '').trim() || getRoleLabel(code);
@@ -205,6 +286,20 @@ export function renderProfilesTable(container, explicitEmptyMessage) {
   const body = container.querySelector('#admin-profiles-body');
   const emptyState = container.querySelector('#admin-profiles-empty');
 
+  bindPaginationButtons(container, {
+    rootSelector: '#admin-profiles-pagination',
+    prevSelector: '#admin-profiles-pagination-prev',
+    nextSelector: '#admin-profiles-pagination-next',
+    onPrev: () => {
+      adminState.profilesPage = Math.max(1, (adminState.profilesPage || 1) - 1);
+      renderProfilesTable(container);
+    },
+    onNext: () => {
+      adminState.profilesPage = (adminState.profilesPage || 1) + 1;
+      renderProfilesTable(container);
+    }
+  });
+
   if (!body || !emptyState) {
     return;
   }
@@ -213,12 +308,38 @@ export function renderProfilesTable(container, explicitEmptyMessage) {
     body.innerHTML = '';
     emptyState.classList.remove('d-none');
     emptyState.textContent = explicitEmptyMessage || 'Няма налични профили.';
+    syncPaginationUi(container, {
+      rootSelector: '#admin-profiles-pagination',
+      prevSelector: '#admin-profiles-pagination-prev',
+      nextSelector: '#admin-profiles-pagination-next',
+      labelSelector: '#admin-profiles-pagination-label',
+      page: 1,
+      totalItems: 0,
+      totalPages: 1
+    });
     return;
   }
 
+  const { pageItems, page, totalItems, totalPages } = paginateRows(
+    adminState.profiles,
+    adminState.profilesPage,
+    adminState.pageSize
+  );
+  adminState.profilesPage = page;
+
+  syncPaginationUi(container, {
+    rootSelector: '#admin-profiles-pagination',
+    prevSelector: '#admin-profiles-pagination-prev',
+    nextSelector: '#admin-profiles-pagination-next',
+    labelSelector: '#admin-profiles-pagination-label',
+    page,
+    totalItems,
+    totalPages
+  });
+
   emptyState.classList.add('d-none');
 
-  body.innerHTML = adminState.profiles
+  body.innerHTML = pageItems
     .map((profile) => {
       const profileLabel = getProfileDisplayLabel(profile);
       const isActiveProfile = profile?.is_active !== false;
@@ -347,6 +468,20 @@ export function renderRoleAuditTable(container, explicitEmptyMessage) {
   const body = container.querySelector('#admin-role-audit-body');
   const emptyState = container.querySelector('#admin-role-audit-empty');
 
+  bindPaginationButtons(container, {
+    rootSelector: '#admin-role-audit-pagination',
+    prevSelector: '#admin-role-audit-pagination-prev',
+    nextSelector: '#admin-role-audit-pagination-next',
+    onPrev: () => {
+      adminState.roleAuditPage = Math.max(1, (adminState.roleAuditPage || 1) - 1);
+      renderRoleAuditTable(container);
+    },
+    onNext: () => {
+      adminState.roleAuditPage = (adminState.roleAuditPage || 1) + 1;
+      renderRoleAuditTable(container);
+    }
+  });
+
   if (!body || !emptyState) {
     return;
   }
@@ -355,12 +490,38 @@ export function renderRoleAuditTable(container, explicitEmptyMessage) {
     body.innerHTML = '';
     emptyState.classList.remove('d-none');
     emptyState.textContent = explicitEmptyMessage || 'Няма записани промени по роли.';
+    syncPaginationUi(container, {
+      rootSelector: '#admin-role-audit-pagination',
+      prevSelector: '#admin-role-audit-pagination-prev',
+      nextSelector: '#admin-role-audit-pagination-next',
+      labelSelector: '#admin-role-audit-pagination-label',
+      page: 1,
+      totalItems: 0,
+      totalPages: 1
+    });
     return;
   }
 
+  const { pageItems, page, totalItems, totalPages } = paginateRows(
+    adminState.roleAuditLogs,
+    adminState.roleAuditPage,
+    adminState.pageSize
+  );
+  adminState.roleAuditPage = page;
+
+  syncPaginationUi(container, {
+    rootSelector: '#admin-role-audit-pagination',
+    prevSelector: '#admin-role-audit-pagination-prev',
+    nextSelector: '#admin-role-audit-pagination-next',
+    labelSelector: '#admin-role-audit-pagination-label',
+    page,
+    totalItems,
+    totalPages
+  });
+
   emptyState.classList.add('d-none');
 
-  body.innerHTML = adminState.roleAuditLogs
+  body.innerHTML = pageItems
     .map((row) => {
       const action = String(row?.action || '').trim();
       const actionLabel = action === 'grant' ? 'Добавяне' : action === 'revoke' ? 'Премахване' : 'Обновяване';

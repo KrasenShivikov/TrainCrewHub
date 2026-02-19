@@ -2,6 +2,7 @@ import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml } from './helpers.js';
 import { trainsState } from './state.js';
+import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
 
 export async function loadTrains(container) {
   const { data, error } = await supabase
@@ -25,6 +26,20 @@ export function renderTrainsTable(container, explicitEmptyMessage) {
   const emptyState = container.querySelector('#trains-empty');
   syncTrainFilterOptions(container);
 
+  bindPaginationButtons(container, {
+    rootSelector: '#trains-pagination',
+    prevSelector: '#trains-pagination-prev',
+    nextSelector: '#trains-pagination-next',
+    onPrev: () => {
+      trainsState.page = Math.max(1, (trainsState.page || 1) - 1);
+      renderTrainsTable(container);
+    },
+    onNext: () => {
+      trainsState.page = (trainsState.page || 1) + 1;
+      renderTrainsTable(container);
+    }
+  });
+
   const filteredRows = trainsState.rows.filter((item) => {
     const searchable = `${item.number || ''} ${item.origin_station || ''} ${item.destination_station || ''}`.toLowerCase();
     const origin = String(item.origin_station || '').trim().toLowerCase();
@@ -37,6 +52,23 @@ export function renderTrainsTable(container, explicitEmptyMessage) {
     return matchesSearch && matchesOrigin && matchesDestination;
   });
 
+  const { pageItems, page, totalItems, totalPages } = paginateRows(
+    filteredRows,
+    trainsState.page,
+    trainsState.pageSize
+  );
+  trainsState.page = page;
+
+  syncPaginationUi(container, {
+    rootSelector: '#trains-pagination',
+    prevSelector: '#trains-pagination-prev',
+    nextSelector: '#trains-pagination-next',
+    labelSelector: '#trains-pagination-label',
+    page,
+    totalItems,
+    totalPages
+  });
+
   if (!filteredRows.length) {
     tableBody.innerHTML = '';
     emptyState.classList.remove('d-none');
@@ -45,7 +77,7 @@ export function renderTrainsTable(container, explicitEmptyMessage) {
   }
 
   emptyState.classList.add('d-none');
-  tableBody.innerHTML = filteredRows
+  tableBody.innerHTML = pageItems
     .map((item) => {
       const timetableEntries = parseTimetableEntries(item.timetable_url);
       const timetableHtml = timetableEntries.length

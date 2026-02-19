@@ -3,8 +3,9 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h1 class="h3 mb-0">Повески към Ключ-График</h1>
       <div class="d-flex gap-2">
-        <button id="open-create-schedule-key-duty" type="button" class="btn btn-primary">Нова повеска</button>
-        <a href="/schedule-keys" data-link class="btn btn-outline-secondary">Назад към Ключ-График</a>
+        <button id="open-create-schedule-key-duty" type="button" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Нова повеска</button>
+        <button id="open-attach-schedule-key-duty" type="button" class="btn btn-outline-primary"><i class="bi bi-link-45deg me-1"></i>Прикачи съществуваща</button>
+        <a href="/schedule-keys" data-link class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Назад към Ключ-График</a>
       </div>
     </div>
 
@@ -29,13 +30,19 @@
     </div>
 
     <p id="schedule-key-duties-empty" class="text-secondary d-none mt-3 mb-0"></p>
+
+    <nav id="schedule-key-duties-pagination" class="d-none d-flex align-items-center justify-content-between mt-3" aria-label="Пейджиране">
+      <button id="schedule-key-duties-pagination-prev" type="button" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left me-1"></i>Назад</button>
+      <div id="schedule-key-duties-pagination-label" class="text-secondary small"></div>
+      <button id="schedule-key-duties-pagination-next" type="button" class="btn btn-sm btn-outline-secondary">Напред<i class="bi bi-chevron-right ms-1"></i></button>
+    </nav>
   </div>
 </section>
 
 <div id="schedule-key-duty-create-modal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50" style="z-index: 1060;">
-  <div class="d-flex align-items-center justify-content-center h-100 p-3">
+  <div class="d-flex align-items-start justify-content-center h-100 p-3 p-md-4" style="overflow: auto;">
     <div class="card w-100" style="max-width: 860px;">
-      <div class="card-body p-4">
+      <div class="card-body p-4" style="max-height: calc(100vh - 64px); overflow: auto;">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h2 class="h5 mb-0">Нова повеска</h2>
           <button id="schedule-key-duty-create-modal-close" type="button" class="btn-close" aria-label="Close"></button>
@@ -81,8 +88,8 @@
   <div class="d-flex align-items-center justify-content-center h-100 p-3">
     <div class="card w-100" style="max-width: 520px;">
       <div class="card-body p-4">
-        <h2 class="h5 mb-3">Потвърди изтриване</h2>
-        <p class="text-secondary mb-4">Сигурен ли си, че искаш да изтриеш тази повеска?</p>
+        <h2 id="schedule-key-duty-delete-title" class="h5 mb-3">Потвърди</h2>
+        <p id="schedule-key-duty-delete-message" class="text-secondary mb-4">Сигурен ли си?</p>
         <input type="hidden" id="schedule-key-duty-delete-id" />
         <div class="d-flex justify-content-end gap-2">
           <button id="schedule-key-duty-delete-cancel" type="button" class="btn btn-outline-secondary">Отказ</button>
@@ -105,6 +112,42 @@
         <div class="d-flex justify-content-end gap-2 mt-4">
           <button id="schedule-key-duty-profile-close-secondary" type="button" class="btn btn-outline-secondary">Затвори</button>
           <button id="schedule-key-duty-profile-edit" type="button" class="btn btn-primary">Редакция</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="schedule-key-duty-attach-modal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50" style="z-index: 1060;">
+  <div class="d-flex align-items-start justify-content-center h-100 p-3 p-md-4" style="overflow: auto;">
+    <div class="card w-100" style="max-width: 720px;">
+      <div class="card-body p-4" style="max-height: calc(100vh - 64px); overflow: auto;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">Прикачи съществуваща повеска</h2>
+          <button id="schedule-key-duty-attach-modal-close" type="button" class="btn-close" aria-label="Close"></button>
+        </div>
+
+        <div class="search-panel p-3 rounded-3 mb-3">
+          <div class="row g-2">
+            <div class="col-12 col-md-7">
+              <label for="schedule-key-duty-attach-search" class="form-label">Търсене</label>
+              <input id="schedule-key-duty-attach-search" type="text" class="form-control" placeholder="Търси по име" />
+            </div>
+            <div class="col-12 col-md-5">
+              <label for="schedule-key-duty-attach-type" class="form-label">Тип</label>
+              <select id="schedule-key-duty-attach-type" class="form-select">
+                <option value="">Всички типове</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-text mt-2">Показват се само повески, които още не са прикачени към този ключ-график.</div>
+        </div>
+
+        <div id="schedule-key-duty-attach-list" class="list-group"></div>
+        <p id="schedule-key-duty-attach-empty" class="text-secondary d-none mt-3 mb-0"></p>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button id="schedule-key-duty-attach-cancel" type="button" class="btn btn-outline-secondary"><i class="bi bi-x me-1"></i>Затвори</button>
         </div>
       </div>
     </div>

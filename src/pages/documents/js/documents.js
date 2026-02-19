@@ -35,10 +35,9 @@ function attachDocumentsHandlers(container) {
 
   const categoryForm = container.querySelector('#document-category-form');
   const documentForm = container.querySelector('#document-form');
-  const categoriesBody = container.querySelector('#document-categories-table-body');
-  const documentsBody = container.querySelector('#documents-table-body');
+  const categoriesMenu = container.querySelector('#document-categories-menu');
+  const documentsBody = container.querySelector('#documents-cards-wrap');
   const searchInput = container.querySelector('#documents-search');
-  const categoryFilterInput = container.querySelector('#documents-category-filter');
 
   createCategoryButton?.addEventListener('click', () => {
     resetCategoryForm(container);
@@ -84,26 +83,36 @@ function attachDocumentsHandlers(container) {
     await deleteDocument(container, documentId);
   });
 
-  categoriesBody?.addEventListener('click', (event) => {
+  categoriesMenu?.addEventListener('click', (event) => {
     const actionButton = event.target.closest('button[data-category-action]');
-    if (!actionButton) {
+    if (actionButton) {
+      const action = actionButton.getAttribute('data-category-action');
+      if (action === 'edit') {
+        populateCategoryForm(container, {
+          id: actionButton.getAttribute('data-id'),
+          name: actionButton.getAttribute('data-name')
+        });
+        openModal(categoryModal);
+        return;
+      }
+
+      if (action === 'delete') {
+        container.querySelector('#document-category-delete-id').value = actionButton.getAttribute('data-id') || '';
+        openModal(categoryDeleteModal);
+      }
+
       return;
     }
 
-    const action = actionButton.getAttribute('data-category-action');
-    if (action === 'edit') {
-      populateCategoryForm(container, {
-        id: actionButton.getAttribute('data-id'),
-        name: actionButton.getAttribute('data-name')
-      });
-      openModal(categoryModal);
+    const selectTarget = event.target.closest('[data-category-select="true"]');
+    if (!selectTarget) {
       return;
     }
 
-    if (action === 'delete') {
-      container.querySelector('#document-category-delete-id').value = actionButton.getAttribute('data-id') || '';
-      openModal(categoryDeleteModal);
-    }
+    documentsState.categoryFilter = selectTarget.getAttribute('data-id') || '';
+    documentsState.page = 1;
+    renderDocumentsTable(container);
+    renderDocumentCategoriesTable(container);
   });
 
   documentsBody?.addEventListener('click', (event) => {
@@ -141,11 +150,6 @@ function attachDocumentsHandlers(container) {
 
   searchInput?.addEventListener('input', (event) => {
     documentsState.searchQuery = event.target.value.trim().toLowerCase();
-    renderDocumentsTable(container);
-  });
-
-  categoryFilterInput?.addEventListener('change', (event) => {
-    documentsState.categoryFilter = event.target.value || '';
     renderDocumentsTable(container);
   });
 

@@ -9,15 +9,13 @@ import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { closeModal, escapeHtml, openModal, setupModalEscapeHandler } from './helpers.js';
 import { dutiesState } from './state.js';
-import { loadDuties, persistDutiesOrder, renderDutiesTable } from './table.js';
-import { isCurrentUserCrew } from '../../../utils/userContext.js';
+import { loadDuties, renderDutiesTable } from './table.js';
 
 const DUTY_FILES_BUCKET = 'duty-files';
 const MAX_DUTY_FILE_ITEMS = 5;
 
 export async function renderDutiesPage(container) {
   container.innerHTML = pageHtml;
-  dutiesState.reorderEnabled = !(await isCurrentUserCrew());
   initializeDutyFormFields(container);
   attachDutiesHandlers(container);
   await loadDutyTypeOptions(container);
@@ -332,77 +330,6 @@ function attachDutiesHandlers(container) {
     }
   });
 
-  tableBody?.addEventListener('dragstart', (event) => {
-    if (!dutiesState.reorderEnabled) {
-      return;
-    }
-
-    const row = event.target.closest('tr[data-duty-id]');
-    if (!row) {
-      return;
-    }
-
-    dutiesState.draggedDutyId = row.getAttribute('data-duty-id');
-    row.classList.add('table-active');
-  });
-
-  tableBody?.addEventListener('dragend', (event) => {
-    if (!dutiesState.reorderEnabled) {
-      return;
-    }
-
-    const row = event.target.closest('tr[data-duty-id]');
-    if (row) {
-      row.classList.remove('table-active');
-    }
-    dutiesState.draggedDutyId = null;
-  });
-
-  tableBody?.addEventListener('dragover', (event) => {
-    if (!dutiesState.reorderEnabled) {
-      return;
-    }
-
-    event.preventDefault();
-  });
-
-  tableBody?.addEventListener('drop', async (event) => {
-    if (!dutiesState.reorderEnabled) {
-      return;
-    }
-
-    event.preventDefault();
-    const targetRow = event.target.closest('tr[data-duty-id]');
-    const draggedId = dutiesState.draggedDutyId;
-
-    if (!targetRow || !draggedId) {
-      return;
-    }
-
-    const targetId = targetRow.getAttribute('data-duty-id');
-    if (!targetId || targetId === draggedId) {
-      return;
-    }
-
-    const fromIndex = dutiesState.allDuties.findIndex((item) => item.id === draggedId);
-    const toIndex = dutiesState.allDuties.findIndex((item) => item.id === targetId);
-
-    if (fromIndex < 0 || toIndex < 0) {
-      return;
-    }
-
-    const [moved] = dutiesState.allDuties.splice(fromIndex, 1);
-    dutiesState.allDuties.splice(toIndex, 0, moved);
-    renderDutiesTable(container);
-
-    const persisted = await persistDutiesOrder();
-    if (!persisted) {
-      await loadDuties(container);
-      return;
-    }
-
-    showToast('Редът на повеските е запазен.', 'success');
-  });
 }
 
 async function loadScheduleKeyOptions(container) {

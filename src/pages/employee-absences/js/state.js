@@ -2,5 +2,7 @@ export const employeeAbsencesState = {
   rows: [],
   searchQuery: '',
   dateFrom: '',
-  dateTo: ''
+  dateTo: '',
+  page: 1,
+  pageSize: 20
 };
