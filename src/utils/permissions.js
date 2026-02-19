@@ -6,6 +6,11 @@ import { showToast } from '../components/toast/toast.js';
 const RESOURCE_LABELS_BG = {
   page_plan_schedule: 'Страница План-График',
   page_schedule: 'Страница График',
+
+  action_schedule_confirm: 'Разпределение: Потвърди разпределението',
+  action_planned_go_to_plan_schedule: 'Планирани повески: Към План-График',
+  action_planned_add_selected_to_actual: 'Планирани повески: Към Актуални',
+  action_planned_auto_planning: 'Планирани повески: Автоматично планиране',
   schedule_keys: 'Ключ-Графици',
   duties: 'Повески',
   duty_types: 'Типове повески',
@@ -31,10 +36,25 @@ const ACCESS_SCOPE_RANK = {
   all: 3
 };
 
+const ACTION_RESOURCE_FALLBACKS = {
+  action_schedule_confirm: { resource: 'actual_duties', action: 'create_records' },
+  action_planned_go_to_plan_schedule: { resource: 'planned_duties', action: 'create_records' },
+  action_planned_add_selected_to_actual: { resource: 'planned_duties', action: 'create_records' },
+  action_planned_auto_planning: { resource: 'planned_duties', action: 'create_records' }
+};
+
 let cacheUserId = '';
 let cachePermissions = new Map();
 let cacheReady = false;
 let activeGuardCleanup = null;
+let activeActionGuardCleanup = null;
+
+export function getAllPermissionResources() {
+  return Object.keys(RESOURCE_LABELS_BG)
+    .map((key) => String(key || '').trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, 'bg'));
+}
 
 function normalizeScope(value) {
   const normalized = String(value || '').trim();
@@ -139,6 +159,32 @@ export async function getResourcePermissionScope(resource, action) {
 
   const resourcePermissions = cachePermissions.get(normalizedResource);
   if (!resourcePermissions) {
+    const fallback = ACTION_RESOURCE_FALLBACKS[normalizedResource];
+    if (!fallback?.resource || !fallback?.action) {
+      return 'none';
+    }
+
+    const fallbackPermissions = cachePermissions.get(String(fallback.resource));
+    if (!fallbackPermissions) {
+      return 'none';
+    }
+
+    if (fallback.action === 'view_screen') {
+      return normalizeScope(fallbackPermissions.view_screen_scope);
+    }
+    if (fallback.action === 'view_records') {
+      return normalizeScope(fallbackPermissions.view_records_scope);
+    }
+    if (fallback.action === 'edit_records') {
+      return normalizeScope(fallbackPermissions.edit_records_scope);
+    }
+    if (fallback.action === 'create_records') {
+      return normalizeScope(fallbackPermissions.create_records_scope);
+    }
+    if (fallback.action === 'delete_records') {
+      return normalizeScope(fallbackPermissions.delete_records_scope);
+    }
+
     return 'none';
   }
 
@@ -217,6 +263,88 @@ function setElementPermissionHidden(element, shouldHide) {
   }
 }
 
+function setElementActionPermissionHidden(element, shouldHide) {
+  if (!element) {
+    return;
+  }
+
+  if (shouldHide) {
+    element.classList.add('d-none');
+    element.dataset.actionPermissionHidden = '1';
+    return;
+  }
+
+  element.classList.remove('d-none');
+  delete element.dataset.actionPermissionHidden;
+}
+
+export async function applyActionPermissionGuards(container) {
+  if (activeActionGuardCleanup) {
+    activeActionGuardCleanup();
+    activeActionGuardCleanup = null;
+  }
+
+  if (!container) {
+    return;
+  }
+
+  const rules = [
+    { selector: '#schedule-confirm-from-timetable', resource: 'action_schedule_confirm' },
+    { selector: '#planned-duties-go-to-plan-schedule-hint', resource: 'action_planned_go_to_plan_schedule' },
+    { selector: '#planned-duties-add-to-actual-hint', resource: 'action_planned_add_selected_to_actual' },
+    { selector: '#open-auto-plan-duty', resource: 'action_planned_auto_planning' }
+  ];
+
+  const scopes = await Promise.all(
+    rules.map((rule) => getResourcePermissionScope(rule.resource, 'create_records'))
+  );
+
+  const lockBySelector = new Map(
+    rules.map((rule, index) => [rule.selector, scopes[index] === 'none'])
+  );
+
+  const applyDisabledState = () => {
+    rules.forEach((rule) => {
+      const element = container.querySelector(rule.selector);
+      const locked = lockBySelector.get(rule.selector) ?? true;
+      setElementActionPermissionHidden(element, locked);
+    });
+  };
+
+  const clickHandler = (event) => {
+    const target = event.target;
+    if (!target) {
+      return;
+    }
+
+    for (const rule of rules) {
+      if (!(lockBySelector.get(rule.selector) ?? true)) {
+        continue;
+      }
+
+      if (target.closest(rule.selector)) {
+        event.preventDefault();
+        event.stopPropagation();
+        showToast('Нямаш права за това действие.', 'warning');
+        return;
+      }
+    }
+  };
+
+  const observer = new MutationObserver(() => {
+    applyDisabledState();
+  });
+
+  applyDisabledState();
+  container.addEventListener('click', clickHandler, true);
+  observer.observe(container, { childList: true, subtree: true });
+
+  activeActionGuardCleanup = () => {
+    container.removeEventListener('click', clickHandler, true);
+    observer.disconnect();
+  };
+}
+
 export async function applyResourceActionGuards(container, resource) {
   if (activeGuardCleanup) {
     activeGuardCleanup();
@@ -241,15 +369,10 @@ export async function applyResourceActionGuards(container, resource) {
     'button[id^="open-add-"]',
 
     // Planned duties page
-    '#open-auto-plan-duty',
-    '#go-to-plan-schedule',
-    '#add-selected-to-actual-duty',
 
     // Actual duties page
     '#go-to-schedule',
 
-    // Schedule page
-    '#schedule-confirm-from-timetable',
     'button[data-actual-add-duty-id]'
   ];
   const editSelectors = [
@@ -343,6 +466,11 @@ export function clearResourceActionGuards() {
   if (activeGuardCleanup) {
     activeGuardCleanup();
     activeGuardCleanup = null;
+  }
+
+  if (activeActionGuardCleanup) {
+    activeActionGuardCleanup();
+    activeActionGuardCleanup = null;
   }
 }
 

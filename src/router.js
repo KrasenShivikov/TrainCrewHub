@@ -21,6 +21,7 @@ import { renderUserProfilesPage } from './pages/user-profiles/js/user-profiles.j
 import { showToast } from './components/toast/toast.js';
 import { ensureActiveUserSession, getCurrentUserSession, hasUserAssignedRole, isUserAdmin } from './utils/auth.js';
 import {
+  applyActionPermissionGuards,
   applyResourceActionGuards,
   canViewResourceScreen,
   clearResourceActionGuards,
@@ -232,6 +233,7 @@ async function renderCurrentRoute() {
   if (config.resource) {
     await applyResourceActionGuards(contentRoot, config.resource);
   }
+  await applyActionPermissionGuards(contentRoot);
   window.dispatchEvent(new CustomEvent('route:changed', { detail: { pathname: resolvedPath } }));
 }
 

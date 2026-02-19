@@ -437,7 +437,7 @@ function renderAssignmentItem(assignment, duty, selectedDate, options = {}) {
     return escapeHtml(assignment.name || '');
   }
 
-  return `<button type="button" class="btn btn-link p-0 text-decoration-none align-baseline" draggable="true" data-actual-edit-id="${assignment.id}" data-actual-drag-id="${assignment.id}">${escapeHtml(assignment.name || '')}</button>`;
+  return `<button type="button" class="btn btn-link p-0 text-decoration-none align-baseline schedule-drag-btn" draggable="true" data-actual-edit-id="${assignment.id}" data-actual-drag-id="${assignment.id}"><i class="bi bi-grip-vertical schedule-drag-handle"></i>${escapeHtml(assignment.name || '')}</button>`;
 }
 
 function renderAddAssignmentButton(duty, selectedDate, options = {}) {

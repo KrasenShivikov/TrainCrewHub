@@ -23,12 +23,17 @@ import {
   toggleSelectAllVisible,
   toggleSingleSelection
 } from './bulk-delete.js';
-import { isCurrentUserCrew } from '../../../utils/userContext.js';
+import { getResourcePermissionScope } from '../../../utils/permissions.js';
 
 export async function renderPlannedDutiesPage(container) {
   container.innerHTML = pageHtml;
-  plannedDutiesState.selectionEnabled = !(await isCurrentUserCrew());
-  applyPlannedDutiesCrewLayout(container);
+  const [canAddToActualScope, canBulkDeleteScope] = await Promise.all([
+    getResourcePermissionScope('action_planned_add_selected_to_actual', 'create_records'),
+    getResourcePermissionScope('planned_duties', 'delete_records')
+  ]);
+
+  plannedDutiesState.selectionEnabled = canAddToActualScope !== 'none' || canBulkDeleteScope !== 'none';
+  applyPlannedDutiesSelectionLayout(container);
   attachPlannedDutiesHandlers(container);
   await loadEmployeeOptions(container);
   await loadScheduleKeyOptions(container);
@@ -36,12 +41,10 @@ export async function renderPlannedDutiesPage(container) {
   await loadPlannedDuties(container);
 }
 
-function applyPlannedDutiesCrewLayout(container) {
+function applyPlannedDutiesSelectionLayout(container) {
   if (plannedDutiesState.selectionEnabled) {
     return;
   }
-
-  container.querySelector('.page-actions')?.classList.add('d-none');
 
   const selectAll = container.querySelector('#planned-duties-select-all');
   selectAll?.closest('th')?.classList.add('d-none');

@@ -1,5 +1,52 @@
 let highlightedDropCell = null;
 
+// ─── auto-scroll during drag ────────────────────────────────────────────────
+let autoScrollRafId = null;
+let autoScrollDeltaY = 0;
+
+function startAutoScroll() {
+  if (autoScrollRafId !== null) {
+    return;
+  }
+
+  function step() {
+    if (autoScrollDeltaY !== 0) {
+      window.scrollBy(0, autoScrollDeltaY);
+    }
+
+    autoScrollRafId = requestAnimationFrame(step);
+  }
+
+  autoScrollRafId = requestAnimationFrame(step);
+}
+
+function stopAutoScroll() {
+  if (autoScrollRafId !== null) {
+    cancelAnimationFrame(autoScrollRafId);
+    autoScrollRafId = null;
+  }
+
+  autoScrollDeltaY = 0;
+}
+
+function updateAutoScrollFromEvent(event) {
+  const ZONE = 80;    // px from edge to trigger scroll
+  const MAX_SPEED = 14; // px per frame
+  const y = event.clientY;
+  const vh = window.innerHeight;
+
+  if (y < ZONE) {
+    autoScrollDeltaY = -Math.round(MAX_SPEED * (1 - y / ZONE));
+    startAutoScroll();
+  } else if (y > vh - ZONE) {
+    autoScrollDeltaY = Math.round(MAX_SPEED * (1 - (vh - y) / ZONE));
+    startAutoScroll();
+  } else {
+    autoScrollDeltaY = 0;
+  }
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 export function createScheduleDndHandlers({
   actualRowsById,
   supabase,
@@ -92,6 +139,8 @@ export function createScheduleDndHandlers({
   }
 
   function handleDragOver(event) {
+    updateAutoScrollFromEvent(event);
+
     const targetCell = event.target.closest('td[data-drop-duty-id]');
     if (!targetCell) {
       if (highlightedDropCell) {
@@ -182,6 +231,7 @@ export function createScheduleDndHandlers({
     applyDropTargetHighlights,
     clearDropTargetHighlights,
     handleDragOver,
-    moveDraggedActualDuty
+    moveDraggedActualDuty,
+    stopAutoScroll
   };
 }

@@ -1,7 +1,7 @@
 import pageHtml from '../admin.html?raw';
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
-import { getResourceDisplayName } from '../../../utils/permissions.js';
+import { getAllPermissionResources, getResourceDisplayName } from '../../../utils/permissions.js';
 import { adminState } from './state.js';
 import { getRoleLabel } from './helpers.js';
 import {
@@ -1267,7 +1267,47 @@ async function loadPermissionsForRole(container, role) {
     return;
   }
 
-  adminState.permissions = data || [];
+  const byResource = new Map(
+    (data || [])
+      .filter((row) => row?.resource)
+      .map((row) => [String(row.resource), row])
+  );
+
+  const resolveLegacyCreateDefault = (resource) => {
+    if (resource === 'action_schedule_confirm') {
+      return String(byResource.get('actual_duties')?.create_records_scope || 'none');
+    }
+
+    if (
+      resource === 'action_planned_go_to_plan_schedule'
+      || resource === 'action_planned_add_selected_to_actual'
+      || resource === 'action_planned_auto_planning'
+    ) {
+      return String(byResource.get('planned_duties')?.create_records_scope || 'none');
+    }
+
+    return 'none';
+  };
+
+  const merged = getAllPermissionResources().map((resource) => {
+    const existing = byResource.get(resource);
+    if (existing) {
+      return existing;
+    }
+
+    return {
+      role: normalizedRole,
+      resource,
+      display_name_bg: getResourceDisplayName(resource),
+      view_screen_scope: 'none',
+      view_records_scope: 'none',
+      create_records_scope: resolveLegacyCreateDefault(resource),
+      edit_records_scope: 'none',
+      delete_records_scope: 'none'
+    };
+  });
+
+  adminState.permissions = merged;
   renderRolePermissionsTable(container);
 }
 

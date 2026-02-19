@@ -358,6 +358,7 @@ function attachScheduleHandlers(container) {
     const dragButton = event.target.closest('button[data-actual-drag-id]');
     dragButton?.classList.remove('opacity-50');
     dndHandlers.clearDropTargetHighlights(container);
+    dndHandlers.stopAutoScroll();
     draggedActualDutyId = '';
     setScheduleDraggingState(false);
   });
@@ -385,11 +386,13 @@ function attachScheduleHandlers(container) {
 
     if (!targetDutyId || !targetDate || !actualId) {
       dndHandlers.clearDropTargetHighlights(container);
+      dndHandlers.stopAutoScroll();
       setScheduleDraggingState(false);
       return;
     }
 
     dndHandlers.clearDropTargetHighlights(container);
+    dndHandlers.stopAutoScroll();
     await dndHandlers.moveDraggedActualDuty(container, actualId, targetDutyId, targetDate, targetRole, targetDutyName);
     setScheduleDraggingState(false);
   });
