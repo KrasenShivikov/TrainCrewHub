@@ -104,19 +104,19 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
           : '';
         return `
         <tr data-duty-id="${item.id}">
-          <td>
+          <td data-label="Наименование">
             <div class="d-flex align-items-center gap-2 flex-wrap">
               ${multiScheduleBadge}
               ${attachmentBadge}
               <span class="duties-name-ellipsis" title="${escapeHtml(item.name ?? '-')}">${escapeHtml(item.name ?? '-')}</span>
             </div>
           </td>
-          <td>${escapeHtml(item.duty_types?.name ?? '-')}</td>
-          <td>${escapeHtml(item.start_time ?? '-')}</td>
-          <td>${escapeHtml(item.end_time ?? '-')}</td>
-          <td>${escapeHtml(formatDuration(item.break_duration_interval))}</td>
-          <td>${escapeHtml(formatDuration(item.duration_interval))}</td>
-          <td class="text-end">
+          <td data-label="Тип">${escapeHtml(item.duty_types?.name ?? '-')}</td>
+          <td data-label="Начало">${escapeHtml(item.start_time ?? '-')}</td>
+          <td data-label="Край">${escapeHtml(item.end_time ?? '-')}</td>
+          <td data-label="Прекъсване">${escapeHtml(formatDuration(item.break_duration_interval))}</td>
+          <td data-label="Времетраене">${escapeHtml(formatDuration(item.duration_interval))}</td>
+          <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
               <button type="button" class="btn btn-sm btn-outline-secondary" data-action="profile" data-id="${item.id}" title="Профил" aria-label="Профил"><i class="bi bi-person-vcard"></i></button>
               <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>

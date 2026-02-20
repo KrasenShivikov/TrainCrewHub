@@ -89,12 +89,12 @@ export function renderScheduleKeysTable(container, explicitEmptyMessage) {
     .map(
       (item) => `
         <tr>
-          <td>${escapeHtml(item.name ?? '-')}</td>
-          <td>${escapeHtml(item.crew_role ?? '-')}</td>
-          <td>${item.is_active ? 'Да' : 'Не'}</td>
-          <td>${escapeHtml(item.valid_from ?? '-')}</td>
-          <td>${escapeHtml(item.valid_to ?? '-')}</td>
-          <td class="text-end">
+          <td data-label="Наименование">${escapeHtml(item.name ?? '-')}</td>
+          <td data-label="Екип">${escapeHtml(item.crew_role ?? '-')}</td>
+          <td data-label="Активен">${item.is_active ? 'Да' : 'Не'}</td>
+          <td data-label="От дата">${escapeHtml(item.valid_from ?? '-')}</td>
+          <td data-label="До дата">${escapeHtml(item.valid_to ?? '-')}</td>
+          <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
               <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-name="${escapeHtml(item.name ?? '')}" data-type="${escapeHtml(item.type ?? 'seasonal')}" data-crew-role="${escapeHtml(item.crew_role ?? 'кондуктор')}" data-active="${item.is_active ? 'true' : 'false'}" data-valid-from="${escapeHtml(item.valid_from ?? '')}" data-valid-to="${escapeHtml(item.valid_to ?? '')}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
               <button type="button" class="btn btn-sm btn-outline-secondary" data-action="duties" data-id="${item.id}" data-name="${escapeHtml(item.name ?? '')}" title="Повески" aria-label="Повески"><i class="bi bi-list-task"></i></button>

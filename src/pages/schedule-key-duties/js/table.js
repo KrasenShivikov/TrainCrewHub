@@ -126,19 +126,19 @@ export function renderScheduleKeyDutiesTable(container, explicitEmptyMessage) {
 
         return `
         <tr data-duty-id="${item.id}" draggable="${reorderEnabled ? 'true' : 'false'}">
-          <td class="text-secondary">${reorderEnabled ? '↕' : ''}</td>
-          <td>
+          <td class="text-secondary" data-label="">${reorderEnabled ? '↕' : ''}</td>
+          <td data-label="Наименование">
             <div class="d-flex align-items-center gap-2 flex-wrap">
               ${multiScheduleBadge}
               <span>${escapeHtml(item.name ?? '-')}</span>           
             </div>
           </td>
-          <td>${escapeHtml(item.start_time ?? '-')}</td>
-          <td>${escapeHtml(item.end_time ?? '-')}</td>
-          <td>${item.second_day ? 'Да' : 'Не'}</td>
-          <td>${escapeHtml(formatInterval(item.break_duration_interval))}</td>
-          <td>${escapeHtml(formatInterval(item.duration_interval))}</td>
-          <td class="text-end">
+          <td data-label="Начало">${escapeHtml(item.start_time ?? '-')}</td>
+          <td data-label="Край">${escapeHtml(item.end_time ?? '-')}</td>
+          <td data-label="Втори ден">${item.second_day ? 'Да' : 'Не'}</td>
+          <td data-label="Прекъсване">${escapeHtml(formatInterval(item.break_duration_interval))}</td>
+          <td data-label="Времетраене">${escapeHtml(formatInterval(item.duration_interval))}</td>
+          <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
               <button type="button" class="btn btn-sm btn-outline-secondary" data-duty-action="profile" data-id="${item.id}" title="Профил" aria-label="Профил"><i class="bi bi-person-vcard"></i></button>
               <button type="button" class="btn btn-sm btn-outline-secondary" data-duty-action="trains" data-id="${item.id}" data-name="${escapeHtml(item.name ?? '')}" title="Влакове" aria-label="Влакове"><i class="bi bi-train-front"></i></button>

@@ -216,20 +216,22 @@ export function renderDocumentsTable(container, explicitEmptyMessage) {
     .map((item) => {
       const iconClass = getFileIcon(item.document_url || '');
       const catName = escapeHtml(item.document_categories?.name || '');
-      const notes = escapeHtml((item.notes || '').slice(0, 100));
+      const notes = escapeHtml((item.notes || '').slice(0, 160));
       return `
-        <div class="col-12">
+        <div class="col-12 col-md-6 col-xl-4">
           <div class="card border shadow-sm document-card h-100">
-            <div class="card-body d-flex align-items-center gap-3 py-3 px-3">
-              <div class="flex-shrink-0 text-center" style="width:2.4rem;">
-                <i class="bi ${iconClass}" style="font-size:1.7rem;"></i>
+            <div class="card-body d-flex flex-column gap-2 py-3 px-3">
+              <div class="d-flex align-items-start gap-3">
+                <div class="flex-shrink-0 text-center pt-1" style="width:2.2rem;">
+                  <i class="bi ${iconClass}" style="font-size:1.7rem;"></i>
+                </div>
+                <div class="flex-grow-1" style="min-width:0;">
+                  <div class="fw-semibold lh-sm" style="font-size:0.95rem;word-break:break-word;">${escapeHtml(item.title || '-')}</div>
+                  ${catName ? `<span class="badge bg-primary-subtle text-primary-emphasis mt-1" style="font-size:0.72rem;">${catName}</span>` : ''}
+                  ${notes ? `<div class="text-secondary mt-1" style="font-size:0.8rem;line-height:1.4;word-break:break-word;">${notes}</div>` : ''}
+                </div>
               </div>
-              <div class="flex-grow-1" style="min-width:0;">
-                <div class="fw-semibold text-truncate" style="font-size:0.95rem;">${escapeHtml(item.title || '-')}</div>
-                ${catName ? `<span class="badge bg-primary-subtle text-primary-emphasis mt-1" style="font-size:0.73rem;">${catName}</span>` : ''}
-                ${notes ? `<div class="text-secondary small text-truncate mt-1" style="font-size:0.8rem;">${notes}</div>` : ''}
-              </div>
-              <div class="d-flex gap-2 flex-shrink-0">
+              <div class="d-flex gap-2 justify-content-end mt-auto pt-1 border-top">
                 <button
                   type="button"
                   class="btn btn-sm btn-outline-secondary"

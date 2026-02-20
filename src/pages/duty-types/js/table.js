@@ -79,9 +79,9 @@ export function renderDutyTypesTable(container, explicitEmptyMessage) {
     .map(
       (item) => `
         <tr>
-          <td>${escapeHtml(item.name ?? '-')}</td>
+          <td data-label="Наименование">${escapeHtml(item.name ?? '-')}</td>
           ${actionsEnabled ? `
-          <td class="text-end">
+          <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
               <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-name="${escapeHtml(item.name ?? '')}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
               <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>

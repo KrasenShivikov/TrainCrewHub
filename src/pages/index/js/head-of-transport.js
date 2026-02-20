@@ -38,9 +38,9 @@ export function createHeadOfTransportController(deps) {
     body.innerHTML = rows
       .map((item) => `
         <tr>
-          <td>${escapeHtml(item.employeeName)}</td>
-          <td>${escapeHtml(item.certificateLabel)}</td>
-          <td>${escapeHtml(formatDate(item.date))}</td>
+          <td data-label="Служител">${escapeHtml(item.employeeName)}</td>
+          <td data-label="Сертификат">${escapeHtml(item.certificateLabel)}</td>
+          <td data-label="Дата">${escapeHtml(formatDate(item.date))}</td>
         </tr>
       `)
       .join('');
@@ -226,8 +226,8 @@ export function createHeadOfTransportController(deps) {
             const period = `${formatDate(item.startDate)} - ${formatDate(item.endDate)}`;
             return `
               <tr>
-                <td>${escapeHtml(item.employeeName)}</td>
-                <td>${escapeHtml(period)}</td>
+                <td data-label="Служител">${escapeHtml(item.employeeName)}</td>
+                <td data-label="Период">${escapeHtml(period)}</td>
               </tr>
             `;
           })
@@ -247,7 +247,7 @@ export function createHeadOfTransportController(deps) {
             </button>
           </div>
           ${isExpanded ? `
-            <div class="table-responsive">
+            <div class="table-responsive tch-no-scroll-mobile">
               <table class="table table-sm align-middle mb-0">
                 <thead>
                   <tr>
@@ -320,11 +320,11 @@ export function createHeadOfTransportController(deps) {
     body.innerHTML = rows
       .map((row) => `
         <tr>
-          <td>${escapeHtml(row.employeeName)}</td>
-          <td>${escapeHtml(row.planned)}</td>
-          <td>${escapeHtml(row.actual)}</td>
-          <td>${escapeHtml(row.norm)}</td>
-          <td><span class="badge ${escapeHtml(row.deviationClass)}">${escapeHtml(row.deviation)}</span></td>
+          <td data-label="Служител">${escapeHtml(row.employeeName)}</td>
+          <td data-label="Планирани">${escapeHtml(row.planned)}</td>
+          <td data-label="Реални">${escapeHtml(row.actual)}</td>
+          <td data-label="Норма">${escapeHtml(row.norm)}</td>
+          <td data-label="Отклонение"><span class="badge ${escapeHtml(row.deviationClass)}">${escapeHtml(row.deviation)}</span></td>
         </tr>
       `)
       .join('');

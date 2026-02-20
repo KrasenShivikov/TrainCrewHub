@@ -65,11 +65,11 @@ export function renderUserProfilesTable(container, explicitEmptyMessage) {
       const employeeName = getEmployeeDisplayName(row);
       return `
         <tr>
-          <td>${escapeHtml(row?.username || '-')}</td>
-          <td>${escapeHtml(row?.email || '-')}</td>
-          <td>${escapeHtml(fullName)}</td>
-          <td>${escapeHtml(employeeName)}</td>
-          <td class="text-end">
+          <td data-label="Потребителско име">${escapeHtml(row?.username || '-')}</td>
+          <td data-label="Имейл">${escapeHtml(row?.email || '-')}</td>
+          <td data-label="Име">${escapeHtml(fullName)}</td>
+          <td data-label="Служител">${escapeHtml(employeeName)}</td>
+          <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
               <button type="button" class="btn btn-sm btn-outline-secondary" data-user-profile-action="view" data-id="${row.id}" title="Преглед" aria-label="Преглед"><i class="bi bi-eye"></i></button>
               <button type="button" class="btn btn-sm btn-outline-primary" data-user-profile-action="edit" data-id="${row.id}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>

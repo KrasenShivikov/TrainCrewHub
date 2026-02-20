@@ -143,7 +143,7 @@ export function renderActualDutiesTable(container, explicitEmptyMessage) {
       return `
         <tr>
           ${selectionEnabled ? `
-          <td>
+          <td data-label="">
             <input
               type="checkbox"
               class="form-check-input"
@@ -153,11 +153,11 @@ export function renderActualDutiesTable(container, explicitEmptyMessage) {
             />
           </td>
           ` : ''}
-          <td>${escapeHtml(item.date ?? '-')}</td>
-          <td>${escapeHtml(getEmployeeFullName(item.employees))}</td>
-          <td>${escapeHtml(getAssignmentRoleLabel(item.assignment_role))}</td>
-          <td>${escapeHtml(item.duties?.name ?? '-')}</td>
-          <td class="text-end">
+          <td data-label="Дата">${escapeHtml(item.date ?? '-')}</td>
+          <td data-label="Служител">${escapeHtml(getEmployeeFullName(item.employees))}</td>
+          <td data-label="Роля">${escapeHtml(getAssignmentRoleLabel(item.assignment_role))}</td>
+          <td data-label="Повеска">${escapeHtml(item.duties?.name ?? '-')}</td>
+          <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
               <button type="button" class="btn btn-sm btn-outline-secondary" data-action="profile" data-id="${item.id}" title="Профил" aria-label="Профил"><i class="bi bi-person-vcard"></i></button>
               <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-date="${escapeHtml(item.date ?? '')}" data-employee-id="${item.employee_id ?? ''}" data-duty-id="${item.duty_id ?? ''}" data-assignment-role="${item.assignment_role ?? 'conductor'}" data-duty-schedule-key-id="${dutyScheduleKeyId}" data-start-time-override="${escapeHtml((item.start_time_override || '').slice(0, 5))}" data-end-time-override="${escapeHtml((item.end_time_override || '').slice(0, 5))}" data-break-start-time-override="${escapeHtml((item.break_start_time_override || '').slice(0, 5))}" data-break-end-time-override="${escapeHtml((item.break_end_time_override || '').slice(0, 5))}" data-duty-start-time="${escapeHtml((item.duties?.start_time || '').slice(0, 5))}" data-duty-end-time="${escapeHtml((item.duties?.end_time || '').slice(0, 5))}" data-duty-break-start-time="${escapeHtml((item.duties?.break_start_time || '').slice(0, 5))}" data-duty-break-end-time="${escapeHtml((item.duties?.break_end_time || '').slice(0, 5))}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>

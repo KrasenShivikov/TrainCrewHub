@@ -50,7 +50,7 @@ async function loadAdminPendingUsersSnapshot(container, helpers) {
   if (profilesError || rolesError) {
     showToast('Списъкът с чакащи потребители не може да се зареди.', 'warning');
     setText(container, '#index-pending-users-count', '0');
-    body.innerHTML = '<tr><td colspan="3" class="text-secondary">Грешка при зареждане.</td></tr>';
+    body.innerHTML = '<div class="list-group-item text-secondary small">Грешка при зареждане.</div>';
     return;
   }
 
@@ -60,7 +60,7 @@ async function loadAdminPendingUsersSnapshot(container, helpers) {
   setText(container, '#index-pending-users-count', String(pendingProfiles.length));
 
   if (!pendingProfiles.length) {
-    body.innerHTML = '<tr><td colspan="3" class="text-secondary">Няма чакащи потребители.</td></tr>';
+    body.innerHTML = '<div class="list-group-item text-secondary small">Няма чакащи потребители.</div>';
     return;
   }
 
@@ -75,11 +75,13 @@ async function loadAdminPendingUsersSnapshot(container, helpers) {
       const waitingLabel = formatWaitingDuration(createdAt);
 
       return `
-        <tr>
-          <td>${escapeHtml(username)}</td>
-          <td>${escapeHtml(createdLabel)}</td>
-          <td>${escapeHtml(waitingLabel)}</td>
-        </tr>
+        <div class="list-group-item d-flex align-items-center justify-content-between gap-2 py-2 px-3">
+          <div>
+            <div class="fw-semibold" style="font-size:0.9rem;">${escapeHtml(username)}</div>
+            <div class="text-secondary" style="font-size:0.78rem;">${escapeHtml(createdLabel)}</div>
+          </div>
+          <span class="badge text-bg-warning rounded-pill flex-shrink-0">${escapeHtml(waitingLabel)}</span>
+        </div>
       `;
     })
     .join('');

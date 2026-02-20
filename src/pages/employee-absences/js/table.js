@@ -103,12 +103,12 @@ export function renderEmployeeAbsencesTable(container, explicitEmptyMessage) {
     .map(
       (item) => `
         <tr>
-          <td>${escapeHtml(getEmployeeFullName(item.employees))}</td>
-          <td>${escapeHtml(item.absence_reasons?.name ?? '-')}</td>
-          <td>${escapeHtml(item.start_date ?? '-')}</td>
-          <td>${escapeHtml(item.end_date ?? '-')}</td>
-          <td>${escapeHtml(item.notes ?? '')}</td>
-          <td class="text-end">
+          <td data-label="Служител">${escapeHtml(getEmployeeFullName(item.employees))}</td>
+          <td data-label="Причина">${escapeHtml(item.absence_reasons?.name ?? '-')}</td>
+          <td data-label="От">${escapeHtml(item.start_date ?? '-')}</td>
+          <td data-label="До">${escapeHtml(item.end_date ?? '-')}</td>
+          <td data-label="Бележки">${escapeHtml(item.notes ?? '')}</td>
+          <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
               <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-employee-id="${item.employee_id ?? ''}" data-reason-id="${item.reason_id ?? ''}" data-start-date="${escapeHtml(item.start_date ?? '')}" data-end-date="${escapeHtml(item.end_date ?? '')}" data-notes="${escapeHtml(item.notes ?? '')}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
               <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>

@@ -107,13 +107,13 @@ export function renderTrainsTable(container, explicitEmptyMessage) {
 
       return `
         <tr>
-          <td>${escapeHtml(item.number ?? '-')}</td>
-          <td>${escapeHtml(item.origin_station ?? '-')}</td>
-          <td>${escapeHtml(item.destination_station ?? '-')}</td>
-          <td>${escapeHtml((item.departure_time || '').slice(0, 5) || '-')}</td>
-          <td>${escapeHtml((item.arrival_time || '').slice(0, 5) || '-')}</td>
-          <td>${timetableHtml}</td>
-          <td class="text-end">
+          <td data-label="Номер">${escapeHtml(item.number ?? '-')}</td>
+          <td data-label="Начална гара">${escapeHtml(item.origin_station ?? '-')}</td>
+          <td data-label="Крайна гара">${escapeHtml(item.destination_station ?? '-')}</td>
+          <td data-label="Отпътуване">${escapeHtml((item.departure_time || '').slice(0, 5) || '-')}</td>
+          <td data-label="Пристигане">${escapeHtml((item.arrival_time || '').slice(0, 5) || '-')}</td>
+          <td data-label="Разписание">${timetableHtml}</td>
+          <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
               <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-number="${escapeHtml(item.number ?? '')}" data-origin-station="${escapeHtml(item.origin_station ?? '')}" data-destination-station="${escapeHtml(item.destination_station ?? '')}" data-departure-time="${escapeHtml(item.departure_time ?? '')}" data-arrival-time="${escapeHtml(item.arrival_time ?? '')}" data-timetable-url="${escapeHtml(encodeURIComponent(item.timetable_url ?? ''))}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
               <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>

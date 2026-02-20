@@ -117,14 +117,14 @@ export function renderTrainsForDutyTable(container, explicitEmptyMessage) {
 
       return `
         <tr>
-          <td class="text-center"><button type="button" class="btn btn-sm btn-link p-0" data-reorder-train="${item.id}" style="cursor: grab;"><i class="bi bi-grip-vertical"></i></button></td>
-          <td>${escapeHtml(item.number ?? '-')}</td>
-          <td>${escapeHtml(item.origin_station ?? '-')}</td>
-          <td>${escapeHtml(item.destination_station ?? '-')}</td>
-          <td>${escapeHtml((item.departure_time || '').slice(0, 5) || '-')}</td>
-          <td>${escapeHtml((item.arrival_time || '').slice(0, 5) || '-')}</td>
-          <td>${timetableHtml}</td>
-          <td class="text-end">
+          <td class="text-center" data-label=""><button type="button" class="btn btn-sm btn-link p-0" data-reorder-train="${item.id}" style="cursor: grab;"><i class="bi bi-grip-vertical"></i></button></td>
+          <td data-label="Номер">${escapeHtml(item.number ?? '-')}</td>
+          <td data-label="Начална гара">${escapeHtml(item.origin_station ?? '-')}</td>
+          <td data-label="Крайна гара">${escapeHtml(item.destination_station ?? '-')}</td>
+          <td data-label="Отпътуване">${escapeHtml((item.departure_time || '').slice(0, 5) || '-')}</td>
+          <td data-label="Пристигане">${escapeHtml((item.arrival_time || '').slice(0, 5) || '-')}</td>
+          <td data-label="Разписание">${timetableHtml}</td>
+          <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
               <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-number="${escapeHtml(item.number ?? '')}" data-origin="${escapeHtml(item.origin_station ?? '')}" data-destination="${escapeHtml(item.destination_station ?? '')}" data-departure="${escapeHtml((item.departure_time || '').slice(0, 5))}" data-arrival="${escapeHtml((item.arrival_time || '').slice(0, 5))}" data-timetable-url="${escapeHtml(encodeURIComponent(JSON.stringify(parseTimetableEntries(item.timetable_url))))}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
               <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-train-id="${item.id}" data-train-number="${escapeHtml(item.number ?? '')}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>

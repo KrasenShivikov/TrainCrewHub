@@ -31,25 +31,25 @@
         <button type="button" class="btn btn-sm btn-outline-secondary" id="index-refresh">Опресни</button>
       </div>
       <div class="row g-3" id="index-kpis">
-        <div class="col-12 col-md-6 col-xl-3" id="index-kpi-card-planned">
+        <div class="col-6 col-xl-3" id="index-kpi-card-planned">
           <article class="border rounded p-3 h-100">
             <div class="text-secondary small mb-1" id="index-kpi-label-1">Планирани повески</div>
             <div class="h4 mb-0" id="index-kpi-planned">-</div>
           </article>
         </div>
-        <div class="col-12 col-md-6 col-xl-3" id="index-kpi-card-actual">
+        <div class="col-6 col-xl-3" id="index-kpi-card-actual">
           <article class="border rounded p-3 h-100">
             <div class="text-secondary small mb-1" id="index-kpi-label-2">Реални повески</div>
             <div class="h4 mb-0" id="index-kpi-actual">-</div>
           </article>
         </div>
-        <div class="col-12 col-md-6 col-xl-3" id="index-kpi-card-absences">
+        <div class="col-6 col-xl-3" id="index-kpi-card-absences">
           <article class="border rounded p-3 h-100">
             <div class="text-secondary small mb-1" id="index-kpi-label-3">Активни отсъствия</div>
             <div class="h4 mb-0" id="index-kpi-absences">-</div>
           </article>
         </div>
-        <div class="col-12 col-md-6 col-xl-3" id="index-kpi-card-employees">
+        <div class="col-6 col-xl-3" id="index-kpi-card-employees">
           <article class="border rounded p-3 h-100">
             <div class="text-secondary small mb-1" id="index-kpi-label-4">Активни служители</div>
             <div class="h4 mb-0" id="index-kpi-employees">-</div>
@@ -71,7 +71,7 @@
               0
             </button>
           </div>
-          <div class="table-responsive d-none" id="index-certificates-soon-details">
+          <div class="table-responsive tch-no-scroll-mobile d-none" id="index-certificates-soon-details">
             <table class="table table-sm align-middle mb-0">
               <thead>
                 <tr>
@@ -97,7 +97,7 @@
               0
             </button>
           </div>
-          <div class="table-responsive d-none" id="index-certificates-expired-details">
+          <div class="table-responsive tch-no-scroll-mobile d-none" id="index-certificates-expired-details">
             <table class="table table-sm align-middle mb-0">
               <thead>
                 <tr>
@@ -133,7 +133,7 @@
           </div>
         </div>
 
-        <div class="table-responsive">
+        <div class="table-responsive tch-no-scroll-mobile">
           <table class="table table-sm align-middle mb-0">
             <thead>
               <tr>
@@ -161,21 +161,8 @@
             <a href="/admin" data-link class="btn btn-sm btn-outline-primary">Към роли</a>
           </div>
         </div>
-        <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0">
-            <thead>
-              <tr>
-                <th>Потребител</th>
-                <th>Създаден на</th>
-                <th>Чака от</th>
-              </tr>
-            </thead>
-            <tbody id="index-pending-users-body">
-              <tr>
-                <td colspan="3" class="text-secondary">Няма чакащи потребители.</td>
-              </tr>
-            </tbody>
-          </table>
+        <div id="index-pending-users-body" class="list-group list-group-flush rounded border">
+          <div class="list-group-item text-secondary small">Няма чакащи потребители.</div>
         </div>
       </section>
 
