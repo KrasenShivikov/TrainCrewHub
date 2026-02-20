@@ -1,0 +1,54 @@
+/* -- Design tokens ---------------------------------------- */
+:root {
+  /* Brand */
+  --bs-primary:              #1a4db5;
+  --bs-primary-rgb:          26, 77, 181;
+  --bs-primary-bg-subtle:    #e8eefa;
+  --bs-primary-text-emphasis:#0f3592;
+  --bs-link-color:           #1a4db5;
+  --bs-link-hover-color:     #0f3592;
+
+  /* Surfaces */
+  --app-bg:             #f0f4fb;
+  --app-surface:        #ffffff;
+  --app-surface-2:      #f7f9fd;
+  --app-text:           var(--bs-emphasis-color);
+  --app-border:         rgba(26, 77, 181, 0.12);
+  --app-border-strong:  rgba(26, 77, 181, 0.22);
+
+  /* Navbar */
+  --navbar-height:          60px;
+  --navbar-bg-from:         #0c2878;
+  --navbar-bg-to:           #1a4db5;
+  --navbar-shadow:          0 2px 24px rgba(12, 40, 120, 0.30);
+
+  /* Shadows */
+  --shadow-xs:  0 1px 2px rgba(26, 77, 181, 0.06);
+  --shadow-sm:  0 1px 4px rgba(26, 77, 181, 0.07), 0 3px 10px rgba(26, 77, 181, 0.07);
+  --shadow-md:  0 2px 8px rgba(26, 77, 181, 0.08), 0 8px 24px rgba(26, 77, 181, 0.09);
+  --shadow-lg:  0 4px 16px rgba(26, 77, 181, 0.10), 0 16px 40px rgba(26, 77, 181, 0.10);
+  --shadow-hover: 0 6px 20px rgba(26, 77, 181, 0.13), 0 20px 48px rgba(26, 77, 181, 0.11);
+
+  /* Table */
+  --table-head-bg:    #edf1fb;
+  --table-head-color: #273e9e;
+  --table-hover-bg:   rgba(26, 77, 181, 0.04);
+  --table-stripe-bg:  rgba(26, 77, 181, 0.02);
+
+  /* Radii */
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
+  --radius-xl:  18px;
+  --radius-pill: 9999px;
+
+  /* Motion */
+  --transition: 0.17s ease;
+  --transition-slow: 0.28s ease;
+
+  /* Layout */
+  --app-content-gap:  1.25rem;
+  --app-section-gap:  1.5rem;
+  --app-block-gap:    0.85rem;
+  --control-height:   2.5rem;
+}

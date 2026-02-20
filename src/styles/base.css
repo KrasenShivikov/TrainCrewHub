@@ -1,0 +1,30 @@
+/* -- Base ------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: var(--bs-link-color);
+  text-underline-offset: 0.2em;
+  transition: color var(--transition);
+}
+a:hover { color: var(--bs-link-hover-color); }
+
+.cursor-help { cursor: help; }
+
+/* -- Scrollbar (WebKit) ---------------------------------- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(26, 77, 181, 0.25); border-radius: var(--radius-pill); }
+::-webkit-scrollbar-thumb:hover { background: rgba(26, 77, 181, 0.45); }
