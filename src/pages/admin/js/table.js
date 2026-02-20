@@ -156,10 +156,10 @@ export function renderRolesTable(container, explicitEmptyMessage) {
 
       return `
         <tr>
-          <td>${escapeHtml(username)}</td>
-          <td>${roleBadges}</td>
-          <td>${hasRole ? escapeHtml(grantedBy) : '<span class="text-secondary">-</span>'}</td>
-          <td class="text-end">
+          <td data-label="">${escapeHtml(username)}</td>
+          <td data-label="Роля">${roleBadges}</td>
+          <td data-label="Дадена от">${hasRole ? escapeHtml(grantedBy) : '<span class="text-secondary">-</span>'}</td>
+          <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
               <button
                 type="button"
@@ -167,8 +167,10 @@ export function renderRolesTable(container, explicitEmptyMessage) {
                 data-admin-action="add-role"
                 data-user-id="${userId}"
                 data-username="${escapeHtml(username)}"
+                data-bs-toggle="tooltip"
+                data-bs-title="Добави роля"
               >
-                Добави роля
+                <i class="bi bi-person-plus"></i>
               </button>
               <button
                 type="button"
@@ -176,9 +178,10 @@ export function renderRolesTable(container, explicitEmptyMessage) {
                 data-admin-action="remove-role"
                 data-role-id="${row.id || ''}"
                 ${removeDisabled ? 'disabled' : ''}
-                title="${removeTitle}"
+                data-bs-toggle="tooltip"
+                data-bs-title="${removeTitle || 'Премахни роля'}"
               >
-                Премахни
+                <i class="bi bi-person-dash"></i>
               </button>
             </div>
           </td>
@@ -186,6 +189,7 @@ export function renderRolesTable(container, explicitEmptyMessage) {
       `;
     })
     .join('');
+  initTooltips(body);
 }
 
 export function renderRoleCatalogTable(container, explicitEmptyMessage) {
@@ -252,9 +256,9 @@ export function renderRoleCatalogTable(container, explicitEmptyMessage) {
 
       return `
         <tr>
-          <td>${escapeHtml(code)}</td>
-          <td>${escapeHtml(labelBg)}</td>
-          <td class="text-end">
+          <td data-label="">${escapeHtml(code)}</td>
+          <td data-label="Иme (БГ)">${escapeHtml(labelBg)}</td>
+          <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
               <button
                 type="button"
@@ -262,8 +266,10 @@ export function renderRoleCatalogTable(container, explicitEmptyMessage) {
                 data-admin-action="edit-catalog-role"
                 data-role-name="${escapeHtml(code)}"
                 data-role-bg="${escapeHtml(labelBg)}"
+                data-bs-toggle="tooltip"
+                data-bs-title="Редакция"
               >
-                Редакция
+                <i class="bi bi-pencil"></i>
               </button>
               <button
                 type="button"
@@ -271,8 +277,10 @@ export function renderRoleCatalogTable(container, explicitEmptyMessage) {
                 data-admin-action="delete-catalog-role"
                 data-role-name="${escapeHtml(code)}"
                 ${cannotDelete ? 'disabled' : ''}
+                data-bs-toggle="tooltip"
+                data-bs-title="Изтрий роля"
               >
-                Изтрий
+                <i class="bi bi-trash3"></i>
               </button>
             </div>
           </td>
@@ -280,6 +288,7 @@ export function renderRoleCatalogTable(container, explicitEmptyMessage) {
       `;
     })
     .join('');
+  initTooltips(body);
 }
 
 export function renderProfilesTable(container, explicitEmptyMessage) {
@@ -357,61 +366,72 @@ export function renderProfilesTable(container, explicitEmptyMessage) {
 
       return `
         <tr>
-          <td>${escapeHtml(profileLabel)}</td>
-          <td>${statusBadge}</td>
-          <td>${escapeHtml(employeeLabel)}</td>
-          <td class="text-end">
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-primary me-2"
-              data-admin-action="link-profile"
-              data-profile-id="${profile.id}"
-            >
-              Свържи
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-danger me-2"
-              data-admin-action="unlink-profile"
-              data-profile-id="${profile.id}"
-              ${hasLinkedEmployee ? '' : 'disabled'}
-            >
-              Разкачи
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-warning me-2"
-              data-admin-action="deactivate-profile"
-              data-profile-id="${profile.id}"
-              ${deactivateDisabled ? 'disabled' : ''}
-              title="${isCurrentUser ? 'Не можеш да деактивираш собствения си профил.' : ''}"
-            >
-              Деактивирай
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-success"
-              data-admin-action="restore-profile"
-              data-profile-id="${profile.id}"
-              ${restoreDisabled ? 'disabled' : ''}
-            >
-              Възстанови
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-danger ms-2"
-              data-admin-action="hard-delete-user"
-              data-profile-id="${profile.id}"
-              ${hardDeleteDisabled ? 'disabled' : ''}
-              title="${isCurrentUser ? 'Не можеш да изтриеш собствения си акаунт.' : 'Необратимо изтриване (Auth + профил + роли).'}"
-            >
-              Изтрий
-            </button>
+          <td data-label="">${escapeHtml(profileLabel)}</td>
+          <td data-label="Статус">${statusBadge}</td>
+          <td data-label="Свързан служител">${escapeHtml(employeeLabel)}</td>
+          <td class="text-end" data-label="">
+            <div class="d-inline-flex gap-2">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-primary"
+                data-admin-action="link-profile"
+                data-profile-id="${profile.id}"
+                data-bs-toggle="tooltip"
+                data-bs-title="Свържи към служител"
+              >
+                <i class="bi bi-link-45deg"></i>
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                data-admin-action="unlink-profile"
+                data-profile-id="${profile.id}"
+                ${hasLinkedEmployee ? '' : 'disabled'}
+                data-bs-toggle="tooltip"
+                data-bs-title="Разкачи от служител"
+              >
+                <i class="bi bi-scissors"></i>
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-warning"
+                data-admin-action="deactivate-profile"
+                data-profile-id="${profile.id}"
+                ${deactivateDisabled ? 'disabled' : ''}
+                data-bs-toggle="tooltip"
+                data-bs-title="${isCurrentUser ? 'Не можеш да деактивираш собствения си профил.' : 'Деактивирай профил'}"
+              >
+                <i class="bi bi-eye-slash"></i>
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-success"
+                data-admin-action="restore-profile"
+                data-profile-id="${profile.id}"
+                ${restoreDisabled ? 'disabled' : ''}
+                data-bs-toggle="tooltip"
+                data-bs-title="Възстанови профил"
+              >
+                <i class="bi bi-arrow-counterclockwise"></i>
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-danger"
+                data-admin-action="hard-delete-user"
+                data-profile-id="${profile.id}"
+                ${hardDeleteDisabled ? 'disabled' : ''}
+                data-bs-toggle="tooltip"
+                data-bs-title="${isCurrentUser ? 'Не можеш да изтриеш собствения си акаунт.' : 'Необратимо изтриване (Auth + профил + роли)'}"
+              >
+                <i class="bi bi-trash3-fill"></i>
+              </button>
+            </div>
           </td>
         </tr>
       `;
     })
     .join('');
+  initTooltips(body);
 }
 
 export function renderRolePermissionsTable(container, explicitEmptyMessage) {
@@ -442,20 +462,20 @@ export function renderRolePermissionsTable(container, explicitEmptyMessage) {
 
       return `
         <tr data-resource="${escapeHtml(resource)}">
-          <td>${escapeHtml(resourceLabel)}</td>
-          <td class="text-center">
+          <td data-label="">${escapeHtml(resourceLabel)}</td>
+          <td class="text-center" data-label="Виж екрана">
             ${renderScopeSelect('view_screen_scope', viewScreenScope)}
           </td>
-          <td class="text-center">
+          <td class="text-center" data-label="Виж записи">
             ${renderScopeSelect('view_records_scope', viewRecordsScope)}
           </td>
-          <td class="text-center">
+          <td class="text-center" data-label="Създаване">
             ${renderScopeSelect('create_records_scope', createRecordsScope)}
           </td>
-          <td class="text-center">
+          <td class="text-center" data-label="Редакция">
             ${renderScopeSelect('edit_records_scope', editRecordsScope)}
           </td>
-          <td class="text-center">
+          <td class="text-center" data-label="Изтриване">
             ${renderScopeSelect('delete_records_scope', deleteRecordsScope)}
           </td>
         </tr>
@@ -532,15 +552,24 @@ export function renderRoleAuditTable(container, explicitEmptyMessage) {
 
       return `
         <tr>
-          <td>${escapeHtml(occurredAt)}</td>
-          <td>${escapeHtml(actionLabel)}</td>
-          <td>${escapeHtml(roleLabel)}</td>
-          <td>${escapeHtml(actorLabel)}</td>
-          <td>${escapeHtml(targetLabel)}</td>
+          <td data-label="Кога">${escapeHtml(occurredAt)}</td>
+          <td data-label="Действие">${escapeHtml(actionLabel)}</td>
+          <td data-label="Роля">${escapeHtml(roleLabel)}</td>
+          <td data-label="Кой">${escapeHtml(actorLabel)}</td>
+          <td data-label="За кого">${escapeHtml(targetLabel)}</td>
         </tr>
       `;
     })
     .join('');
+}
+
+function initTooltips(container) {
+  if (!container || !window.bootstrap?.Tooltip) return;
+  container.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+    const existing = window.bootstrap.Tooltip.getInstance(el);
+    if (existing) existing.dispose();
+    new window.bootstrap.Tooltip(el, { trigger: 'hover focus' });
+  });
 }
 
 function renderScopeSelect(field, selectedValue) {

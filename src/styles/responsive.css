@@ -57,6 +57,204 @@
   .table-mobile-wrap td, .table-mobile-wrap th { white-space: normal; }
   .table-mobile-wrap td.text-end, .table-mobile-wrap th.text-end { white-space: nowrap; }
 
+  /* -------------------------------------------------------
+     GENERIC CARD-GRID layout (td:1 = name/identifier header)
+     tch-drag-first: td:1 = drag handle (hidden on mobile), td:2 = name header
+  ------------------------------------------------------- */
+  .tch-card-grid { overflow-x: visible; }
+  .tch-card-grid > .table { width: 100%; }
+  .tch-card-grid thead { display: none; }
+  .tch-card-grid tbody tr {
+    display: block;
+    background: var(--app-card-bg, #fff);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: var(--radius-md, 10px);
+    margin-bottom: 0.65rem;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  }
+  /* Name header — td:1 for normal, td:2 for drag-first */
+  .tch-card-grid:not(.tch-drag-first) tbody td:first-child,
+  .tch-card-grid.tch-drag-first tbody td:nth-child(2) {
+    display: block;
+    padding: 0.55rem 0.75rem 0.45rem;
+    border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+    font-weight: 600;
+    font-size: 0.93rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .tch-card-grid:not(.tch-drag-first) tbody td:first-child::before,
+  .tch-card-grid.tch-drag-first tbody td:nth-child(2)::before { display: none; }
+  /* Hide drag handle — can't drag on touchscreen */
+  .tch-card-grid.tch-drag-first tbody td:first-child { display: none; }
+  /* Middle tds — 2-col grid label | value */
+  .tch-card-grid:not(.tch-drag-first) tbody td:not(:first-child):not(:last-child),
+  .tch-card-grid.tch-drag-first tbody td:not(:nth-child(1)):not(:nth-child(2)):not(:last-child) {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 0.25rem;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.86rem;
+    border: none;
+    white-space: normal;
+    word-break: break-word;
+    align-items: start;
+  }
+  .tch-card-grid:not(.tch-drag-first) tbody td:not(:first-child):not(:last-child)::before,
+  .tch-card-grid.tch-drag-first tbody td:not(:nth-child(1)):not(:nth-child(2)):not(:last-child)::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--bs-secondary-color, #6c757d);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding-top: 0.1rem;
+  }
+  /* Suppress empty-label middle cols */
+  .tch-card-grid tbody td[data-label=""]:not(:first-child):not(:last-child) { display: none; }
+  /* Actions row */
+  .tch-card-grid tbody td:last-child:not(:first-child) {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    padding: 0.45rem 0.6rem;
+    border-top: 1px solid var(--bs-border-color, #dee2e6);
+  }
+  .tch-card-grid tbody td:last-child::before { display: none; }
+  /* tch-no-actions: last td is a data row (no actions bar), e.g. permissions table */
+  .tch-card-grid.tch-no-actions tbody td:last-child:not(:first-child) {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 0.25rem;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.86rem;
+    border: none;
+    white-space: normal;
+    word-break: break-word;
+    align-items: start;
+  }
+  .tch-card-grid.tch-no-actions tbody td:last-child::before {
+    content: attr(data-label);
+    display: block;
+    font-weight: 600;
+    color: var(--bs-secondary-color, #6c757d);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding-top: 0.1rem;
+  }
+
+  /* -------------------------------------------------------
+     DUTIES — compact card-row layout on mobile
+     tr → card; td:1=name header; td:2-6=inline info; td:7=actions
+  ------------------------------------------------------- */
+  .table-responsive.tch-duties-cards {
+    overflow-x: visible;
+  }
+
+  .table-responsive.tch-duties-cards > .table {
+    width: 100%;
+  }
+
+  .table-responsive.tch-duties-cards thead {
+    display: none;
+  }
+
+  .table-responsive.tch-duties-cards tbody tr {
+    display: block;
+    background: var(--app-card-bg, #fff);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: var(--radius-md, 10px);
+    margin-bottom: 0.65rem;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Name — full-width card header */
+  .table-responsive.tch-duties-cards tbody td:nth-child(1) {
+    display: block;
+    padding: 0.6rem 0.75rem 0.5rem;
+    border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .table-responsive.tch-duties-cards tbody td:nth-child(1)::before {
+    display: none;
+  }
+  .table-responsive.tch-duties-cards tbody td:nth-child(1) .duties-name-ellipsis {
+    display: inline;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    font-weight: 600;
+    font-size: 0.93rem;
+  }
+
+  /* Info cells — flow inline, compact */
+  .table-responsive.tch-duties-cards tbody td:nth-child(2),
+  .table-responsive.tch-duties-cards tbody td:nth-child(3),
+  .table-responsive.tch-duties-cards tbody td:nth-child(4),
+  .table-responsive.tch-duties-cards tbody td:nth-child(5),
+  .table-responsive.tch-duties-cards tbody td:nth-child(6) {
+    display: inline;
+    padding: 0;
+    border: none;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    color: var(--bs-body-color);
+  }
+  /* First info cell gets left indent and top spacing */
+  .table-responsive.tch-duties-cards tbody td:nth-child(2) {
+    padding-left: 0.75rem;
+  }
+  /* Last info cell gets bottom spacing */
+  .table-responsive.tch-duties-cards tbody td:nth-child(6) {
+    padding-right: 0.75rem;
+  }
+  /* Suppress inherited ::before labels from generic rule */
+  .table-responsive.tch-duties-cards tbody td:nth-child(2)::before,
+  .table-responsive.tch-duties-cards tbody td:nth-child(3)::before,
+  .table-responsive.tch-duties-cards tbody td:nth-child(4)::before,
+  .table-responsive.tch-duties-cards tbody td:nth-child(5)::before,
+  .table-responsive.tch-duties-cards tbody td:nth-child(6)::before {
+    content: none;
+  }
+  /* Visual separators injected via CSS */
+  .table-responsive.tch-duties-cards tbody td:nth-child(3)::before {
+    content: "  ";
+    letter-spacing: 0.1em;
+  }
+  .table-responsive.tch-duties-cards tbody td:nth-child(4)::before {
+    content: " → ";
+    color: var(--bs-secondary-color, #6c757d);
+  }
+  .table-responsive.tch-duties-cards tbody td:nth-child(5)::before {
+    content: "  ·  прек: ";
+    color: var(--bs-secondary-color, #6c757d);
+    font-size: 0.75rem;
+  }
+  .table-responsive.tch-duties-cards tbody td:nth-child(6)::before {
+    content: "  ·  ";
+    color: var(--bs-secondary-color, #6c757d);
+  }
+
+  /* Actions — full-width bottom row */
+  .table-responsive.tch-duties-cards tbody td:nth-child(7) {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    padding: 0.45rem 0.6rem;
+    border-top: 1px solid var(--bs-border-color, #dee2e6);
+    margin-top: 0.3rem;
+  }
+  .table-responsive.tch-duties-cards tbody td:nth-child(7)::before {
+    display: none;
+  }
+
   /* Opt-in: stacked card layout instead of horizontal scroll on mobile */
   .table-responsive.tch-no-scroll-mobile {
     overflow-x: visible;
