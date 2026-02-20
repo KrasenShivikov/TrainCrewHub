@@ -2,6 +2,7 @@ import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml } from './helpers.js';
 import { DUTY_FILES_BUCKET } from './dutiesConstants.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 export function updateCurrentAttachmentsPreview(container, entries) {
   const wrap = container.querySelector('#duty-current-attachments-wrap');
@@ -34,7 +35,8 @@ export function updateCurrentAttachmentsPreview(container, entries) {
                 class="btn btn-link btn-sm p-0 lh-1 text-decoration-none duty-existing-attachment-preview"
                 data-url="${escapeHtml(entry.url)}"
                 data-label="${escapeHtml(label)}"
-                title="Преглед"
+                data-bs-toggle="tooltip"
+                data-bs-title="Преглед"
                 aria-label="Преглед"
               >
                 👁
@@ -59,6 +61,7 @@ export function updateCurrentAttachmentsPreview(container, entries) {
       `;
     })
     .join('');
+  initTooltips(linksContainer);
 }
 
 export function parseAttachmentEntries(value) {

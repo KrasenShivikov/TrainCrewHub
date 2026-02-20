@@ -1,5 +1,6 @@
 import { toTimeInputValue, escapeHtml } from './helpers.js';
 import { dedupeTimetableEntries, deriveTimetableLabel, parseTimetableEntries, serializeTimetableEntries } from './trainsTimetableEntries.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 export function populateTrainForm(container, train) {
   const entries = parseTimetableEntries(train.timetableUrl);
@@ -66,7 +67,8 @@ export function updateCurrentTimetablePreview(container, entries) {
                 class="btn btn-link btn-sm p-0 lh-1 text-decoration-none train-existing-timetable-preview"
                 data-url="${escapeHtml(entry.url)}"
                 data-label="${escapeHtml(label)}"
-                title="Преглед"
+                data-bs-toggle="tooltip"
+                data-bs-title="Преглед"
                 aria-label="Преглед"
               >
                 👁
@@ -91,4 +93,5 @@ export function updateCurrentTimetablePreview(container, entries) {
       `;
     })
     .join('');
+  initTooltips(linksContainer);
 }

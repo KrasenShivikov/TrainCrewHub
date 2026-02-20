@@ -2,6 +2,7 @@ import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml, formatDuration } from './helpers.js';
 import { dutiesState, PAGE_SIZE } from './state.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 export async function loadDuties(container) {
   const { data, error } = await supabase
@@ -118,11 +119,11 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
           <td data-label="Времетраене">${escapeHtml(formatDuration(item.duration_interval))}</td>
           <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
-              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="profile" data-id="${item.id}" title="Профил" aria-label="Профил"><i class="bi bi-person-vcard"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="trains" data-id="${item.id}" data-name="${escapeHtml(item.name ?? '')}" title="Влакове" aria-label="Влакове"><i class="bi bi-train-front"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="duplicate" data-id="${item.id}" title="Копирай" aria-label="Копирай"><i class="bi bi-copy"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="profile" data-id="${item.id}" data-bs-toggle="tooltip" data-bs-title="Профил" aria-label="Профил"><i class="bi bi-person-vcard"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-bs-toggle="tooltip" data-bs-title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="trains" data-id="${item.id}" data-name="${escapeHtml(item.name ?? '')}" data-bs-toggle="tooltip" data-bs-title="Влакове" aria-label="Влакове"><i class="bi bi-train-front"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="duplicate" data-id="${item.id}" data-bs-toggle="tooltip" data-bs-title="Копирай" aria-label="Копирай"><i class="bi bi-copy"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" data-bs-toggle="tooltip" data-bs-title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>
@@ -130,6 +131,7 @@ export function renderDutiesTable(container, explicitEmptyMessage) {
       }
     )
     .join('');
+  initTooltips(tableBody);
 
   if (filteredDuties.length <= PAGE_SIZE) {
     pagination.classList.add('d-none');

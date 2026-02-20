@@ -58,6 +58,25 @@
   .table-mobile-wrap td.text-end, .table-mobile-wrap th.text-end { white-space: nowrap; }
 
   /* -------------------------------------------------------
+     Page section headers: title takes full row, buttons wrap below
+  ------------------------------------------------------- */
+  .card-body > .d-flex.justify-content-between.mb-3,
+  .tab-pane > .d-flex.justify-content-between.mb-3 {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: flex-start !important;
+  }
+  .card-body > .d-flex.justify-content-between.mb-3 > :first-child,
+  .tab-pane > .d-flex.justify-content-between.mb-3 > :first-child {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+  .card-body > .d-flex.justify-content-between.mb-3 > .d-flex,
+  .tab-pane > .d-flex.justify-content-between.mb-3 > .d-flex {
+    flex-wrap: wrap;
+  }
+
+  /* -------------------------------------------------------
      GENERIC CARD-GRID layout (td:1 = name/identifier header)
      tch-drag-first: td:1 = drag handle (hidden on mobile), td:2 = name header
   ------------------------------------------------------- */

@@ -7,6 +7,7 @@ import {
 } from './helpers.js';
 import { getResourceDisplayName } from '../../../utils/permissions.js';
 import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 const ACCESS_SCOPE_OPTIONS = [
   { value: 'none', label: 'без достъп' },
@@ -561,15 +562,6 @@ export function renderRoleAuditTable(container, explicitEmptyMessage) {
       `;
     })
     .join('');
-}
-
-function initTooltips(container) {
-  if (!container || !window.bootstrap?.Tooltip) return;
-  container.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
-    const existing = window.bootstrap.Tooltip.getInstance(el);
-    if (existing) existing.dispose();
-    new window.bootstrap.Tooltip(el, { trigger: 'hover focus' });
-  });
 }
 
 function renderScopeSelect(field, selectedValue) {

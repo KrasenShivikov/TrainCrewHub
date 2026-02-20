@@ -3,6 +3,7 @@ import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml } from './helpers.js';
 import { employeeAbsencesState } from './state.js';
 import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 function getEmployeeFullName(employee) {
   if (!employee) {
@@ -110,12 +111,13 @@ export function renderEmployeeAbsencesTable(container, explicitEmptyMessage) {
           <td data-label="Бележки">${escapeHtml(item.notes ?? '')}</td>
           <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
-              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-employee-id="${item.employee_id ?? ''}" data-reason-id="${item.reason_id ?? ''}" data-start-date="${escapeHtml(item.start_date ?? '')}" data-end-date="${escapeHtml(item.end_date ?? '')}" data-notes="${escapeHtml(item.notes ?? '')}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-employee-id="${item.employee_id ?? ''}" data-reason-id="${item.reason_id ?? ''}" data-start-date="${escapeHtml(item.start_date ?? '')}" data-end-date="${escapeHtml(item.end_date ?? '')}" data-notes="${escapeHtml(item.notes ?? '')}" data-bs-toggle="tooltip" data-bs-title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" data-bs-toggle="tooltip" data-bs-title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>
       `
     )
     .join('');
+  initTooltips(tableBody);
 }

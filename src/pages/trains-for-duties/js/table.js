@@ -3,6 +3,7 @@ import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml, parseTimetableEntries } from './helpers.js';
 import { trainsForDutiesState } from './state.js';
 import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 const TRAIN_SELECT = 'id, number, origin_station, destination_station, departure_time, arrival_time, timetable_url';
 
@@ -126,14 +127,15 @@ export function renderTrainsForDutyTable(container, explicitEmptyMessage) {
           <td data-label="Разписание">${timetableHtml}</td>
           <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
-              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-number="${escapeHtml(item.number ?? '')}" data-origin="${escapeHtml(item.origin_station ?? '')}" data-destination="${escapeHtml(item.destination_station ?? '')}" data-departure="${escapeHtml((item.departure_time || '').slice(0, 5))}" data-arrival="${escapeHtml((item.arrival_time || '').slice(0, 5))}" data-timetable-url="${escapeHtml(encodeURIComponent(JSON.stringify(parseTimetableEntries(item.timetable_url))))}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-train-id="${item.id}" data-train-number="${escapeHtml(item.number ?? '')}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-number="${escapeHtml(item.number ?? '')}" data-origin="${escapeHtml(item.origin_station ?? '')}" data-destination="${escapeHtml(item.destination_station ?? '')}" data-departure="${escapeHtml((item.departure_time || '').slice(0, 5))}" data-arrival="${escapeHtml((item.arrival_time || '').slice(0, 5))}" data-timetable-url="${escapeHtml(encodeURIComponent(JSON.stringify(parseTimetableEntries(item.timetable_url))))}" data-bs-toggle="tooltip" data-bs-title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-train-id="${item.id}" data-train-number="${escapeHtml(item.number ?? '')}" data-bs-toggle="tooltip" data-bs-title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>
       `;
     })
     .join('');
+  initTooltips(trainsBody);
 }
 
 export async function loadAttachTrainsCatalog(container) {

@@ -3,6 +3,7 @@ import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml } from './helpers.js';
 import { dutyTypesState } from './state.js';
 import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 export async function loadDutyTypes(container) {
   const { data, error } = await supabase
@@ -83,8 +84,8 @@ export function renderDutyTypesTable(container, explicitEmptyMessage) {
           ${actionsEnabled ? `
           <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
-              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-name="${escapeHtml(item.name ?? '')}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-name="${escapeHtml(item.name ?? '')}" data-bs-toggle="tooltip" data-bs-title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" data-bs-toggle="tooltip" data-bs-title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
             </div>
           </td>
           ` : ''}
@@ -92,4 +93,5 @@ export function renderDutyTypesTable(container, explicitEmptyMessage) {
       `
     )
     .join('');
+  initTooltips(tableBody);
 }

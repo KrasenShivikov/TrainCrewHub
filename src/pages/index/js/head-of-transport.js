@@ -234,8 +234,8 @@ export function createHeadOfTransportController(deps) {
           .join('');
 
         return `
-          <div class="d-flex justify-content-between align-items-center border rounded p-2">
-            <span>${escapeHtml(group.reason)}</span>
+          <div class="d-flex justify-content-between align-items-center border-start border-4 ${badgeClass.replace('text-bg-', 'border-')} rounded-3 bg-body-tertiary ps-3 pe-2 py-2">
+            <span class="fw-semibold small">${escapeHtml(group.reason)}</span>
             <button
               type="button"
               class="badge ${badgeClass} border-0"

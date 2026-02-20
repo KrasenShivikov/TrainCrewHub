@@ -3,6 +3,7 @@ import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml, syncDisabledHints } from './helpers.js';
 import { plannedDutiesState } from './state.js';
 import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 const ACTION_HINTS = [
   {
@@ -169,9 +170,9 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
           <td data-label="Повеска">${escapeHtml(item.duties?.name ?? '-')}</td>
           <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
-              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="trains" data-duty-id="${item.duty_id ?? ''}" data-duty-name="${escapeHtml(item.duties?.name ?? '')}" title="Влакове" aria-label="Влакове"><i class="bi bi-train-front"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-date="${escapeHtml(item.date ?? '')}" data-employee-id="${item.employee_id ?? ''}" data-duty-id="${item.duty_id ?? ''}" data-assignment-role="${item.assignment_role ?? 'conductor'}" data-duty-schedule-key-id="${dutyScheduleKeyId}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="trains" data-duty-id="${item.duty_id ?? ''}" data-duty-name="${escapeHtml(item.duties?.name ?? '')}" data-bs-toggle="tooltip" data-bs-title="Влакове" aria-label="Влакове"><i class="bi bi-train-front"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-date="${escapeHtml(item.date ?? '')}" data-employee-id="${item.employee_id ?? ''}" data-duty-id="${item.duty_id ?? ''}" data-assignment-role="${item.assignment_role ?? 'conductor'}" data-duty-schedule-key-id="${dutyScheduleKeyId}" data-bs-toggle="tooltip" data-bs-title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" data-bs-toggle="tooltip" data-bs-title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>
@@ -179,6 +180,7 @@ export function renderPlannedDutiesTable(container, explicitEmptyMessage) {
       }
     )
     .join('');
+  initTooltips(tableBody);
 
   const selectedVisibleCount = pageItems.filter((row) => plannedDutiesState.selectedIds.includes(row.id)).length;
   if (selectAllInput) {

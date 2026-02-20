@@ -5,6 +5,7 @@ import { openModal, escapeHtml } from './helpers.js';
 import { dutiesState } from './state.js';
 import { populateDutyForm } from './dutiesForms.js';
 import { parseAttachmentEntries } from './dutiesAttachments.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 export function openDutyProfileModal(container, dutyId) {
   const duty = dutiesState.allDuties.find((item) => item.id === dutyId);
@@ -51,6 +52,7 @@ export function openDutyProfileModal(container, dutyId) {
     intervalToTimeInput,
     formatInterval
   });
+  initTooltips(content);
 
   openModal(profileModal);
 }

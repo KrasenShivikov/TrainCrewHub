@@ -3,6 +3,7 @@ import { buildDutyProfileContent } from '../../../utils/dutyProfileTemplate.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { openModal } from './helpers.js';
 import { scheduleKeyDutiesState } from './state.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 export function getDutyField(container, ...selectors) {
   for (const selector of selectors) {
@@ -210,6 +211,7 @@ export function openDutyProfileModal(container, dutyId, { escapeHtml } = {}) {
     intervalToTimeInput,
     formatInterval: formatIntervalValue
   });
+  initTooltips(content);
 
   openModal(modal);
 }

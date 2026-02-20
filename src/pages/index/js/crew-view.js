@@ -492,16 +492,16 @@ export function createCrewViewController(deps) {
           const timing = getDutyTimingSummary(row?.duties);
 
           return `
-            <article class="border rounded p-2">
+            <article class="border-start border-4 border-primary rounded-3 ps-3 pe-2 py-2 bg-body-tertiary">
               <div class="fw-semibold">${escapeHtml(dutyName)}</div>
-              <div class="small text-secondary">${escapeHtml(role)} · ${escapeHtml(time)}</div>
-              <div class="small mt-1">
-                <div><span class="text-secondary">Начало:</span> ${escapeHtml(timing.startTime)}</div>
-                <div><span class="text-secondary">Край:</span> ${escapeHtml(timing.endTime)}</div>
-                <div><span class="text-secondary">Начало на прекъсване:</span> ${escapeHtml(timing.breakStartTime)}</div>
-                <div><span class="text-secondary">Край на прекъсване:</span> ${escapeHtml(timing.breakEndTime)}</div>
-                <div><span class="text-secondary">Прекъсване:</span> ${escapeHtml(timing.breakDuration)}</div>
-                <div><span class="text-secondary">Времетраене:</span> ${escapeHtml(timing.duration)}</div>
+              <div class="small text-secondary mb-2">${escapeHtml(role)} · ${escapeHtml(time)}</div>
+              <div class="row g-1 small">
+                <div class="col-6"><span class="text-secondary">Начало:</span> ${escapeHtml(timing.startTime)}</div>
+                <div class="col-6"><span class="text-secondary">Край:</span> ${escapeHtml(timing.endTime)}</div>
+                <div class="col-6"><span class="text-secondary">Пауза от:</span> ${escapeHtml(timing.breakStartTime)}</div>
+                <div class="col-6"><span class="text-secondary">Пауза до:</span> ${escapeHtml(timing.breakEndTime)}</div>
+                <div class="col-6"><span class="text-secondary">Прекъсване:</span> ${escapeHtml(timing.breakDuration)}</div>
+                <div class="col-6"><strong>${escapeHtml(timing.duration)}</strong> <span class="text-secondary">времетраене</span></div>
               </div>
             </article>
           `;
@@ -598,31 +598,31 @@ export function createCrewViewController(deps) {
             .join('');
 
           return `
-            <article class="border rounded p-2">
-              <div class="d-flex align-items-start justify-content-between gap-2">
+            <article class="border-start border-4 border-success rounded-3 ps-3 pe-2 py-2 bg-body-tertiary">
+              <div class="d-flex align-items-start justify-content-between gap-2 mb-1">
                 <div class="fw-semibold">${escapeHtml(dutyName)}</div>
                 <button
                   type="button"
-                  class="btn btn-sm btn-outline-secondary py-0 px-2"
+                  class="btn btn-sm btn-outline-secondary py-0 px-2 flex-shrink-0"
                   title="Редакция на часове"
                   aria-label="Редакция на часове"
                   data-index-crew-action="edit-actual-duty"
                   data-actual-duty-id="${escapeHtml(String(row?.id || ''))}"
                 >
-                  ✎
+                  <i class="bi bi-pencil"></i>
                 </button>
               </div>
-              <div class="small text-secondary mb-1">${escapeHtml(role)} · Отчетена: ${escapeHtml(reported)}</div>
-              <div class="small mb-1">
-                <div><span class="text-secondary">Начало:</span> ${escapeHtml(timing.startTime)}</div>
-                <div><span class="text-secondary">Край:</span> ${escapeHtml(timing.endTime)}</div>
-                <div><span class="text-secondary">Начало на прекъсване:</span> ${escapeHtml(timing.breakStartTime)}</div>
-                <div><span class="text-secondary">Край на прекъсване:</span> ${escapeHtml(timing.breakEndTime)}</div>
-                <div><span class="text-secondary">Прекъсване:</span> ${escapeHtml(timing.breakDuration)}</div>
-                <div><span class="text-secondary">Времетраене:</span> ${escapeHtml(timing.duration)}</div>
+              <div class="small text-secondary mb-2">${escapeHtml(role)} · Отчетена: ${escapeHtml(reported)}</div>
+              <div class="row g-1 small mb-2">
+                <div class="col-6"><span class="text-secondary">Начало:</span> ${escapeHtml(timing.startTime)}</div>
+                <div class="col-6"><span class="text-secondary">Край:</span> ${escapeHtml(timing.endTime)}</div>
+                <div class="col-6"><span class="text-secondary">Пауза от:</span> ${escapeHtml(timing.breakStartTime)}</div>
+                <div class="col-6"><span class="text-secondary">Пауза до:</span> ${escapeHtml(timing.breakEndTime)}</div>
+                <div class="col-6"><span class="text-secondary">Прекъсване:</span> ${escapeHtml(timing.breakDuration)}</div>
+                <div class="col-6"><strong>${escapeHtml(timing.duration)}</strong> <span class="text-secondary">времетраене</span></div>
               </div>
-              ${trainRows ? `<div class="small"><span class="fw-semibold">Разписания:</span> ${trainRows}</div>` : ''}
-              ${dutyFileRows ? `<div class="small"><span class="fw-semibold">Файлове:</span> ${dutyFileRows}</div>` : ''}
+              ${trainRows ? `<div class="small border-top pt-2 mt-1"><span class="fw-semibold">Разписания:</span> ${trainRows}</div>` : ''}
+              ${dutyFileRows ? `<div class="small border-top pt-2 mt-1"><span class="fw-semibold">Файлове:</span> ${dutyFileRows}</div>` : ''}
             </article>
           `;
         })
@@ -635,9 +635,9 @@ export function createCrewViewController(deps) {
     } else {
       changesBody.innerHTML = changeEvents
         .map((eventItem) => `
-          <article class="border rounded p-2">
-            <div class="small">${escapeHtml(eventItem.summary || '-')}</div>
-            <div class="small text-secondary">${escapeHtml(eventItem.changedAt || '-')}</div>
+          <article class="border-start border-4 border-info rounded-3 ps-3 pe-2 py-2 bg-body-tertiary">
+            <div class="small fw-semibold">${escapeHtml(eventItem.summary || '-')}</div>
+            <div class="small text-secondary"><i class="bi bi-clock me-1"></i>${escapeHtml(eventItem.changedAt || '-')}</div>
           </article>
         `)
         .join('');
@@ -670,11 +670,11 @@ export function createCrewViewController(deps) {
         const period = `${formatDate(row?.start_date)} - ${formatDate(row?.end_date)}`;
 
         return `
-          <article class="border rounded p-2">
-            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+          <article class="border-start border-4 border-warning rounded-3 ps-3 pe-2 py-2 bg-body-tertiary">
+            <div class="mb-1">
               <span class="badge ${escapeHtml(badgeClass)}">${escapeHtml(reasonName)}</span>
             </div>
-            <div class="small text-secondary">Период: ${escapeHtml(period)}</div>
+            <div class="small text-secondary"><i class="bi bi-calendar-range me-1"></i>${escapeHtml(period)}</div>
           </article>
         `;
       })
@@ -697,7 +697,7 @@ export function createCrewViewController(deps) {
       actualHoursElement.textContent = '00:00';
       normHoursElement.textContent = '00:00';
       deviationHoursElement.textContent = '+00:00';
-      deviationHoursElement.className = 'fw-semibold badge text-bg-success';
+      deviationHoursElement.className = 'fw-semibold badge fs-6 px-3 py-2 text-bg-success';
       return;
     }
 
@@ -731,7 +731,7 @@ export function createCrewViewController(deps) {
     actualHoursElement.textContent = formatMinutesAsClock(actualMinutes);
     normHoursElement.textContent = formatMinutesAsClock(normMinutes);
     deviationHoursElement.textContent = formatSignedMinutesAsClock(deviationMinutes);
-    deviationHoursElement.className = `fw-semibold badge ${getDeviationClassByThreshold(deviationMinutes)}`;
+    deviationHoursElement.className = `fw-semibold badge fs-6 px-3 py-2 ${getDeviationClassByThreshold(deviationMinutes)}`;
   }
 
   return {

@@ -3,6 +3,7 @@ import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml } from './helpers.js';
 import { employeesState } from './state.js';
 import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 export async function loadEmployees(container) {
   const { data, error } = await supabase
@@ -108,14 +109,15 @@ export function renderEmployeesTable(container, explicitEmptyMessage) {
           <td data-label="Активен">${item.is_active ? 'Да' : 'Не'}</td>
           <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
-              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="profile" data-id="${item.id}" title="Профил" aria-label="Профил"><i class="bi bi-person-vcard"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-first-name="${escapeHtml(item.first_name ?? '')}" data-last-name="${escapeHtml(item.last_name ?? '')}" data-position-id="${item.position_id ?? ''}" data-active="${item.is_active ? 'true' : 'false'}" data-photo-url="${escapeHtml(item.photo_url ?? '')}" data-psych-expiry="${escapeHtml(item.psychological_assessment_expiry ?? '')}" data-medical-expiry="${escapeHtml(item.medical_certificate_expiry ?? '')}" data-license-expiry="${escapeHtml(item.license_expiry ?? '')}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="profile" data-id="${item.id}" data-bs-toggle="tooltip" data-bs-title="Профил" aria-label="Профил"><i class="bi bi-person-vcard"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-first-name="${escapeHtml(item.first_name ?? '')}" data-last-name="${escapeHtml(item.last_name ?? '')}" data-position-id="${item.position_id ?? ''}" data-active="${item.is_active ? 'true' : 'false'}" data-photo-url="${escapeHtml(item.photo_url ?? '')}" data-psych-expiry="${escapeHtml(item.psychological_assessment_expiry ?? '')}" data-medical-expiry="${escapeHtml(item.medical_certificate_expiry ?? '')}" data-license-expiry="${escapeHtml(item.license_expiry ?? '')}" data-bs-toggle="tooltip" data-bs-title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
             </div>
           </td>
         </tr>
       `;
     })
     .join('');
+  initTooltips(tableBody);
 }
 
 function syncEmployeesFilterOptions(container) {

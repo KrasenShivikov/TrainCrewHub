@@ -3,6 +3,7 @@ import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml } from './helpers.js';
 import { documentsState } from './state.js';
 import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 export async function loadDocumentCategories(container) {
   const { data, error } = await supabase
@@ -121,7 +122,7 @@ export function renderDocumentCategoriesTable(container, explicitEmptyMessage) {
             data-category-action="edit"
             data-id="${item.id}"
             data-name="${escapeHtml(item.name || '')}"
-            title="Редакция" aria-label="Редакция"
+            data-bs-toggle="tooltip" data-bs-title="Редакция" aria-label="Редакция"
             style="background:transparent;width:1.6rem;height:1.6rem;"
           ><i class="bi bi-pencil" style="font-size:0.78rem;"></i></button>
           <button
@@ -129,12 +130,13 @@ export function renderDocumentCategoriesTable(container, explicitEmptyMessage) {
             class="btn btn-sm p-0 lh-1 flex-shrink-0 ${isActive ? 'text-white border-0 opacity-75' : 'text-danger border-0'}"
             data-category-action="delete"
             data-id="${item.id}"
-            title="Изтрий" aria-label="Изтрий"
+            data-bs-toggle="tooltip" data-bs-title="Изтрий" aria-label="Изтрий"
             style="background:transparent;width:1.6rem;height:1.6rem;"
           ><i class="bi bi-trash" style="font-size:0.78rem;"></i></button>
         </div>`;
     })
   ].join('');
+  if (menu) initTooltips(menu);
 }
 
 export function renderDocumentsTable(container, explicitEmptyMessage) {
@@ -238,14 +240,14 @@ export function renderDocumentsTable(container, explicitEmptyMessage) {
                   data-document-action="preview"
                   data-title="${escapeHtml(item.title || '')}"
                   data-url="${escapeHtml(item.document_url || '')}"
-                  title="Преглед" aria-label="Преглед"
+                  data-bs-toggle="tooltip" data-bs-title="Преглед" aria-label="Преглед"
                 ><i class="bi bi-eye"></i></button>
                 <a
                   href="${escapeHtml(item.document_url || '#')}"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="btn btn-sm btn-outline-secondary"
-                  title="Отвори файла" aria-label="Отвори файла"
+                  data-bs-toggle="tooltip" data-bs-title="Отвори файла" aria-label="Отвори файла"
                 ><i class="bi bi-box-arrow-up-right"></i></a>
                 <button
                   type="button"
@@ -257,14 +259,14 @@ export function renderDocumentsTable(container, explicitEmptyMessage) {
                   data-url="${escapeHtml(item.document_url || '')}"
                   data-storage-path="${escapeHtml(item.storage_path || '')}"
                   data-notes="${escapeHtml(item.notes || '')}"
-                  title="Редакция" aria-label="Редакция"
+                  data-bs-toggle="tooltip" data-bs-title="Редакция" aria-label="Редакция"
                 ><i class="bi bi-pencil"></i></button>
                 <button
                   type="button"
                   class="btn btn-sm btn-outline-danger"
                   data-document-action="delete"
                   data-id="${item.id}"
-                  title="Изтрий" aria-label="Изтрий"
+                  data-bs-toggle="tooltip" data-bs-title="Изтрий" aria-label="Изтрий"
                 ><i class="bi bi-trash"></i></button>
               </div>
             </div>
@@ -273,4 +275,5 @@ export function renderDocumentsTable(container, explicitEmptyMessage) {
       `;
     })
     .join('');
+  if (cardsWrap) initTooltips(cardsWrap);
 }

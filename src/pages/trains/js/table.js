@@ -4,6 +4,7 @@ import { escapeHtml } from './helpers.js';
 import { trainsState } from './state.js';
 import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
 import { parseTimetableEntries } from './trainsTimetableEntries.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 export async function loadTrains(container) {
   const { data, error } = await supabase
@@ -96,7 +97,8 @@ export function renderTrainsTable(container, explicitEmptyMessage) {
                   data-action="preview-timetable"
                   data-preview-url="${escapeHtml(encodedUrl)}"
                   data-preview-label="${escapeHtml(encodedLabel)}"
-                  title="Преглед"
+                  data-bs-toggle="tooltip"
+                  data-bs-title="Преглед"
                   aria-label="Преглед"
                 ><i class="bi bi-eye"></i></button>
               </div>
@@ -115,14 +117,15 @@ export function renderTrainsTable(container, explicitEmptyMessage) {
           <td data-label="Разписание">${timetableHtml}</td>
           <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
-              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-number="${escapeHtml(item.number ?? '')}" data-origin-station="${escapeHtml(item.origin_station ?? '')}" data-destination-station="${escapeHtml(item.destination_station ?? '')}" data-departure-time="${escapeHtml(item.departure_time ?? '')}" data-arrival-time="${escapeHtml(item.arrival_time ?? '')}" data-timetable-url="${escapeHtml(encodeURIComponent(item.timetable_url ?? ''))}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${item.id}" data-number="${escapeHtml(item.number ?? '')}" data-origin-station="${escapeHtml(item.origin_station ?? '')}" data-destination-station="${escapeHtml(item.destination_station ?? '')}" data-departure-time="${escapeHtml(item.departure_time ?? '')}" data-arrival-time="${escapeHtml(item.arrival_time ?? '')}" data-timetable-url="${escapeHtml(encodeURIComponent(item.timetable_url ?? ''))}" data-bs-toggle="tooltip" data-bs-title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}" data-bs-toggle="tooltip" data-bs-title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>
       `;
     })
     .join('');
+  initTooltips(tableBody);
 }
 
 function syncTrainFilterOptions(container) {

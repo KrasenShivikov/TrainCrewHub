@@ -1,6 +1,7 @@
 import { escapeHtml, getEmployeeDisplayName } from './helpers.js';
 import { userProfilesState } from './state.js';
 import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 export function renderUserProfilesTable(container, explicitEmptyMessage) {
   const tableBody = container.querySelector('#user-profiles-table-body');
@@ -71,10 +72,10 @@ export function renderUserProfilesTable(container, explicitEmptyMessage) {
           <td data-label="Служител">${escapeHtml(employeeName)}</td>
           <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
-              <button type="button" class="btn btn-sm btn-outline-secondary" data-user-profile-action="view" data-id="${row.id}" title="Преглед" aria-label="Преглед"><i class="bi bi-eye"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-primary" data-user-profile-action="edit" data-id="${row.id}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-user-profile-action="view" data-id="${row.id}" data-bs-toggle="tooltip" data-bs-title="Преглед" aria-label="Преглед"><i class="bi bi-eye"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-primary" data-user-profile-action="edit" data-id="${row.id}" data-bs-toggle="tooltip" data-bs-title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
               ${userProfilesState.isAdmin ? `
-                <button type="button" class="btn btn-sm btn-outline-warning" data-user-profile-action="reset-password" data-id="${row.id}" title="Reset парола" aria-label="Reset парола"><i class="bi bi-key"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-warning" data-user-profile-action="reset-password" data-id="${row.id}" data-bs-toggle="tooltip" data-bs-title="Reset парола" aria-label="Reset парола"><i class="bi bi-key"></i></button>
               ` : ''}
             </div>
           </td>
@@ -82,6 +83,7 @@ export function renderUserProfilesTable(container, explicitEmptyMessage) {
       `;
     })
     .join('');
+  initTooltips(tableBody);
 }
 
 export function syncEmployeeOptions(container) {

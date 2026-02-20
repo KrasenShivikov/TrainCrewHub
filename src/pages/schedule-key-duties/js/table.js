@@ -3,6 +3,7 @@ import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml, formatInterval } from './helpers.js';
 import { scheduleKeyDutiesState } from './state.js';
 import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
+import { initTooltips } from '../../../utils/tooltips.js';
 
 const DUTY_SELECT = 'id, name, notes, duty_type_id, schedule_key_id, start_time, end_time, second_day, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, duty_types(name), schedule_key_duties(schedule_key_id, schedule_keys(name)), duty_trains(train_id, sequence_order, trains(number))';
 
@@ -140,10 +141,10 @@ export function renderScheduleKeyDutiesTable(container, explicitEmptyMessage) {
           <td data-label="Времетраене">${escapeHtml(formatInterval(item.duration_interval))}</td>
           <td class="text-end" data-label="">
             <div class="d-inline-flex gap-2">
-              <button type="button" class="btn btn-sm btn-outline-secondary" data-duty-action="profile" data-id="${item.id}" title="Профил" aria-label="Профил"><i class="bi bi-person-vcard"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" data-duty-action="trains" data-id="${item.id}" data-name="${escapeHtml(item.name ?? '')}" title="Влакове" aria-label="Влакове"><i class="bi bi-train-front"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-primary" data-duty-action="edit" data-id="${item.id}" title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-danger" data-duty-action="delete" data-id="${item.id}" title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-duty-action="profile" data-id="${item.id}" data-bs-toggle="tooltip" data-bs-title="Профил" aria-label="Профил"><i class="bi bi-person-vcard"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-duty-action="trains" data-id="${item.id}" data-name="${escapeHtml(item.name ?? '')}" data-bs-toggle="tooltip" data-bs-title="Влакове" aria-label="Влакове"><i class="bi bi-train-front"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-primary" data-duty-action="edit" data-id="${item.id}" data-bs-toggle="tooltip" data-bs-title="Редакция" aria-label="Редакция"><i class="bi bi-pencil"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-duty-action="delete" data-id="${item.id}" data-bs-toggle="tooltip" data-bs-title="Изтрий" aria-label="Изтрий"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>
@@ -151,6 +152,7 @@ export function renderScheduleKeyDutiesTable(container, explicitEmptyMessage) {
       }
     )
     .join('');
+  initTooltips(dutiesBody);
 }
 
 export async function persistScheduleKeyDutiesOrder() {

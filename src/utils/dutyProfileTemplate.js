@@ -97,7 +97,8 @@ export function buildDutyProfileContent({
               data-duty-profile-action="preview-attachment"
               data-url="${escapeHtml(url)}"
               data-label="${escapeHtml(label)}"
-              title="Преглед: ${escapeHtml(label)}"
+              data-bs-toggle="tooltip"
+              data-bs-title="Преглед: ${escapeHtml(label)}"
               aria-label="Преглед: ${escapeHtml(label)}"
             >
               👁
