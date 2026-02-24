@@ -9,6 +9,10 @@ import { resetCategoryForm, resetDocumentForm } from './documentsForms.js';
 
 const DOCUMENTS_BUCKET = 'documents-files';
 
+function hasAffectedRows(rows) {
+  return Array.isArray(rows) && rows.length > 0;
+}
+
 export async function refreshDocumentsData(container) {
   await loadDocumentCategories(container);
   await loadDocuments(container);
@@ -30,17 +34,20 @@ export async function saveCategory(container) {
   saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Запис...';
 
   let error = null;
+  let affectedRows = null;
   if (id) {
-    ({ error } = await supabase
+    ({ data: affectedRows, error } = await supabase
       .from('document_categories')
       .update({ name, updated_at: new Date().toISOString() })
-      .eq('id', id));
+      .eq('id', id)
+      .select('id'));
   } else {
     const { data: userData } = await supabase.auth.getUser();
     const createdFrom = userData?.user?.id ?? userData?.user?.email ?? 'web_app';
-    ({ error } = await supabase
+    ({ data: affectedRows, error } = await supabase
       .from('document_categories')
-      .insert({ name, created_from: createdFrom }));
+      .insert({ name, created_from: createdFrom })
+      .select('id'));
   }
 
   saveButton.disabled = false;
@@ -53,6 +60,11 @@ export async function saveCategory(container) {
     }
 
     showToast(error.message, 'error');
+    return;
+  }
+
+  if (id && !hasAffectedRows(affectedRows)) {
+    showToast('Нямаш права да редактираш тази категория.', 'warning');
     return;
   }
 
@@ -90,6 +102,7 @@ export async function saveDocument(container) {
   let error = null;
   let documentUrl = existingUrl;
   let storagePath = existingStoragePath;
+  let affectedRows = null;
 
   if (selectedFile) {
     const uploaded = await uploadDocumentFile(selectedFile);
@@ -105,7 +118,7 @@ export async function saveDocument(container) {
   }
 
   if (id) {
-    ({ error } = await supabase
+    ({ data: affectedRows, error } = await supabase
       .from('documents')
       .update({
         title,
@@ -115,11 +128,12 @@ export async function saveDocument(container) {
         notes,
         updated_at: new Date().toISOString()
       })
-      .eq('id', id));
+      .eq('id', id)
+      .select('id'));
   } else {
     const { data: userData } = await supabase.auth.getUser();
     const createdFrom = userData?.user?.id ?? userData?.user?.email ?? 'web_app';
-    ({ error } = await supabase
+    ({ data: affectedRows, error } = await supabase
       .from('documents')
       .insert({
         title,
@@ -128,7 +142,8 @@ export async function saveDocument(container) {
         storage_path: storagePath,
         notes,
         created_from: createdFrom
-      }));
+      })
+      .select('id'));
   }
 
   saveButton.disabled = false;
@@ -139,6 +154,14 @@ export async function saveDocument(container) {
       await supabase.storage.from(DOCUMENTS_BUCKET).remove([storagePath]);
     }
     showToast(error.message, 'error');
+    return;
+  }
+
+  if (id && !hasAffectedRows(affectedRows)) {
+    if (selectedFile && storagePath) {
+      await supabase.storage.from(DOCUMENTS_BUCKET).remove([storagePath]);
+    }
+    showToast('Нямаш права да редактираш този документ.', 'warning');
     return;
   }
 
@@ -177,13 +200,22 @@ export async function deleteCategory(container, categoryId) {
     return;
   }
 
-  const { error } = await supabase.from('document_categories').delete().eq('id', categoryId);
+  const { data: affectedRows, error } = await supabase
+    .from('document_categories')
+    .delete()
+    .eq('id', categoryId)
+    .select('id');
 
   deleteButton.disabled = false;
   deleteButton.innerHTML = originalText;
 
   if (error) {
     showToast(error.message, 'error');
+    return;
+  }
+
+  if (!hasAffectedRows(affectedRows)) {
+    showToast('Нямаш права да изтриеш тази категория.', 'warning');
     return;
   }
 
@@ -204,13 +236,22 @@ export async function deleteDocument(container, documentId) {
     .eq('id', documentId)
     .maybeSingle();
 
-  const { error } = await supabase.from('documents').delete().eq('id', documentId);
+  const { data: affectedRows, error } = await supabase
+    .from('documents')
+    .delete()
+    .eq('id', documentId)
+    .select('id');
 
   deleteButton.disabled = false;
   deleteButton.innerHTML = originalText;
 
   if (error) {
     showToast(error.message, 'error');
+    return;
+  }
+
+  if (!hasAffectedRows(affectedRows)) {
+    showToast('Нямаш права да изтриеш този документ.', 'warning');
     return;
   }
 
