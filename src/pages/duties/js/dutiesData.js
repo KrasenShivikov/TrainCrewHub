@@ -19,6 +19,10 @@ import { MAX_DUTY_FILE_ITEMS } from './dutiesConstants.js';
 import { getFriendlySupabaseErrorMessage } from './dutiesOptions.js';
 import { resetDutyForm } from './dutiesForms.js';
 
+function hasAffectedRows(rows) {
+  return Array.isArray(rows) && rows.length > 0;
+}
+
 export async function saveDuty(container) {
   const idInput = container.querySelector('#duty-id');
   const nameInput = container.querySelector('#duty-name');
@@ -127,10 +131,15 @@ export async function saveDuty(container) {
   };
 
   let error;
+  let affectedRows = null;
   let dutyId = editingId || null;
 
   if (editingId) {
-    ({ error } = await supabase.from('duties').update(payload).eq('id', editingId));
+    ({ data: affectedRows, error } = await supabase
+      .from('duties')
+      .update(payload)
+      .eq('id', editingId)
+      .select('id'));
   } else {
     const { data: userData } = await supabase.auth.getUser();
     const createdFrom = userData?.user?.id ?? userData?.user?.email ?? 'web_app';
@@ -164,6 +173,14 @@ export async function saveDuty(container) {
       await removeDutyAttachmentObjects(uploadedObjectPaths);
     }
     showToast(getFriendlySupabaseErrorMessage(error), 'error');
+    return;
+  }
+
+  if (editingId && !hasAffectedRows(affectedRows)) {
+    if (uploadedObjectPaths.length) {
+      await removeDutyAttachmentObjects(uploadedObjectPaths);
+    }
+    showToast('Нямаш права да редактираш тази повеска.', 'warning');
     return;
   }
 
@@ -207,12 +224,21 @@ export async function deleteDuty(id, container) {
     return;
   }
 
-  const { error } = await supabase.from('duties').delete().eq('id', id);
+  const { data: affectedRows, error } = await supabase
+    .from('duties')
+    .delete()
+    .eq('id', id)
+    .select('id');
   deleteButton.disabled = false;
   deleteButton.innerHTML = originalDeleteText;
 
   if (error) {
     showToast(error.message, 'error');
+    return;
+  }
+
+  if (!hasAffectedRows(affectedRows)) {
+    showToast('Нямаш права да изтриеш тази повеска.', 'warning');
     return;
   }
 
@@ -230,6 +256,25 @@ export async function deleteDuty(id, container) {
 }
 
 async function syncDutyScheduleKeys(dutyId, scheduleKeyIds) {
+  const normalizedTarget = [...new Set((scheduleKeyIds || []).map(String).filter(Boolean))].sort();
+  const { data: existingRows, error: existingError } = await supabase
+    .from('schedule_key_duties')
+    .select('schedule_key_id')
+    .eq('duty_id', dutyId);
+
+  if (existingError) {
+    return existingError;
+  }
+
+  const normalizedExisting = [...new Set((existingRows || []).map((row) => String(row?.schedule_key_id || '')).filter(Boolean))].sort();
+  const isSame =
+    normalizedExisting.length === normalizedTarget.length &&
+    normalizedExisting.every((value, index) => value === normalizedTarget[index]);
+
+  if (isSame) {
+    return null;
+  }
+
   const { error: clearError } = await supabase
     .from('schedule_key_duties')
     .delete()
@@ -239,7 +284,7 @@ async function syncDutyScheduleKeys(dutyId, scheduleKeyIds) {
     return clearError;
   }
 
-  const payload = scheduleKeyIds.map((scheduleKeyId) => ({
+  const payload = normalizedTarget.map((scheduleKeyId) => ({
     duty_id: dutyId,
     schedule_key_id: scheduleKeyId
   }));
@@ -249,6 +294,29 @@ async function syncDutyScheduleKeys(dutyId, scheduleKeyIds) {
 }
 
 async function syncDutyTrains(dutyId, trainIds) {
+  const normalizedTarget = [...new Set((trainIds || []).map(String).filter(Boolean))];
+  const { data: existingRows, error: existingError } = await supabase
+    .from('duty_trains')
+    .select('train_id, sequence_order')
+    .eq('duty_id', dutyId)
+    .order('sequence_order', { ascending: true });
+
+  if (existingError) {
+    return existingError;
+  }
+
+  const normalizedExisting = (existingRows || [])
+    .map((row) => String(row?.train_id || ''))
+    .filter(Boolean);
+
+  const isSame =
+    normalizedExisting.length === normalizedTarget.length &&
+    normalizedExisting.every((value, index) => value === normalizedTarget[index]);
+
+  if (isSame) {
+    return null;
+  }
+
   const { error: clearError } = await supabase
     .from('duty_trains')
     .delete()
@@ -258,11 +326,11 @@ async function syncDutyTrains(dutyId, trainIds) {
     return clearError;
   }
 
-  if (!trainIds.length) {
+  if (!normalizedTarget.length) {
     return null;
   }
 
-  const payload = trainIds.map((trainId, index) => ({
+  const payload = normalizedTarget.map((trainId, index) => ({
     duty_id: dutyId,
     train_id: trainId,
     sequence_order: index + 1

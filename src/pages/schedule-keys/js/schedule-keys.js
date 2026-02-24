@@ -192,9 +192,14 @@ async function saveScheduleKey(container) {
   };
 
   let error;
+  let affectedRows = null;
 
   if (editingId) {
-    ({ error } = await supabase.from('schedule_keys').update(payload).eq('id', editingId));
+    ({ data: affectedRows, error } = await supabase
+      .from('schedule_keys')
+      .update(payload)
+      .eq('id', editingId)
+      .select('id'));
   } else {
     const { data: userData } = await supabase.auth.getUser();
     const createdFrom = userData?.user?.email ?? 'web_app';
@@ -206,6 +211,11 @@ async function saveScheduleKey(container) {
 
   if (error) {
     showToast(getFriendlyScheduleKeyErrorMessage(error), 'error');
+    return;
+  }
+
+  if (editingId && Array.isArray(affectedRows) && affectedRows.length === 0) {
+    showToast('Нямаш права да редактираш този ключ-график.', 'warning');
     return;
   }
 
@@ -249,12 +259,21 @@ async function deleteScheduleKey(id, container) {
   deleteButton.disabled = true;
   deleteButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Изтриване...';
 
-  const { error } = await supabase.from('schedule_keys').delete().eq('id', id);
+  const { data: affectedRows, error } = await supabase
+    .from('schedule_keys')
+    .delete()
+    .eq('id', id)
+    .select('id');
   deleteButton.disabled = false;
   deleteButton.innerHTML = originalDeleteText;
 
   if (error) {
     showToast(getFriendlyScheduleKeyErrorMessage(error), 'error');
+    return;
+  }
+
+  if (Array.isArray(affectedRows) && affectedRows.length === 0) {
+    showToast('Нямаш права да изтриеш този ключ-график.', 'warning');
     return;
   }
 

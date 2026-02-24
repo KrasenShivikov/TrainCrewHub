@@ -59,13 +59,23 @@ export async function deleteSelectedPlannedDuties(container, reloadCallback) {
   deleteButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Изтриване...';
 
   let deleteError = null;
+  let deletedCount = 0;
+  let deniedCount = 0;
   for (let index = 0; index < idsToDelete.length; index += 200) {
     const chunk = idsToDelete.slice(index, index + 200);
-    const { error } = await supabase.from('planned_duties').delete().in('id', chunk);
+    const { data: deletedRows, error } = await supabase
+      .from('planned_duties')
+      .delete()
+      .in('id', chunk)
+      .select('id');
     if (error) {
       deleteError = error;
       break;
     }
+
+    const affected = Array.isArray(deletedRows) ? deletedRows.length : 0;
+    deletedCount += affected;
+    deniedCount += Math.max(0, chunk.length - affected);
   }
 
   deleteButton.disabled = false;
@@ -76,10 +86,20 @@ export async function deleteSelectedPlannedDuties(container, reloadCallback) {
     return;
   }
 
-  const deletedCount = idsToDelete.length;
+  if (deletedCount === 0) {
+    showToast('Нямаш права да изтриеш избраните планирания.', 'warning');
+    return;
+  }
+
   plannedDutiesState.selectedIds = [];
   closeModal(container.querySelector('#planned-duty-bulk-delete-modal'));
   await reloadCallback();
+
+  if (deniedCount > 0) {
+    showToast(`Изтрити планирания: ${deletedCount}. Пропуснати (без права): ${deniedCount}.`, 'warning');
+    return;
+  }
+
   showToast(`Изтрити планирания: ${deletedCount}.`, 'success');
 }
 

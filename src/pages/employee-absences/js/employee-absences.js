@@ -205,9 +205,14 @@ async function saveEmployeeAbsence(container) {
   };
 
   let error;
+  let affectedRows = null;
 
   if (editingId) {
-    ({ error } = await supabase.from('employee_absences').update(payload).eq('id', editingId));
+    ({ data: affectedRows, error } = await supabase
+      .from('employee_absences')
+      .update(payload)
+      .eq('id', editingId)
+      .select('id'));
   } else {
     const { data: userData } = await supabase.auth.getUser();
     const createdFrom = userData?.user?.email ?? 'web_app';
@@ -219,6 +224,11 @@ async function saveEmployeeAbsence(container) {
 
   if (error) {
     showToast(error.message, 'error');
+    return;
+  }
+
+  if (editingId && Array.isArray(affectedRows) && affectedRows.length === 0) {
+    showToast('Нямаш права да редактираш това отсъствие.', 'warning');
     return;
   }
 
@@ -258,13 +268,22 @@ async function deleteEmployeeAbsence(id, container) {
   deleteButton.disabled = true;
   deleteButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Изтриване...';
 
-  const { error } = await supabase.from('employee_absences').delete().eq('id', id);
+  const { data: affectedRows, error } = await supabase
+    .from('employee_absences')
+    .delete()
+    .eq('id', id)
+    .select('id');
 
   deleteButton.disabled = false;
   deleteButton.innerHTML = originalDeleteText;
 
   if (error) {
     showToast(error.message, 'error');
+    return;
+  }
+
+  if (Array.isArray(affectedRows) && affectedRows.length === 0) {
+    showToast('Нямаш права да изтриеш това отсъствие.', 'warning');
     return;
   }
 

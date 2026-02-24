@@ -74,6 +74,10 @@ export function getFriendlySupabaseErrorMessage(error) {
     normalized.includes('violates row-level security policy') ||
     String(error?.code || '') === '42501';
 
+  if (isRlsError && normalized.includes('schedule_key_duties')) {
+    return 'Нямаш права да свързваш ключ-графици към повески. Свържи се с администратор.';
+  }
+
   if (isRlsError && normalized.includes('duty_trains')) {
     return 'Нямаш права да свързваш влакове към повески. Свържи се с администратор.';
   }

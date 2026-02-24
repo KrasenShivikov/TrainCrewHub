@@ -367,9 +367,14 @@ async function savePlannedDuty(container) {
   };
 
   let error;
+  let affectedRows = null;
 
   if (editingId) {
-    ({ error } = await supabase.from('planned_duties').update(payload).eq('id', editingId));
+    ({ data: affectedRows, error } = await supabase
+      .from('planned_duties')
+      .update(payload)
+      .eq('id', editingId)
+      .select('id'));
   } else {
     const { data: userData } = await supabase.auth.getUser();
     const createdFrom = userData?.user?.email ?? 'web_app';
@@ -386,6 +391,11 @@ async function savePlannedDuty(container) {
     }
 
     showToast(error.message, 'error');
+    return;
+  }
+
+  if (editingId && Array.isArray(affectedRows) && affectedRows.length === 0) {
+    showToast('Нямаш права да редактираш това планиране.', 'warning');
     return;
   }
 
@@ -425,13 +435,22 @@ async function deletePlannedDuty(id, container) {
   deleteButton.disabled = true;
   deleteButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Изтриване...';
 
-  const { error } = await supabase.from('planned_duties').delete().eq('id', id);
+  const { data: affectedRows, error } = await supabase
+    .from('planned_duties')
+    .delete()
+    .eq('id', id)
+    .select('id');
 
   deleteButton.disabled = false;
   deleteButton.innerHTML = originalDeleteText;
 
   if (error) {
     showToast(error.message, 'error');
+    return;
+  }
+
+  if (Array.isArray(affectedRows) && affectedRows.length === 0) {
+    showToast('Нямаш права да изтриеш това планиране.', 'warning');
     return;
   }
 

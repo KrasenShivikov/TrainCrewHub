@@ -28,6 +28,7 @@ export async function persistDutiesOrder() {
       .from('duties')
       .update({ display_order: index + 1 })
       .eq('id', item.id)
+      .select('id')
   );
 
   const results = await Promise.all(updates);
@@ -35,6 +36,12 @@ export async function persistDutiesOrder() {
 
   if (failed?.error) {
     showToast(failed.error.message, 'error');
+    return false;
+  }
+
+  const denied = results.find((result) => Array.isArray(result.data) && result.data.length === 0);
+  if (denied) {
+    showToast('Нямаш права да променяш подредбата на повеските.', 'warning');
     return false;
   }
 

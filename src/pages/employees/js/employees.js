@@ -362,6 +362,7 @@ async function saveEmployee(container) {
   let error;
   let employeeId = editingId || null;
   let photoPath = currentPhotoPath;
+  let affectedRows = null;
 
   if (editingId) {
     if (photoFile) {
@@ -376,7 +377,11 @@ async function saveEmployee(container) {
     }
 
     payload.photo_url = photoPath;
-    ({ error } = await supabase.from('employees').update(payload).eq('id', editingId));
+    ({ data: affectedRows, error } = await supabase
+      .from('employees')
+      .update(payload)
+      .eq('id', editingId)
+      .select('id'));
   } else {
     const { data: userData } = await supabase.auth.getUser();
     const createdFrom = userData?.user?.email ?? 'web_app';
@@ -401,7 +406,8 @@ async function saveEmployee(container) {
       const { error: updatePhotoError } = await supabase
         .from('employees')
         .update({ photo_url: uploadedPhotoPath, updated_at: new Date().toISOString() })
-        .eq('id', employeeId);
+        .eq('id', employeeId)
+        .select('id');
 
       error = updatePhotoError;
       photoPath = uploadedPhotoPath;
@@ -413,6 +419,11 @@ async function saveEmployee(container) {
 
   if (error) {
     showToast(error.message, 'error');
+    return;
+  }
+
+  if (editingId && Array.isArray(affectedRows) && affectedRows.length === 0) {
+    showToast('Нямаш права да редактираш този служител.', 'warning');
     return;
   }
 
@@ -462,13 +473,22 @@ async function deleteEmployee(id, container) {
   deleteButton.disabled = true;
   deleteButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Изтриване...';
 
-  const { error } = await supabase.from('employees').delete().eq('id', id);
+  const { data: affectedRows, error } = await supabase
+    .from('employees')
+    .delete()
+    .eq('id', id)
+    .select('id');
 
   deleteButton.disabled = false;
   deleteButton.innerHTML = originalDeleteText;
 
   if (error) {
     showToast(error.message, 'error');
+    return;
+  }
+
+  if (Array.isArray(affectedRows) && affectedRows.length === 0) {
+    showToast('Нямаш права да изтриеш този служител.', 'warning');
     return;
   }
 

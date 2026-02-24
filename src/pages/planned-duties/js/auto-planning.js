@@ -141,12 +141,13 @@ export async function saveAutoPlannedDuties(container, reloadCallback) {
   }
 
   if (overwriteExisting) {
-    const { error: deleteError } = await supabase
+    const { data: deletedRows, error: deleteError } = await supabase
       .from('planned_duties')
       .delete()
       .eq('employee_id', employeeId)
       .gte('date', dateFrom)
-      .lte('date', dateTo);
+      .lte('date', dateTo)
+      .select('id');
 
     if (deleteError) {
       saveButton.disabled = false;
@@ -154,16 +155,33 @@ export async function saveAutoPlannedDuties(container, reloadCallback) {
       showToast(deleteError.message, 'error');
       return;
     }
+
+    const deletedCount = Array.isArray(deletedRows) ? deletedRows.length : 0;
+    if (existingDatesCount > 0 && deletedCount === 0) {
+      saveButton.disabled = false;
+      saveButton.innerHTML = originalText;
+      showToast('Нямаш права да презапишеш съществуващото планиране за този служител.', 'warning');
+      return;
+    }
   }
 
   let insertError = null;
+  let insertedCount = 0;
+  let insertDeniedCount = 0;
   for (let index = 0; index < payload.length; index += 200) {
     const chunk = payload.slice(index, index + 200);
-    const { error } = await supabase.from('planned_duties').insert(chunk);
+    const { data: insertedRows, error } = await supabase
+      .from('planned_duties')
+      .insert(chunk)
+      .select('id');
     if (error) {
       insertError = error;
       break;
     }
+
+    const affected = Array.isArray(insertedRows) ? insertedRows.length : 0;
+    insertedCount += affected;
+    insertDeniedCount += Math.max(0, chunk.length - affected);
   }
 
   saveButton.disabled = false;
@@ -174,18 +192,34 @@ export async function saveAutoPlannedDuties(container, reloadCallback) {
     return;
   }
 
+  if (insertedCount === 0) {
+    showToast('Нямаш права да създаваш планирания.', 'warning');
+    return;
+  }
+
   closeModal(container.querySelector('#planned-duty-auto-modal'));
   resetAutoPlanForm(container);
   await reloadCallback();
 
-  const createdCount = payload.length;
+  const createdCount = insertedCount;
   if (overwriteExisting) {
+    if (insertDeniedCount > 0) {
+      showToast(`Създадени записи: ${createdCount}. Пропуснати (без права): ${insertDeniedCount}.`, 'warning');
+      return;
+    }
+
     showToast(`Създадени записи: ${createdCount}. Презаписани дати: ${existingDatesCount}.`, 'success');
     return;
   }
 
   if (skippedCount > 0) {
-    showToast(`Създадени: ${createdCount}. Пропуснати (вече съществуват за датата): ${skippedCount}.`, 'success');
+    const deniedSuffix = insertDeniedCount > 0 ? ` Пропуснати (без права): ${insertDeniedCount}.` : '';
+    showToast(`Създадени: ${createdCount}. Пропуснати (вече съществуват за датата): ${skippedCount}.${deniedSuffix}`, insertDeniedCount > 0 ? 'warning' : 'success');
+    return;
+  }
+
+  if (insertDeniedCount > 0) {
+    showToast(`Създадени записи: ${createdCount}. Пропуснати (без права): ${insertDeniedCount}.`, 'warning');
     return;
   }
 

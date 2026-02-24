@@ -343,10 +343,11 @@ async function saveUserProfile(container) {
     payload.employee_id = employeeId || null;
   }
 
-  const { error } = await supabase
+  const { data: affectedRows, error } = await supabase
     .from('user_profiles')
     .update(payload)
-    .eq('id', id);
+    .eq('id', id)
+    .select('id');
 
   if (saveButton) {
     saveButton.disabled = false;
@@ -360,6 +361,11 @@ async function saveUserProfile(container) {
     }
 
     showToast(error.message, 'error');
+    return;
+  }
+
+  if (Array.isArray(affectedRows) && affectedRows.length === 0) {
+    showToast('Нямаш права да редактираш този профил.', 'warning');
     return;
   }
 

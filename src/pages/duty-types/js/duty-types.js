@@ -114,9 +114,14 @@ async function saveDutyType(container) {
   saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Запис...';
 
   let error;
+  let affectedRows = null;
 
   if (editingId) {
-    ({ error } = await supabase.from('duty_types').update({ name }).eq('id', editingId));
+    ({ data: affectedRows, error } = await supabase
+      .from('duty_types')
+      .update({ name })
+      .eq('id', editingId)
+      .select('id'));
   } else {
     const { data: userData } = await supabase.auth.getUser();
     const createdFrom = userData?.user?.email ?? 'web_app';
@@ -133,6 +138,11 @@ async function saveDutyType(container) {
     }
 
     showToast(error.message, 'error');
+    return;
+  }
+
+  if (editingId && Array.isArray(affectedRows) && affectedRows.length === 0) {
+    showToast('Нямаш права да редактираш този тип.', 'warning');
     return;
   }
 
@@ -183,7 +193,11 @@ async function deleteDutyType(id, container) {
     return;
   }
 
-  const { error } = await supabase.from('duty_types').delete().eq('id', id);
+  const { data: affectedRows, error } = await supabase
+    .from('duty_types')
+    .delete()
+    .eq('id', id)
+    .select('id');
 
   deleteButton.disabled = false;
   deleteButton.innerHTML = originalDeleteText;
@@ -195,6 +209,11 @@ async function deleteDutyType(id, container) {
     }
 
     showToast(error.message, 'error');
+    return;
+  }
+
+  if (Array.isArray(affectedRows) && affectedRows.length === 0) {
+    showToast('Нямаш права да изтриеш този тип.', 'warning');
     return;
   }
 
