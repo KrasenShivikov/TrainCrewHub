@@ -366,7 +366,9 @@ export async function applyResourceActionGuards(container, resource) {
 
   const createSelectors = [
     'button[id^="open-create-"]',
+    'a[id^="open-create-"]',
     'button[id^="open-add-"]',
+    'a[id^="open-add-"]',
 
     // Planned duties page
 
@@ -378,6 +380,9 @@ export async function applyResourceActionGuards(container, resource) {
   const editSelectors = [
     '[data-action="edit"]',
     '[data-duty-action="edit"]',
+    '[data-document-action="edit"]',
+    '[data-category-action="edit"]',
+    '[data-user-profile-action="edit"]',
     '[data-action="duplicate"]',
     '[data-duty-action="duplicate"]',
 
@@ -389,6 +394,9 @@ export async function applyResourceActionGuards(container, resource) {
   const deleteSelectors = [
     '[data-action="delete"]',
     '[data-duty-action="delete"]',
+    '[data-document-action="delete"]',
+    '[data-category-action="delete"]',
+    '[data-user-profile-action="delete"]',
 
     // Bulk delete buttons
     '#open-bulk-delete-planned-duty',
