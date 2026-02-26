@@ -83,7 +83,25 @@ html.print-preparing.print-hide-second-day .plan-schedule-sheet .second-day-col 
   html.print-compact .table > :not(caption) > * > * { padding: 0.12rem 0.2rem; }
   html.print-compact .plan-schedule-sheet .plan-schedule-table tbody th,
   html.print-compact .plan-schedule-sheet .plan-schedule-table tbody td { height: 28px; }
-  html.print-fit-one-page .plan-schedule-sheet { zoom: var(--plan-print-scale, 1); }
+  /* Fit-to-one-page: zoom the sheet and pre-expand its width so that after
+     applying zoom the sheet fills exactly the A4 printable width on every
+     computer, regardless of display scaling or browser zoom level.
+     Printable widths (10 mm margins each side):
+       landscape: 297 - 20 = 277 mm
+       portrait:  210 - 20 = 190 mm                                        */
+  html.print-fit-one-page .plan-schedule-sheet {
+    zoom: var(--plan-print-scale, 1);
+  }
+  html.print-fit-one-page .plan-schedule-sheet.print-landscape-page {
+    width:     calc(277mm / var(--plan-print-scale, 1)) !important;
+    min-width: calc(277mm / var(--plan-print-scale, 1)) !important;
+    max-width: calc(277mm / var(--plan-print-scale, 1)) !important;
+  }
+  html.print-fit-one-page .plan-schedule-sheet.print-portrait-page {
+    width:     calc(190mm / var(--plan-print-scale, 1)) !important;
+    min-width: calc(190mm / var(--plan-print-scale, 1)) !important;
+    max-width: calc(190mm / var(--plan-print-scale, 1)) !important;
+  }
   .plan-schedule-sheet section, .plan-schedule-sheet footer { break-inside: avoid; page-break-inside: avoid; }
   .plan-schedule-sheet .print-hide-train-only { display: none !important; }
   html.print-hide-second-day .plan-schedule-sheet .second-day-col { visibility: hidden !important; }

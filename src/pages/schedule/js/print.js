@@ -22,22 +22,31 @@ export function preparePrintLayout(container, { orientation, compact, fitOnePage
     return;
   }
 
-  // Reset scale first, then force reflow so measurement reflects compact classes
-  root.style.setProperty('--plan-print-scale', '1');
-  void sheet.offsetHeight;
-
-  const rect = sheet.getBoundingClientRect();
-  const contentWidthPx = Math.max(sheet.scrollWidth || 0, rect.width || 0, 1);
-  const contentHeightPx = Math.max(sheet.scrollHeight || 0, rect.height || 0, 1);
   const pageWidthMm = orientation === 'portrait' ? 210 : 297;
   const pageHeightMm = orientation === 'portrait' ? 297 : 210;
   const marginMm = 10;
   const printableWidthPx = (pageWidthMm - marginMm * 2) * MM_TO_PX;
   const printableHeightPx = (pageHeightMm - marginMm * 2) * MM_TO_PX;
 
-  const scaleX = printableWidthPx / contentWidthPx;
-  const scaleY = printableHeightPx / contentHeightPx;
-  const scale = Math.min(scaleX, scaleY, 1);
+  // Reset scale and pin the sheet to the exact A4 printable width.
+  // This normalises the layout across all computers regardless of
+  // Windows display scaling, browser zoom level or screen DPI, so the
+  // subsequent height measurement is always taken at an A4-width layout.
+  root.style.setProperty('--plan-print-scale', '1');
+  sheet.style.width    = printableWidthPx + 'px';
+  sheet.style.minWidth = printableWidthPx + 'px';
+  sheet.style.maxWidth = printableWidthPx + 'px';
+  void sheet.offsetHeight; // force reflow
+
+  const contentHeightPx = Math.max(sheet.scrollHeight || 0, 1);
+
+  // Width is already pinned to A4 – only the height axis can overflow.
+  const scale = Math.min(printableHeightPx / contentHeightPx, 1);
+
+  // Release the temporary width constraint before applying zoom scale.
+  sheet.style.width    = '';
+  sheet.style.minWidth = '';
+  sheet.style.maxWidth = '';
 
   root.style.setProperty('--plan-print-scale', String(Math.max(0.3, Number(scale.toFixed(3)))));
 }
