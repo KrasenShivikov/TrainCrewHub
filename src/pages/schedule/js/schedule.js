@@ -243,7 +243,9 @@ export async function renderSchedulePage(container) {
     closePrintModal();
     preparePrintLayout(container, { orientation, compact, fitOnePage });
     window.addEventListener('afterprint', cleanupPrintLayout, { once: true });
-    window.print();
+    // Double rAF ensures the browser commits inline style changes to layout
+    // before the print renderer reads them, preventing scale being ignored.
+    requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
   });
 
   confirmModalCloseButton?.addEventListener('click', () => {
