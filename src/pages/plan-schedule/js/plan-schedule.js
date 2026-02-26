@@ -5,6 +5,7 @@ import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { getDateFromQuery } from './helpers.js';
 import { preparePrintLayout, cleanupPrintLayout } from './print.js';
+import { generateSchedulePdf } from '../../../utils/generateSchedulePdf.js';
 import {
   renderBoards,
   renderAbsenceBoard,
@@ -25,6 +26,7 @@ export async function renderPlanSchedulePage(container) {
   const printModalClose = container.querySelector('#ps-print-modal-close');
   const printModalCancel = container.querySelector('#ps-print-modal-cancel');
   const printModalGo = container.querySelector('#ps-print-modal-go');
+  const pdfModalGo   = container.querySelector('#ps-pdf-modal-go');
   const dateFromQuery = getDateFromQuery();
 
   if (dateInput && dateFromQuery) {
@@ -64,6 +66,34 @@ export async function renderPlanSchedulePage(container) {
     // Double rAF ensures the browser commits inline style changes to layout
     // before the print renderer reads them, preventing scale being ignored.
     requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
+  });
+
+  pdfModalGo?.addEventListener('click', async () => {
+    const orientationInput = container.querySelector('input[name="ps-orientation"]:checked');
+    const compactInput     = container.querySelector('#ps-print-compact');
+
+    const orientation = orientationInput?.value === 'portrait' ? 'portrait' : 'landscape';
+    const compact     = compactInput?.checked ?? true;
+    const date        = dateInput?.value || new Date().toISOString().split('T')[0];
+
+    pdfModalGo.disabled = true;
+    pdfModalGo.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Генерира...';
+
+    try {
+      await generateSchedulePdf(container, {
+        orientation,
+        compact,
+        hideSecondDay: false,
+        filename: `план-график-${date}.pdf`,
+      });
+      closePrintModal();
+      showToast('PDF файлът е готов.', 'success');
+    } catch {
+      showToast('Грешка при генериране на PDF.', 'error');
+    } finally {
+      pdfModalGo.disabled = false;
+      pdfModalGo.innerHTML = '<i class="bi bi-file-earmark-pdf me-1"></i>Изтегли PDF';
+    }
   });
 
   await loadPlanScheduleData(container);

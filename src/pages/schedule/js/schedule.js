@@ -15,6 +15,7 @@ import {
   setupModalEscapeHandler
 } from './helpers.js';
 import { preparePrintLayout, cleanupPrintLayout } from './print.js';
+import { generateSchedulePdf } from '../../../utils/generateSchedulePdf.js';
 import {
   buildAssignmentsByDuty,
   renderBoards,
@@ -185,6 +186,7 @@ export async function renderSchedulePage(container) {
   const printModalClose = container.querySelector('#sch-print-modal-close');
   const printModalCancel = container.querySelector('#sch-print-modal-cancel');
   const printModalGo = container.querySelector('#sch-print-modal-go');
+  const pdfModalGo    = container.querySelector('#sch-pdf-modal-go');
   const confirmModalCloseButton = container.querySelector('#schedule-confirm-modal-close');
   const confirmModalCancelButton = container.querySelector('#schedule-confirm-modal-cancel');
   const confirmModalConfirmButton = container.querySelector('#schedule-confirm-modal-confirm');
@@ -246,6 +248,34 @@ export async function renderSchedulePage(container) {
     // Double rAF ensures the browser commits inline style changes to layout
     // before the print renderer reads them, preventing scale being ignored.
     requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
+  });
+
+  pdfModalGo?.addEventListener('click', async () => {
+    const orientationInput = container.querySelector('input[name="sch-orientation"]:checked');
+    const compactInput     = container.querySelector('#sch-print-compact');
+
+    const orientation = orientationInput?.value === 'portrait' ? 'portrait' : 'landscape';
+    const compact     = compactInput?.checked ?? true;
+    const date        = dateInput?.value || new Date().toISOString().split('T')[0];
+
+    pdfModalGo.disabled = true;
+    pdfModalGo.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Генерира...';
+
+    try {
+      await generateSchedulePdf(container, {
+        orientation,
+        compact,
+        hideSecondDay: true,
+        filename: `график-${date}.pdf`,
+      });
+      closePrintModal();
+      showToast('PDF файлът е готов.', 'success');
+    } catch {
+      showToast('Грешка при генериране на PDF.', 'error');
+    } finally {
+      pdfModalGo.disabled = false;
+      pdfModalGo.innerHTML = '<i class="bi bi-file-earmark-pdf me-1"></i>Изтегли PDF';
+    }
   });
 
   confirmModalCloseButton?.addEventListener('click', () => {
