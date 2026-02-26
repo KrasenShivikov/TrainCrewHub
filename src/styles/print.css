@@ -8,6 +8,18 @@ html.print-preparing.print-hide-second-day .plan-schedule-sheet .second-day-col 
 @media print {
   @page plan-landscape { size: A4 landscape; margin: 10mm; }
   @page plan-portrait  { size: A4 portrait;  margin: 10mm; }
+
+  html, body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .plan-schedule-sheet,
+  .plan-schedule-sheet * {
+    font-family: "Segoe UI", Arial, sans-serif !important;
+    text-rendering: geometricPrecision;
+  }
+
   .plan-schedule-sheet.print-landscape-page { page: plan-landscape; }
   .plan-schedule-sheet.print-portrait-page  { page: plan-portrait; }
 

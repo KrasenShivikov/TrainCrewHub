@@ -28,17 +28,19 @@ export function preparePrintLayout(container, { orientation, compact, fitOnePage
   void sheet.offsetHeight;
 
   const rect = sheet.getBoundingClientRect();
+  const contentWidthPx = Math.max(sheet.scrollWidth || 0, rect.width || 0, 1);
+  const contentHeightPx = Math.max(sheet.scrollHeight || 0, rect.height || 0, 1);
   const pageWidthMm = orientation === 'portrait' ? 210 : 297;
   const pageHeightMm = orientation === 'portrait' ? 297 : 210;
   const marginMm = 10;
   const printableWidthPx = (pageWidthMm - marginMm * 2) * MM_TO_PX;
   const printableHeightPx = (pageHeightMm - marginMm * 2) * MM_TO_PX;
 
-  const scaleX = printableWidthPx / Math.max(rect.width, 1);
-  const scaleY = printableHeightPx / Math.max(rect.height, 1);
+  const scaleX = printableWidthPx / contentWidthPx;
+  const scaleY = printableHeightPx / contentHeightPx;
   const scale = Math.min(scaleX, scaleY, 1);
 
-  root.style.setProperty('--plan-print-scale', String(Math.max(0.3, scale)));
+  root.style.setProperty('--plan-print-scale', String(Math.max(0.3, Number(scale.toFixed(3)))));
 }
 
 export function cleanupPrintLayout() {
