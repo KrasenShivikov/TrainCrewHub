@@ -139,6 +139,20 @@ export function buildAssignmentsByDuty(rows, absenceByEmployeeId) {
     map.set(row.duty_id, entry);
   });
 
+  // Also add ALL employees from absenceByEmployeeId who didn't appear in
+  // plannedRows at all — they are absent but have no planned duty for the day.
+  if (absenceByEmployeeId) {
+    absenceByEmployeeId.forEach((absentEntry, employeeId) => {
+      if (!absentAssignmentsByEmployeeId.has(employeeId)) {
+        absentAssignmentsByEmployeeId.set(employeeId, {
+          employeeId: absentEntry.employeeId,
+          employeeName: absentEntry.employeeName,
+          reason: absentEntry.reasons.join(', ')
+        });
+      }
+    });
+  }
+
   return {
     assignmentsByDuty: map,
     absentAssignments: Array.from(absentAssignmentsByEmployeeId.values()).sort((left, right) =>
@@ -186,28 +200,30 @@ export function renderAbsenceBoard(root, absentAssignments) {
     return;
   }
 
-  const rows = absentAssignments
-    .map((item) => `
-      <tr>
-        <td>${escapeHtml(item.employeeName || '')}</td>
-        <td>${escapeHtml(item.reason || '')}</td>
-      </tr>
-    `)
+  const COLS = 5;
+  // Pad to a full row of 5
+  const padded = [...absentAssignments];
+  const remainder = padded.length % COLS;
+  if (remainder !== 0) {
+    for (let i = 0; i < COLS - remainder; i++) {
+      padded.push(null);
+    }
+  }
+
+  const cards = padded
+    .map((item) => item
+      ? `<article class="absence-card">
+           <span class="absence-card-name">${escapeHtml(item.employeeName || '')}</span>
+           <span class="absence-card-reason">${escapeHtml(item.reason || '')}</span>
+         </article>`
+      : `<article class="absence-card absence-card-empty">
+           <span class="absence-card-name"></span>
+           <span class="absence-card-reason"></span>
+         </article>`
+    )
     .join('');
 
-  root.innerHTML = `
-    <table class="table table-bordered align-middle mb-0 plan-schedule-table">
-      <thead>
-        <tr>
-          <th scope="col">Служител</th>
-          <th scope="col">Причина</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows}
-      </tbody>
-    </table>
-  `;
+  root.innerHTML = `<div class="absence-cards-grid">${cards}</div>`;
 }
 
 export function setMessage(container, { hint, error, empty }) {

@@ -98,13 +98,15 @@ const routes = {
     render: renderPlanSchedulePage,
     title: 'TrainCrewHub / План График',
     screenResource: 'page_plan_schedule',
-    resource: 'planned_duties'
+    resource: 'planned_duties',
+    wide: true
   },
   '/schedule': {
     render: renderSchedulePage,
     title: 'TrainCrewHub / График',
     screenResource: 'page_schedule',
-    resource: 'actual_duties'
+    resource: 'actual_duties',
+    wide: true
   },
   '/schedule-key-duties': {
     render: renderScheduleKeyDutiesPage,
@@ -233,7 +235,16 @@ async function renderCurrentRoute() {
   }
 
   const config = getRouteConfig(resolvedPath);
-  
+
+  // Switch between fixed-width and full-width container per route
+  if (config.wide) {
+    contentRoot.classList.remove('container');
+    contentRoot.classList.add('container-fluid');
+  } else {
+    contentRoot.classList.remove('container-fluid');
+    contentRoot.classList.add('container');
+  }
+
   document.title = config.title;
   await config.render(contentRoot);
   if (config.resource) {

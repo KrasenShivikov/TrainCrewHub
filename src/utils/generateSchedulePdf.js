@@ -149,13 +149,46 @@ const PDF_PRINT_STYLES = `
     margin-top: 0.5rem !important; background: #fff;
   }
   #plan-schedule-absence-section h3 { margin-bottom: 0.3rem !important; font-size: 12px; letter-spacing: 0.2px; }
-  #plan-schedule-absence .plan-schedule-table { margin-bottom: 0 !important; table-layout: fixed; width: 100%; }
-  #plan-schedule-absence .plan-schedule-table th,
-  #plan-schedule-absence .plan-schedule-table td { padding: 0.18rem 0.28rem; height: 24px; vertical-align: middle; font-size: 10px; }
-  #plan-schedule-absence .plan-schedule-table thead th { font-weight: 700; }
-  #plan-schedule-absence .plan-schedule-table th:first-child,
-  #plan-schedule-absence .plan-schedule-table td:first-child { width: 220px; }
-  #plan-schedule-absence .plan-schedule-table tbody tr:nth-child(even) { background: rgba(0,0,0,0.03); }
+  #plan-schedule-absence .absence-cards-grid {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 3px !important;
+  }
+  #plan-schedule-absence .absence-card {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    align-items: center !important;
+    border: 1px solid #b0b8c8 !important;
+    border-radius: 2px !important;
+    overflow: hidden !important;
+    background: #fff !important;
+    min-height: 20px !important;
+  }
+  #plan-schedule-absence .absence-card-empty {
+    border-style: dashed !important;
+    border-color: #d0d7de !important;
+    background: #f8f9fa !important;
+  }
+  #plan-schedule-absence .absence-card-name {
+    padding: 2px 4px !important;
+    font-size: 8px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    word-break: break-word !important;
+    border-right: 1px solid #b0b8c8 !important;
+  }
+  #plan-schedule-absence .absence-card-reason {
+    padding: 2px 4px !important;
+    font-size: 7.5px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    min-width: 40px !important;
+    max-width: 70px !important;
+    color: #4a5568 !important;
+  }
+  #plan-schedule-absence .absence-card-empty .absence-card-name,
+  #plan-schedule-absence .absence-card-empty .absence-card-reason { color: transparent !important; }
 `;
 
 /**
