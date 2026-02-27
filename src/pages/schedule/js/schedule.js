@@ -150,23 +150,24 @@ function formatMinutesAsHours(minutes) {
   return m > 0 ? `${h}:${String(m).padStart(2, '0')}` : `${h}`;
 }
 
-function renderNormDisplay(container) {
+function renderNormDisplay(container, selectedDate) {
   const el = container.querySelector('#schedule-norm-display');
   if (!el) {
     return;
   }
 
-  const today = new Date();
-  const todayIso = toIsoDateFromDate(today);
-  const monthKey = toMonthKey(today);
+  const referenceDate = selectedDate ? new Date(selectedDate) : new Date();
+  const referenceDateIso = toIsoDateFromDate(referenceDate);
+  const monthKey = toMonthKey(referenceDate);
   const { startDate } = getMonthBounds(monthKey);
-  const workdays = countBulgarianWorkdays(startDate, todayIso);
+  const workdays = countBulgarianWorkdays(startDate, referenceDateIso);
   const normMinutes = workdays * 8 * 60;
   const normFormatted = formatMinutesAsHours(normMinutes);
+  const label = selectedDate ? `Норма до ${formatDateBg(selectedDate)}` : 'Норма до днес';
 
   el.innerHTML = `
     <div class="schedule-print-norm-inner">
-      <div class="schedule-print-norm-label">Норма до днес</div>
+      <div class="schedule-print-norm-label">${label}</div>
       <div class="schedule-print-norm-value">${normFormatted} ч.</div>
       <div class="schedule-print-norm-sub">${workdays} работни дни</div>
     </div>
@@ -176,7 +177,6 @@ function renderNormDisplay(container) {
 export async function renderSchedulePage(container) {
   container.innerHTML = pageHtml;
   applyPrintDepotLabel(container, '#schedule-print-left-label');
-  renderNormDisplay(container);
 
   const dateInput = container.querySelector('#schedule-date');
   const confirmFromTimetableButton = container.querySelector('#schedule-confirm-from-timetable');
@@ -198,10 +198,13 @@ export async function renderSchedulePage(container) {
     dateInput.value = new Date().toISOString().split('T')[0];
   }
 
+  renderNormDisplay(container, dateInput?.value || '');
+
   attachScheduleHandlers(container);
   await loadEmployeeOptions(container);
 
   dateInput?.addEventListener('change', async () => {
+    renderNormDisplay(container, dateInput.value || '');
     await loadScheduleData(container);
   });
 
