@@ -219,6 +219,17 @@ body.schedule-dragging .plan-schedule-sheet { user-select: none; }
 }
 .schedule-drag-btn:hover .schedule-drag-handle { opacity: 0.65; }
 body.schedule-dragging .schedule-drag-btn { cursor: grabbing; }
+.schedule-cascade-icon {
+  font-size: 0.78rem;
+  opacity: 0.55;
+  margin-left: 0.18rem;
+  color: var(--bs-info);
+  pointer-events: auto;
+  cursor: help;
+}
+@media print {
+  .schedule-cascade-icon { display: none; }
+}
 
 /* Bigger drop zone for assignment cells */
 .schedule-page-root .plan-schedule-table td[data-drop-duty-id] {

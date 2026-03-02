@@ -130,6 +130,7 @@ export async function saveDutyForScheduleKey(container, { resetCreateDutyForm } 
     '#schedule-key-duty-create-end-time'
   );
   const secondDayInput = container.querySelector('#schedule-key-duty-create-second-day');
+  const parentDutyInput = container.querySelector('#schedule-key-duty-create-parent-duty');
   const breakStartInput = getDutyField(
     container,
     '#schedule-key-duty-create-break-start',
@@ -152,6 +153,7 @@ export async function saveDutyForScheduleKey(container, { resetCreateDutyForm } 
   const startTime = startInput?.value || '';
   const endTime = endInput?.value || '';
   const secondDay = secondDayInput.checked;
+  const parentDutyId = secondDay && parentDutyInput?.value ? parentDutyInput.value : null;
   const breakStartTime = breakStartInput?.value || '00:00';
   const breakEndTime = breakEndInput?.value || '00:00';
   const notes = container.querySelector('#schedule-key-duty-create-notes').value.trim() || null;
@@ -197,6 +199,7 @@ export async function saveDutyForScheduleKey(container, { resetCreateDutyForm } 
       start_time: startTime,
       end_time: endTime,
       second_day: secondDay,
+      parent_duty_id: parentDutyId,
       break_start_time: breakStartTime,
       break_end_time: breakEndTime,
       notes,
@@ -253,6 +256,9 @@ export async function saveEditedDutyForScheduleKey(container) {
     '#schedule-key-duty-edit-end-time'
   )?.value || '';
   const secondDay = container.querySelector('#schedule-key-duty-edit-second-day').checked;
+  const parentDutyId = secondDay
+    ? (container.querySelector('#schedule-key-duty-edit-parent-duty')?.value || null)
+    : null;
   const breakStartTime = getDutyField(
     container,
     '#schedule-key-duty-edit-break-start',
@@ -302,6 +308,7 @@ export async function saveEditedDutyForScheduleKey(container) {
       start_time: startTime,
       end_time: endTime,
       second_day: secondDay,
+      parent_duty_id: parentDutyId,
       break_start_time: breakStartTime,
       break_end_time: breakEndTime,
       notes

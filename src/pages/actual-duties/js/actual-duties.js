@@ -919,12 +919,55 @@ async function addSelectedPlannedToActual(container) {
     return;
   }
 
-  const payload = selectedRows.map((row) => ({
+  const selectedEmployeeIds = [...new Set(selectedRows.map((row) => row?.employee_id).filter(Boolean))];
+  const selectedDates = [...new Set(selectedRows.map((row) => row?.date).filter(Boolean))].sort();
+
+  let absenceRows = [];
+  if (selectedEmployeeIds.length && selectedDates.length) {
+    const rangeStart = selectedDates[0];
+    const rangeEnd = selectedDates[selectedDates.length - 1];
+
+    const { data: absencesData, error: absencesError } = await supabase
+      .from('employee_absences')
+      .select('employee_id, start_date, end_date')
+      .in('employee_id', selectedEmployeeIds)
+      .lte('start_date', rangeEnd)
+      .gte('end_date', rangeStart);
+
+    if (absencesError) {
+      showToast(absencesError.message, 'error');
+      return;
+    }
+
+    absenceRows = absencesData || [];
+  }
+
+  const isEmployeeAbsentOnDate = (employeeId, date) => {
+    if (!employeeId || !date) {
+      return false;
+    }
+
+    return absenceRows.some((absence) => (
+      absence?.employee_id === employeeId
+      && String(absence?.start_date || '') <= date
+      && String(absence?.end_date || '') >= date
+    ));
+  };
+
+  const rowsToUpsert = selectedRows.filter((row) => !isEmployeeAbsentOnDate(row.employee_id, row.date));
+  const skippedAbsentCount = selectedRows.length - rowsToUpsert.length;
+
+  const payload = rowsToUpsert.map((row) => ({
     date: row.date,
     employee_id: row.employee_id,
     duty_id: row.duty_id,
     assignment_role: row.assignment_role || 'conductor'
   }));
+
+  if (!payload.length) {
+    showToast('Всички избрани записи са пропуснати, защото служителите са отбелязани като отсъстващи.', 'warning');
+    return;
+  }
 
   const originalText = addButton.innerHTML;
   addButton.disabled = true;
@@ -954,7 +997,8 @@ async function addSelectedPlannedToActual(container) {
   const attemptedCount = payload.length;
   closeModal(container.querySelector('#actual-duty-bulk-add-modal'));
   await loadActualDuties(container);
-  showToast(`Обработени записи: ${attemptedCount}. Съществуващите са пропуснати.`, 'success');
+  const skippedInfo = skippedAbsentCount > 0 ? ` Пропуснати отсъстващи: ${skippedAbsentCount}.` : '';
+  showToast(`Обработени записи: ${attemptedCount}. Съществуващите са пропуснати.${skippedInfo}`, 'success');
 }
 
 function updateGoToScheduleState(button, selectedDate) {

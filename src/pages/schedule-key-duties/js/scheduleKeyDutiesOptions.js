@@ -1,6 +1,31 @@
 import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml } from './helpers.js';
+import { scheduleKeyDutiesState } from './state.js';
+
+export function refreshParentDutyOptions(container) {
+  const duties = scheduleKeyDutiesState.duties || [];
+  const editId = container.querySelector('#schedule-key-duty-edit-id')?.value || '';
+
+  const toOption = (item) => {
+    const time = (item.start_time || '').slice(0, 5);
+    const label = time ? `${escapeHtml(item.name || '-')} (${time})` : escapeHtml(item.name || '-');
+    return `<option value="${item.id}">${label}</option>`;
+  };
+
+  const emptyOption = '<option value="">Без (не е свързана)</option>';
+
+  const createSelect = container.querySelector('#schedule-key-duty-create-parent-duty');
+  if (createSelect) {
+    createSelect.innerHTML = emptyOption + duties.map(toOption).join('');
+  }
+
+  const editSelect = container.querySelector('#schedule-key-duty-edit-parent-duty');
+  if (editSelect) {
+    const filtered = editId ? duties.filter((d) => d.id !== editId) : duties;
+    editSelect.innerHTML = emptyOption + filtered.map(toOption).join('');
+  }
+}
 
 export async function loadDutyTypeOptions(container) {
   const createSelect = container.querySelector('#schedule-key-duty-create-type');

@@ -107,6 +107,14 @@ export function resetCreateDutyForm(container) {
   setDutyFieldValue(container, '', '#schedule-key-duty-create-start', '#schedule-key-duty-create-start-time');
   setDutyFieldValue(container, '', '#schedule-key-duty-create-end', '#schedule-key-duty-create-end-time');
   container.querySelector('#schedule-key-duty-create-second-day').checked = false;
+  const createParentWrap = container.querySelector('#schedule-key-duty-create-parent-duty-wrap');
+  if (createParentWrap) {
+    createParentWrap.classList.add('d-none');
+  }
+  const createParentSelect = container.querySelector('#schedule-key-duty-create-parent-duty');
+  if (createParentSelect) {
+    createParentSelect.value = '';
+  }
   setDutyFieldValue(
     container,
     '00:00',
@@ -159,6 +167,14 @@ export function openEditDutyModal(container, dutyId) {
     '#schedule-key-duty-edit-end-time'
   );
   container.querySelector('#schedule-key-duty-edit-second-day').checked = Boolean(duty.second_day);
+  const editParentWrap = container.querySelector('#schedule-key-duty-edit-parent-duty-wrap');
+  if (editParentWrap) {
+    editParentWrap.classList.toggle('d-none', !duty.second_day);
+  }
+  const editParentSelect = container.querySelector('#schedule-key-duty-edit-parent-duty');
+  if (editParentSelect) {
+    editParentSelect.value = duty.parent_duty_id || '';
+  }
   setDutyFieldValue(
     container,
     intervalToTimeInput(duty.break_start_time),

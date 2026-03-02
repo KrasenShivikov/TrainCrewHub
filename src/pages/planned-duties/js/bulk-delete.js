@@ -129,7 +129,45 @@ export async function addSelectedPlannedToActualDuties(container, reloadCallback
       assignment_role: row.assignment_role || 'conductor'
     }));
 
-  if (!payload.length) {
+  const selectedEmployeeIds = [...new Set(payload.map((row) => row?.employee_id).filter(Boolean))];
+  const selectedDates = [...new Set(payload.map((row) => row?.date).filter(Boolean))].sort();
+
+  let absenceRows = [];
+  if (selectedEmployeeIds.length && selectedDates.length) {
+    const rangeStart = selectedDates[0];
+    const rangeEnd = selectedDates[selectedDates.length - 1];
+
+    const { data: absencesData, error: absencesError } = await supabase
+      .from('employee_absences')
+      .select('employee_id, start_date, end_date')
+      .in('employee_id', selectedEmployeeIds)
+      .lte('start_date', rangeEnd)
+      .gte('end_date', rangeStart);
+
+    if (absencesError) {
+      showToast(absencesError.message, 'error');
+      return false;
+    }
+
+    absenceRows = absencesData || [];
+  }
+
+  const isEmployeeAbsentOnDate = (employeeId, date) => {
+    if (!employeeId || !date) {
+      return false;
+    }
+
+    return absenceRows.some((absence) => (
+      absence?.employee_id === employeeId
+      && String(absence?.start_date || '') <= date
+      && String(absence?.end_date || '') >= date
+    ));
+  };
+
+  const payloadWithoutAbsences = payload.filter((row) => !isEmployeeAbsentOnDate(row.employee_id, row.date));
+  const skippedAbsentCount = payload.length - payloadWithoutAbsences.length;
+
+  if (!payloadWithoutAbsences.length) {
     showToast('Избраните записи са невалидни за прехвърляне.', 'warning');
     return false;
   }
@@ -141,8 +179,8 @@ export async function addSelectedPlannedToActualDuties(container, reloadCallback
   }
 
   let upsertError = null;
-  for (let index = 0; index < payload.length; index += 200) {
-    const chunk = payload.slice(index, index + 200);
+  for (let index = 0; index < payloadWithoutAbsences.length; index += 200) {
+    const chunk = payloadWithoutAbsences.slice(index, index + 200);
     const { error } = await supabase
       .from('actual_duties')
       .upsert(chunk, { onConflict: 'date,employee_id,duty_id', ignoreDuplicates: true });
@@ -163,9 +201,10 @@ export async function addSelectedPlannedToActualDuties(container, reloadCallback
     return false;
   }
 
-  const movedCount = payload.length;
+  const movedCount = payloadWithoutAbsences.length;
   plannedDutiesState.selectedIds = [];
   await reloadCallback();
-  showToast(`Прехвърлени към Актуални: ${movedCount}. Съществуващите са пропуснати.`, 'success');
+  const skippedInfo = skippedAbsentCount > 0 ? ` Пропуснати отсъстващи: ${skippedAbsentCount}.` : '';
+  showToast(`Прехвърлени към Актуални: ${movedCount}. Съществуващите са пропуснати.${skippedInfo}`, 'success');
   return true;
 }

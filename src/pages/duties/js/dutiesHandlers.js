@@ -45,6 +45,14 @@ export function attachDutiesHandlers(container) {
   const attachmentFileInput = container.querySelector('#duty-attachment-file');
   const currentAttachmentsLinks = container.querySelector('#duty-current-attachments-links');
 
+  const secondDayCheckbox = container.querySelector('#duty-second-day');
+  secondDayCheckbox?.addEventListener('change', () => {
+    const parentDutyWrap = container.querySelector('#duty-parent-duty-wrap');
+    if (parentDutyWrap) {
+      parentDutyWrap.classList.toggle('d-none', !secondDayCheckbox.checked);
+    }
+  });
+
   createButton?.addEventListener('click', () => {
     resetDutyForm(container);
     openModal(dutyModal);

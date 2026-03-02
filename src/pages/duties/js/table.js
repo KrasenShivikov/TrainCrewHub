@@ -7,7 +7,7 @@ import { initTooltips } from '../../../utils/tooltips.js';
 export async function loadDuties(container) {
   const { data, error } = await supabase
     .from('duties')
-    .select('id, name, notes, duty_files, duty_type_id, start_time, end_time, second_day, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, duty_types(name), schedule_key_duties(schedule_key_id, schedule_keys(name)), duty_trains(train_id, sequence_order, trains(number))')
+    .select('id, name, notes, duty_files, duty_type_id, parent_duty_id, start_time, end_time, second_day, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, duty_types(name), schedule_key_duties(schedule_key_id, schedule_keys(name)), duty_trains(train_id, sequence_order, trains(number))')
     .order('display_order', { ascending: true })
     .order('name', { ascending: true });
 

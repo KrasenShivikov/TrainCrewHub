@@ -71,6 +71,22 @@ export function attachScheduleKeyDutiesHandlers(container) {
     await saveDutyForScheduleKey(container, { resetCreateDutyForm });
   });
 
+  const createSecondDay = container.querySelector('#schedule-key-duty-create-second-day');
+  createSecondDay?.addEventListener('change', () => {
+    const wrap = container.querySelector('#schedule-key-duty-create-parent-duty-wrap');
+    if (wrap) {
+      wrap.classList.toggle('d-none', !createSecondDay.checked);
+    }
+  });
+
+  const editSecondDay = container.querySelector('#schedule-key-duty-edit-second-day');
+  editSecondDay?.addEventListener('change', () => {
+    const wrap = container.querySelector('#schedule-key-duty-edit-parent-duty-wrap');
+    if (wrap) {
+      wrap.classList.toggle('d-none', !editSecondDay.checked);
+    }
+  });
+
   attachSearchInput?.addEventListener('input', () => {
     renderAttachDutyList(container);
   });

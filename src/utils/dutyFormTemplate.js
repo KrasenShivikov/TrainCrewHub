@@ -55,5 +55,13 @@ export function renderDutyFormFields({ idPrefix }) {
       <label for="${idPrefix}-notes" class="form-label">Бележки</label>
       <textarea id="${idPrefix}-notes" class="form-control" rows="3" placeholder="Въведи бележки (по избор)"></textarea>
     </div>
+
+    <div class="col-12 d-none" id="${idPrefix}-parent-duty-wrap">
+      <label for="${idPrefix}-parent-duty" class="form-label">Родителска повеска (за втори ден)</label>
+      <select id="${idPrefix}-parent-duty" class="form-select">
+        <option value="">Без (не е свързана)</option>
+      </select>
+      <div class="form-text">Избери повеската от предния ден, от която продължава тази повеска.</div>
+    </div>
   `;
 }

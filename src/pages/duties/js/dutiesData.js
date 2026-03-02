@@ -32,6 +32,7 @@ export async function saveDuty(container) {
   const startTimeInput = getDutyField(container, '#duty-start', '#duty-start-time');
   const endTimeInput = getDutyField(container, '#duty-end', '#duty-end-time');
   const secondDayInput = container.querySelector('#duty-second-day');
+  const parentDutyInput = container.querySelector('#duty-parent-duty');
   const breakStartInput = getDutyField(container, '#duty-break-start', '#duty-break-start-time');
   const breakEndInput = getDutyField(container, '#duty-break-end', '#duty-break-end-time');
   const notesInput = container.querySelector('#duty-notes');
@@ -52,6 +53,7 @@ export async function saveDuty(container) {
   const startTime = startTimeInput?.value || '';
   const endTime = endTimeInput?.value || '';
   const secondDay = secondDayInput.checked;
+  const parentDutyId = secondDay && parentDutyInput?.value ? parentDutyInput.value : null;
   const breakStartTime = breakStartInput?.value || '00:00';
   const breakEndTime = breakEndInput?.value || '00:00';
   const notes = notesInput.value.trim() || null;
@@ -124,6 +126,7 @@ export async function saveDuty(container) {
     start_time: startTime,
     end_time: endTime,
     second_day: secondDay,
+    parent_duty_id: parentDutyId,
     break_start_time: breakStartTime,
     break_end_time: breakEndTime,
     notes,

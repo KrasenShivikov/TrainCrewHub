@@ -21,6 +21,14 @@ export function populateDutyForm(container, duty) {
   setDutyFieldValue(container, duty.startTime ?? '', '#duty-start', '#duty-start-time');
   setDutyFieldValue(container, duty.endTime ?? '', '#duty-end', '#duty-end-time');
   container.querySelector('#duty-second-day').checked = Boolean(duty.secondDay);
+  const parentDutyWrap = container.querySelector('#duty-parent-duty-wrap');
+  if (parentDutyWrap) {
+    parentDutyWrap.classList.toggle('d-none', !duty.secondDay);
+  }
+  const parentDutySelect = container.querySelector('#duty-parent-duty');
+  if (parentDutySelect) {
+    parentDutySelect.value = duty.parentDutyId || '';
+  }
   setDutyFieldValue(container, intervalToTimeInput(duty.breakStartTime), '#duty-break-start', '#duty-break-start-time');
   setDutyFieldValue(container, intervalToTimeInput(duty.breakEndTime), '#duty-break-end', '#duty-break-end-time');
   container.querySelector('#duty-notes').value = duty.notes ?? '';
@@ -48,6 +56,14 @@ export function resetDutyForm(container) {
   setDutyFieldValue(container, '', '#duty-start', '#duty-start-time');
   setDutyFieldValue(container, '', '#duty-end', '#duty-end-time');
   container.querySelector('#duty-second-day').checked = false;
+  const parentDutyWrap = container.querySelector('#duty-parent-duty-wrap');
+  if (parentDutyWrap) {
+    parentDutyWrap.classList.add('d-none');
+  }
+  const parentDutySelect = container.querySelector('#duty-parent-duty');
+  if (parentDutySelect) {
+    parentDutySelect.value = '';
+  }
   setDutyFieldValue(container, '00:00', '#duty-break-start', '#duty-break-start-time');
   setDutyFieldValue(container, '00:00', '#duty-break-end', '#duty-break-end-time');
   container.querySelector('#duty-notes').value = '';

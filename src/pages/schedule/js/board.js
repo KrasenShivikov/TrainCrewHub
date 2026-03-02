@@ -26,13 +26,15 @@ export function buildAssignmentsByDuty(rows, absentEmployeeIds) {
 
     const employeeName = getEmployeeName(row.employees);
     const resolvedRole = resolveActualDutyRole(row);
+    const duty = getDutyFromRow(row);
     const assignment = {
       id: row.id,
       employeeId: row.employee_id,
       role: resolvedRole,
       name: employeeName,
-      dutyName: getDutyFromRow(row)?.name || '',
-      date: row.date || ''
+      dutyName: duty?.name || '',
+      date: row.date || '',
+      cascade: Boolean(duty?.parent_duty_id)
     };
 
     if (resolvedRole === 'chief') {
@@ -250,8 +252,7 @@ function renderDutyBoard(root, duties, assignmentsByDuty, selectedDate, options 
           }
 
           const assignment = assignmentsByDuty.get(duty.id) || { conductors: [] };
-          const conductorCount = Array.isArray(assignment.conductors) ? assignment.conductors.length : 0;
-          return Math.max(maxRows, conductorCount);
+          return Math.max(maxRows, assignment.conductors.length);
         }, 0);
 
         conductorRowsCount = Math.min(configuredConductorRows, usedConductorRows);
@@ -275,7 +276,7 @@ function renderDutyBoard(root, duties, assignmentsByDuty, selectedDate, options 
                 ? options.conductorRowOffset
                 : 0;
               const sourceIndex = rowIndex - conductorOffset;
-              const conductorItem = sourceIndex >= 0 && Array.isArray(assignment.conductors)
+              const conductorItem = sourceIndex >= 0
                 ? assignment.conductors[sourceIndex]
                 : undefined;
               const dutyTypeName = getDutyTypeName(duty).toLowerCase();
@@ -320,7 +321,7 @@ function renderDutyBoard(root, duties, assignmentsByDuty, selectedDate, options 
         return tableHtml;
       }
 
-      const cardsHtml = renderPrintableDutyCards(normalized, assignmentsByDuty, configuredPrintConductorRowsCount, options);
+    const cardsHtml = renderPrintableDutyCards(normalized, assignmentsByDuty, configuredPrintConductorRowsCount, options);
 
       return `
         <div class="print-as-cards">
@@ -377,15 +378,13 @@ function renderPrintableDutyCards(duties, assignmentsByDuty, conductorRowsCount,
       }
 
       const assignment = assignmentsByDuty.get(duty.id) || { chiefs: [], conductors: [] };
-      const chiefValue = Array.isArray(assignment.chiefs)
-        ? assignment.chiefs.map((item) => item?.name || '').filter(Boolean).join(', ')
-        : '';
+      const chiefValue = assignment.chiefs.map((item) => item?.name || '').filter(Boolean).join(', ');
       const conductorRows = Array.from({ length: conductorRowsCount }, (_, rowIndex) => {
         const conductorOffset = Number.isInteger(options.conductorRowOffset) && options.conductorRowOffset > 0
           ? options.conductorRowOffset
           : 0;
         const sourceIndex = rowIndex - conductorOffset;
-        const value = Array.isArray(assignment.conductors) && sourceIndex >= 0
+        const value = sourceIndex >= 0
           ? (assignment.conductors[sourceIndex]?.name || '')
           : '';
         return `
@@ -437,7 +436,11 @@ function renderAssignmentItem(assignment, duty, selectedDate, options = {}) {
     return escapeHtml(assignment.name || '');
   }
 
-  return `<button type="button" class="btn btn-link p-0 text-decoration-none align-baseline schedule-drag-btn" draggable="true" data-actual-edit-id="${assignment.id}" data-actual-drag-id="${assignment.id}"><i class="bi bi-grip-vertical schedule-drag-handle"></i>${escapeHtml(assignment.name || '')}</button>`;
+  const cascadeBadge = assignment.cascade
+    ? `<i class="bi bi-link-45deg schedule-cascade-icon" title="Автоматично от родителска повеска"></i>`
+    : '';
+
+  return `<button type="button" class="btn btn-link p-0 text-decoration-none align-baseline schedule-drag-btn" draggable="true" data-actual-edit-id="${assignment.id}" data-actual-drag-id="${assignment.id}"><i class="bi bi-grip-vertical schedule-drag-handle"></i>${escapeHtml(assignment.name || '')}${cascadeBadge}</button>`;
 }
 
 function renderAddAssignmentButton(duty, selectedDate, options = {}) {
@@ -538,3 +541,5 @@ function chunkArray(items, chunkSize) {
   }
   return chunks;
 }
+
+

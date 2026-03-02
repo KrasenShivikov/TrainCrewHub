@@ -65,6 +65,33 @@ export async function loadScheduleKeyOptions(container) {
   select.innerHTML = options;
 }
 
+export async function loadParentDutyOptions(container) {
+  const select = container.querySelector('#duty-parent-duty');
+  if (!select) {
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from('duties')
+    .select('id, name, start_time, end_time')
+    .order('name', { ascending: true });
+
+  if (error) {
+    showToast(error.message, 'error');
+    return;
+  }
+
+  const options = (data || [])
+    .map((item) => {
+      const time = (item.start_time || '').slice(0, 5);
+      const label = time ? `${escapeHtml(item.name || '-')} (${time})` : escapeHtml(item.name || '-');
+      return `<option value="${item.id}">${label}</option>`;
+    })
+    .join('');
+
+  select.innerHTML = '<option value="">Без (не е свързана)</option>' + options;
+}
+
 export function getFriendlySupabaseErrorMessage(error) {
   const rawMessage = String(error?.message || '').trim();
   const normalized = rawMessage.toLowerCase();

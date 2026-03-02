@@ -2,10 +2,11 @@ import { supabase } from '../../../services/supabaseClient.js';
 import { showToast } from '../../../components/toast/toast.js';
 import { escapeHtml, formatInterval } from './helpers.js';
 import { scheduleKeyDutiesState } from './state.js';
+import { refreshParentDutyOptions } from './scheduleKeyDutiesOptions.js';
 import { bindPaginationButtons, paginateRows, syncPaginationUi } from '../../../utils/pagination.js';
 import { initTooltips } from '../../../utils/tooltips.js';
 
-const DUTY_SELECT = 'id, name, notes, duty_type_id, schedule_key_id, start_time, end_time, second_day, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, duty_types(name), schedule_key_duties(schedule_key_id, schedule_keys(name)), duty_trains(train_id, sequence_order, trains(number))';
+const DUTY_SELECT = 'id, name, notes, duty_type_id, parent_duty_id, schedule_key_id, start_time, end_time, second_day, break_start_time, break_end_time, break_duration_interval, duration_interval, display_order, duty_types(name), schedule_key_duties(schedule_key_id, schedule_keys(name)), duty_trains(train_id, sequence_order, trains(number))';
 
 export async function loadDutiesForScheduleKey(container) {
   const scheduleKeyId = scheduleKeyDutiesState.scheduleKeyId;
@@ -69,6 +70,7 @@ export async function loadDutiesForScheduleKey(container) {
   });
 
   renderScheduleKeyDutiesTable(container);
+  refreshParentDutyOptions(container);
 }
 
 export function renderScheduleKeyDutiesTable(container, explicitEmptyMessage) {
