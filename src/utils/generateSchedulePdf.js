@@ -16,7 +16,7 @@ const PDF_PRINT_STYLES = `
   .plan-schedule-sheet .plan-schedule-table thead th {
     background: #1a3a6b !important;
     color: #fff !important;
-    font-size: 9px !important;
+    font-size: 11px !important;
     text-align: center;
     padding: 4px 3px !important;
     border-color: #2a4a7b !important;
@@ -44,7 +44,7 @@ const PDF_PRINT_STYLES = `
     font-size: 8px !important;
     text-transform: uppercase;
     letter-spacing: 0.8px;
-    color: #4a5568 !important;
+    color: #1a3a6b !important;
     font-weight: 700;
   }
   .plan-schedule-sheet footer .border-bottom {
@@ -74,12 +74,25 @@ const PDF_PRINT_STYLES = `
     font-size: 1.25rem !important;
     margin-bottom: 0.15rem !important;
   }
-  .plan-schedule-sheet .schedule-sheet-title-wrap p { font-size: 0.78rem; color: #4a5568 !important; }
-  .plan-schedule-sheet .schedule-print-left-label {
-    display: block;
+  .plan-schedule-sheet .schedule-sheet-title-wrap p { font-size: 0.78rem; color: #1a3a6b !important; font-weight: 700; }
+  .plan-schedule-sheet .schedule-print-left-col {
+    display: flex;
+    flex-direction: column;
     grid-column: 1;
     justify-self: start;
     align-self: center;
+    gap: 1px;
+  }
+  .plan-schedule-sheet .schedule-print-company-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #1a3a6b;
+    letter-spacing: 0.4px;
+    line-height: 1.2;
+  }
+  .plan-schedule-sheet .schedule-print-left-label {
+    display: block;
     font-size: 11px;
     font-weight: 700;
     color: #1a3a6b;
@@ -93,9 +106,9 @@ const PDF_PRINT_STYLES = `
     text-align: right;
   }
   .plan-schedule-sheet .schedule-print-norm-inner { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
-  .plan-schedule-sheet .schedule-print-norm-label { font-size: 8px; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2; }
+  .plan-schedule-sheet .schedule-print-norm-label { font-size: 8px; color: #1a3a6b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2; }
   .plan-schedule-sheet .schedule-print-norm-value { font-size: 13px; font-weight: 700; color: #1a3a6b; line-height: 1.2; }
-  .plan-schedule-sheet .schedule-print-norm-sub   { font-size: 8px; color: #4a5568; line-height: 1.2; }
+  .plan-schedule-sheet .schedule-print-norm-sub   { font-size: 8px; color: #1a3a6b; font-weight: 700; line-height: 1.2; }
   .plan-schedule-sheet .print-duty-cards-grid {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -125,12 +138,12 @@ const PDF_PRINT_STYLES = `
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 8.8px;
+    font-size: 10.5px;
     flex-shrink: 0;
   }
   .plan-schedule-sheet .print-duty-card-empty .print-duty-card-title { background: #e2e6ea; color: transparent; }
   .plan-schedule-sheet .print-duty-card-note {
-    font-size: 8.5px; line-height: 1.2; color: #c0392b;
+    font-size: 8.5px; font-weight: 700; line-height: 1.2; color: #1a3a6b;
     border-bottom: 1px dashed #e5e7eb; padding: 2px 5px; margin: 0;
     min-height: 14px; text-align: left; word-break: break-word;
     max-height: calc(1.2em * 2); overflow: hidden; flex-shrink: 0;
