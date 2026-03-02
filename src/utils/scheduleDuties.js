@@ -1,6 +1,6 @@
 import { supabase } from '../services/supabaseClient.js';
 
-const DUTY_SELECT = 'id, name, notes, schedule_key_id, display_order, start_time, end_time, second_day, duty_types(name)';
+const DUTY_SELECT = 'id, name, notes, schedule_key_id, display_order, start_time, end_time, second_day, duty_types(name), duty_trains(train_id, sequence_order, trains(departure_time))';
 
 export async function loadDutiesForScheduleDate(selectedDate) {
   const { data: validScheduleKeys, error: scheduleKeysError } = await supabase

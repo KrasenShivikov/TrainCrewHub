@@ -165,7 +165,9 @@ export async function loadScheduleChangesSummary(dbClient, startDate, endDate, f
     const entries = eventsByDate.get(date) || [];
     entries.push({
       summary,
-      changedAt
+      changedAt,
+      oldDutyId: String(row?.old_duty_id || ''),
+      newDutyId: String(row?.new_duty_id || '')
     });
     eventsByDate.set(date, entries);
   });

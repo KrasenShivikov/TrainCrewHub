@@ -99,6 +99,8 @@ export function renderTrainsForDutyTable(container, explicitEmptyMessage) {
     return;
   }
 
+  const reorderEnabled = trainsForDutiesState.reorderEnabled !== false;
+
   emptyState.classList.add('d-none');
   trainsBody.innerHTML = pageItems
     .map((item, index) => {
@@ -117,8 +119,8 @@ export function renderTrainsForDutyTable(container, explicitEmptyMessage) {
         : '<span class="text-secondary">-</span>';
 
       return `
-        <tr>
-          <td class="text-center" data-label=""><button type="button" class="btn btn-sm btn-link p-0" data-reorder-train="${item.id}" style="cursor: grab;"><i class="bi bi-grip-vertical"></i></button></td>
+        <tr data-train-id="${item.id}" draggable="${reorderEnabled ? 'true' : 'false'}">
+          <td class="text-center text-secondary" data-label="" style="cursor: grab;">${reorderEnabled ? '<i class="bi bi-grip-vertical"></i>' : ''}</td>
           <td data-label="Номер">${escapeHtml(item.number ?? '-')}</td>
           <td data-label="Начална гара">${escapeHtml(item.origin_station ?? '-')}</td>
           <td data-label="Крайна гара">${escapeHtml(item.destination_station ?? '-')}</td>
@@ -136,6 +138,32 @@ export function renderTrainsForDutyTable(container, explicitEmptyMessage) {
     })
     .join('');
   initTooltips(trainsBody);
+}
+
+export async function persistTrainsForDutyOrder() {
+  const dutyId = trainsForDutiesState.dutyId;
+  const updates = trainsForDutiesState.trains.map((item, index) =>
+    supabase
+      .from('duty_trains')
+      .update({ sequence_order: index + 1 })
+      .eq('duty_id', dutyId)
+      .eq('train_id', item.id)
+  );
+
+  const results = await Promise.all(updates);
+  const failed = results.find((result) => result.error);
+
+  if (failed?.error) {
+    showToast(failed.error.message, 'error');
+    return false;
+  }
+
+  trainsForDutiesState.trains = trainsForDutiesState.trains.map((item, index) => ({
+    ...item,
+    sequence_order: index + 1
+  }));
+
+  return true;
 }
 
 export async function loadAttachTrainsCatalog(container) {

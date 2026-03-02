@@ -15,7 +15,8 @@ import {
   loadTrainsForDuty,
   renderTrainsForDutyTable,
   loadAttachTrainsCatalog,
-  renderAttachTrainsList
+  renderAttachTrainsList,
+  persistTrainsForDutyOrder
 } from './table.js';
 
 const TRAIN_TIMETABLES_BUCKET = 'train-timetables';
@@ -168,6 +169,81 @@ function attachTrainsForDutiesHandlers(container) {
       await deleteTrainFromDuty(container, trainId);
     }
     closeModal(deleteModal);
+  });
+
+  trainsBody?.addEventListener('dragstart', (event) => {
+    if (!trainsForDutiesState.reorderEnabled) {
+      return;
+    }
+
+    const row = event.target.closest('tr[data-train-id]');
+    if (!row) {
+      return;
+    }
+
+    trainsForDutiesState.draggedTrainId = row.getAttribute('data-train-id');
+    row.classList.add('table-active');
+  });
+
+  trainsBody?.addEventListener('dragend', (event) => {
+    if (!trainsForDutiesState.reorderEnabled) {
+      return;
+    }
+
+    const row = event.target.closest('tr[data-train-id]');
+    if (row) {
+      row.classList.remove('table-active');
+    }
+
+    trainsForDutiesState.draggedTrainId = null;
+  });
+
+  trainsBody?.addEventListener('dragover', (event) => {
+    if (!trainsForDutiesState.reorderEnabled) {
+      return;
+    }
+
+    const row = event.target.closest('tr[data-train-id]');
+    if (row) {
+      event.preventDefault();
+    }
+  });
+
+  trainsBody?.addEventListener('drop', async (event) => {
+    if (!trainsForDutiesState.reorderEnabled) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const targetRow = event.target.closest('tr[data-train-id]');
+    const draggedId = trainsForDutiesState.draggedTrainId;
+    if (!targetRow || !draggedId) {
+      return;
+    }
+
+    const targetId = targetRow.getAttribute('data-train-id');
+    if (!targetId || targetId === draggedId) {
+      return;
+    }
+
+    const fromIndex = trainsForDutiesState.trains.findIndex((item) => item.id === draggedId);
+    const toIndex = trainsForDutiesState.trains.findIndex((item) => item.id === targetId);
+    if (fromIndex < 0 || toIndex < 0) {
+      return;
+    }
+
+    const [moved] = trainsForDutiesState.trains.splice(fromIndex, 1);
+    trainsForDutiesState.trains.splice(toIndex, 0, moved);
+    renderTrainsForDutyTable(container);
+
+    const persisted = await persistTrainsForDutyOrder();
+    if (!persisted) {
+      await loadTrainsForDuty(container);
+      return;
+    }
+
+    showToast('Редът на влаковете е запазен.', 'success');
   });
 }
 

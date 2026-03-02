@@ -66,7 +66,8 @@ export function createCrewSnapshotController(deps) {
       crewCalendarState.pendingConfirmationDates = new Set();
       crewCalendarState.changeCountByDate = new Map();
       crewCalendarState.changeEventsByDate = new Map();
-      crewCalendarState.selectedDate = '';
+      crewCalendarState.dutyIdsByDate = new Map();
+      crewCalendarState.selectedDate = ''
       renderCrewCalendarAndDetails(container);
       setText(container, '#index-crew-last-updated', 'Липсва прикачен служител към профила.');
       return;
@@ -77,7 +78,7 @@ export function createCrewSnapshotController(deps) {
     const [plannedResponse, actualResponse, absencesResponse, publicationResponse, changeSummaryResponse] = await Promise.all([
       supabase
         .from('planned_duties')
-        .select('date, assignment_role, duties(name, start_time, end_time, second_day, break_start_time, break_end_time)')
+        .select('date, duty_id, assignment_role, duties(name, start_time, end_time, second_day, break_start_time, break_end_time)')
         .eq('employee_id', employeeId)
         .gte('date', startDate)
         .lte('date', endDate)
@@ -85,7 +86,7 @@ export function createCrewSnapshotController(deps) {
         .order('duty_id', { ascending: true }),
       supabase
         .from('actual_duties')
-        .select('id, date, assignment_role, reported_at, start_time_override, end_time_override, break_start_time_override, break_end_time_override, duties(name, start_time, end_time, second_day, break_start_time, break_end_time, duty_files, duty_trains(sequence_order, trains(number, timetable_url)))')
+        .select('id, date, duty_id, assignment_role, reported_at, start_time_override, end_time_override, break_start_time_override, break_end_time_override, duties(name, start_time, end_time, second_day, break_start_time, break_end_time, duty_files, duty_trains(sequence_order, trains(number, timetable_url)))')
         .eq('employee_id', employeeId)
         .gte('date', startDate)
         .lte('date', endDate)
@@ -125,8 +126,22 @@ export function createCrewSnapshotController(deps) {
     crewCalendarState.absenceRows = absencesResponse.data || [];
     crewCalendarState.confirmedDates = confirmedDateSet;
     crewCalendarState.pendingConfirmationDates = pendingConfirmationDateSet;
+    const dutyIdsByDate = new Map();
+    [...plannedRows, ...confirmedActualRows].forEach((row) => {
+      const date = normalizeIsoDateKey(row?.date);
+      const dutyId = String(row?.duty_id || '');
+      if (!date || !dutyId) {
+        return;
+      }
+
+      const ids = dutyIdsByDate.get(date) || new Set();
+      ids.add(dutyId);
+      dutyIdsByDate.set(date, ids);
+    });
+
     crewCalendarState.changeCountByDate = changeCountByDate;
     crewCalendarState.changeEventsByDate = changeEventsByDate;
+    crewCalendarState.dutyIdsByDate = dutyIdsByDate;
     renderCrewCalendarAndDetails(container);
     setText(container, '#index-crew-last-updated', `Последно обновяване: ${formatDateTime(new Date())}`);
   }

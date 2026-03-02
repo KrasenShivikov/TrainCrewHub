@@ -32,6 +32,7 @@ const crewCalendarState = {
   pendingConfirmationDates: new Set(),
   changeCountByDate: new Map(),
   changeEventsByDate: new Map(),
+  dutyIdsByDate: new Map(),
   editingActualDutyId: ''
 };
 

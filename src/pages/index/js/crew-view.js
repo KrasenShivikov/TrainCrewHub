@@ -630,17 +630,27 @@ export function createCrewViewController(deps) {
     }
 
     const changeEvents = crewCalendarState.changeEventsByDate.get(selectedDate) || [];
-    if (!changeEvents.length) {
-      changesBody.innerHTML = '<p class="text-secondary mb-0">Няма регистрирани промени за избрания ден.</p>';
+
+    if (!isDateConfirmed) {
+      changesBody.innerHTML = '<p class="text-secondary mb-0">Промените са видими след потвърждение на графика.</p>';
     } else {
-      changesBody.innerHTML = changeEvents
-        .map((eventItem) => `
-          <article class="border-start border-4 border-info rounded-3 ps-3 pe-2 py-2 bg-body-tertiary">
-            <div class="small fw-semibold">${escapeHtml(eventItem.summary || '-')}</div>
-            <div class="small text-secondary"><i class="bi bi-clock me-1"></i>${escapeHtml(eventItem.changedAt || '-')}</div>
-          </article>
-        `)
-        .join('');
+      const myDutyIds = crewCalendarState.dutyIdsByDate?.get(selectedDate) || new Set();
+      const filteredEvents = changeEvents.filter((eventItem) =>
+        myDutyIds.has(eventItem.oldDutyId) || myDutyIds.has(eventItem.newDutyId)
+      );
+
+      if (!filteredEvents.length) {
+        changesBody.innerHTML = '<p class="text-secondary mb-0">Няма регистрирани промени за избрания ден.</p>';
+      } else {
+        changesBody.innerHTML = filteredEvents
+          .map((eventItem) => `
+            <article class="border-start border-4 border-info rounded-3 ps-3 pe-2 py-2 bg-body-tertiary">
+              <div class="small fw-semibold">${escapeHtml(eventItem.summary || '-')}</div>
+              <div class="small text-secondary"><i class="bi bi-clock me-1"></i>${escapeHtml(eventItem.changedAt || '-')}</div>
+            </article>
+          `)
+          .join('');
+      }
     }
 
     const absenceRows = crewCalendarState.absenceRows
