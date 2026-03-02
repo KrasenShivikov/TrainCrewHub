@@ -131,6 +131,7 @@
 }
 
 .schedule-print-left-label { display: none; }
+.schedule-print-company-label { display: none; }
 .schedule-print-norm-display { display: none; }
 body.schedule-dragging { overflow: hidden; }
 body.schedule-dragging .plan-schedule-sheet { user-select: none; }

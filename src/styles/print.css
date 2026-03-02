@@ -40,7 +40,7 @@ html.print-preparing.print-hide-second-day .plan-schedule-sheet .second-day-col 
   .plan-schedule-sheet .plan-schedule-table thead th {
     background: #1a3a6b !important;
     color: #fff !important;
-    font-size: 9px !important;
+    font-size: 11px !important;
     text-align: center;
     padding: 4px 3px !important;
     border-color: #2a4a7b !important;
@@ -71,7 +71,7 @@ html.print-preparing.print-hide-second-day .plan-schedule-sheet .second-day-col 
     font-size: 8px !important;
     text-transform: uppercase;
     letter-spacing: 0.8px;
-    color: #4a5568 !important;
+    color: #1a3a6b !important;
     font-weight: 700;
   }
   .plan-schedule-sheet footer .border-bottom {
@@ -110,13 +110,27 @@ html.print-preparing.print-hide-second-day .plan-schedule-sheet .second-day-col 
   }
   .plan-schedule-sheet .schedule-sheet-title-wrap p {
     font-size: 0.78rem;
-    color: #4a5568 !important;
+    color: #1a3a6b !important;
+    font-weight: 700;
   }
-  .plan-schedule-sheet .schedule-print-left-label {
-    display: block;
+  .plan-schedule-sheet .schedule-print-left-col {
+    display: flex;
+    flex-direction: column;
     grid-column: 1;
     justify-self: start;
     align-self: center;
+    gap: 1px;
+  }
+  .plan-schedule-sheet .schedule-print-company-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #1a3a6b;
+    letter-spacing: 0.4px;
+    line-height: 1.2;
+  }
+  .plan-schedule-sheet .schedule-print-left-label {
+    display: block;
     font-size: 11px;
     font-weight: 700;
     color: #1a3a6b;
@@ -137,7 +151,8 @@ html.print-preparing.print-hide-second-day .plan-schedule-sheet .second-day-col 
   }
   .plan-schedule-sheet .schedule-print-norm-label {
     font-size: 8px;
-    color: #4a5568;
+    color: #1a3a6b;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     line-height: 1.2;
@@ -150,7 +165,8 @@ html.print-preparing.print-hide-second-day .plan-schedule-sheet .second-day-col 
   }
   .plan-schedule-sheet .schedule-print-norm-sub {
     font-size: 8px;
-    color: #4a5568;
+    color: #1a3a6b;
+    font-weight: 700;
     line-height: 1.2;
   }
   .plan-schedule-sheet .print-duty-cards-grid {
@@ -182,7 +198,7 @@ html.print-preparing.print-hide-second-day .plan-schedule-sheet .second-day-col 
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 8.8px;
+    font-size: 10.5px;
     flex-shrink: 0;
   }
   .plan-schedule-sheet .print-duty-card-empty .print-duty-card-title {
@@ -191,8 +207,9 @@ html.print-preparing.print-hide-second-day .plan-schedule-sheet .second-day-col 
   }
   .plan-schedule-sheet .print-duty-card-note {
     font-size: 8.5px;
+    font-weight: 700;
     line-height: 1.2;
-    color: #c0392b;
+    color: #1a3a6b;
     border-bottom: 1px dashed #e5e7eb;
     padding: 2px 5px;
     margin: 0;
