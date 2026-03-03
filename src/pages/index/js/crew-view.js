@@ -454,7 +454,6 @@ export function createCrewViewController(deps) {
             ${dayCounter.planned ? `<span class="badge text-bg-primary">П${dayCounter.planned}</span>` : ''}
             ${dayCounter.actual ? `<span class="badge text-bg-success">Р${dayCounter.actual}</span>` : ''}
             ${dayCounter.pendingConfirmation ? `<span class="badge text-bg-warning">Промяна</span>` : ''}
-            ${dayCounter.changeCount ? `<span class="badge text-bg-info" title="Извършени промени за деня">Δ${escapeHtml(String(dayCounter.changeCount))}</span>` : ''}
             ${absenceBadges}
           </span>
         </button>
@@ -468,10 +467,9 @@ export function createCrewViewController(deps) {
     const selectedDate = normalizeIsoDateKey(crewCalendarState.selectedDate);
     const plannedBody = container.querySelector('#index-crew-planned-body');
     const actualBody = container.querySelector('#index-crew-actual-body');
-    const changesBody = container.querySelector('#index-crew-change-body');
     const absenceBody = container.querySelector('#index-crew-absence-body');
 
-    if (!plannedBody || !actualBody || !changesBody || !absenceBody) {
+    if (!plannedBody || !actualBody || !absenceBody) {
       return;
     }
 
@@ -627,30 +625,6 @@ export function createCrewViewController(deps) {
           `;
         })
         .join('');
-    }
-
-    const changeEvents = crewCalendarState.changeEventsByDate.get(selectedDate) || [];
-
-    if (!isDateConfirmed) {
-      changesBody.innerHTML = '<p class="text-secondary mb-0">Промените са видими след потвърждение на графика.</p>';
-    } else {
-      const myDutyIds = crewCalendarState.dutyIdsByDate?.get(selectedDate) || new Set();
-      const filteredEvents = changeEvents.filter((eventItem) =>
-        myDutyIds.has(eventItem.oldDutyId) || myDutyIds.has(eventItem.newDutyId)
-      );
-
-      if (!filteredEvents.length) {
-        changesBody.innerHTML = '<p class="text-secondary mb-0">Няма регистрирани промени за избрания ден.</p>';
-      } else {
-        changesBody.innerHTML = filteredEvents
-          .map((eventItem) => `
-            <article class="border-start border-4 border-info rounded-3 ps-3 pe-2 py-2 bg-body-tertiary">
-              <div class="small fw-semibold">${escapeHtml(eventItem.summary || '-')}</div>
-              <div class="small text-secondary"><i class="bi bi-clock me-1"></i>${escapeHtml(eventItem.changedAt || '-')}</div>
-            </article>
-          `)
-          .join('');
-      }
     }
 
     const absenceRows = crewCalendarState.absenceRows
