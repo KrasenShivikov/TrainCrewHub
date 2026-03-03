@@ -279,6 +279,37 @@ function openEditModal(container, profileId) {
   openModal(container.querySelector('#user-profile-edit-modal'));
 }
 
+async function adminChangeEmailViaEdgeFunction(userId, newEmail) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData?.session?.access_token || '';
+  if (!token) {
+    return { error: 'Не е намерена активна сесия.' };
+  }
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const res = await fetch(`${supabaseUrl}/functions/v1/admin-change-user-email`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ userId, newEmail })
+  });
+
+  let result;
+  try {
+    result = await res.json();
+  } catch {
+    result = {};
+  }
+
+  if (!res.ok || !result.ok) {
+    return { error: result.error || 'Имейлът не беше сменен.' };
+  }
+
+  return { error: null };
+}
+
 async function saveUserProfile(container) {
   const id = (container.querySelector('#user-profile-edit-id')?.value || '').trim();
   const username = (container.querySelector('#user-profile-edit-username')?.value || '').trim();
@@ -289,7 +320,12 @@ async function saveUserProfile(container) {
   const confirmPassword = container.querySelector('#user-profile-edit-confirm-password')?.value || '';
   const employeeId = container.querySelector('#user-profile-edit-employee-id')?.value || null;
   const saveButton = container.querySelector('#user-profile-edit-save');
-  const canChangeOwnPassword = id === userProfilesState.currentUserId;
+  const isOwnProfile = id === userProfilesState.currentUserId;
+  const canChangeOwnPassword = isOwnProfile;
+
+  const originalProfile = userProfilesState.rows.find((row) => row.id === id);
+  const originalEmail = String(originalProfile?.email || '').trim().toLowerCase();
+  const emailChanged = email.toLowerCase() !== originalEmail;
 
   if (!id || !username || !email || !firstName || !lastName) {
     showToast('Попълни всички задължителни полета.', 'warning');
@@ -331,13 +367,20 @@ async function saveUserProfile(container) {
     saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Запис...';
   }
 
+  // When admin changes another user's email, the edge function handles auth.users + user_profiles.email.
+  // For own profile or no email change, include email in the regular payload.
+  const includeEmailInPayload = isOwnProfile || !emailChanged;
+
   const payload = {
     username,
-    email,
     first_name: firstName,
     last_name: lastName,
     updated_at: new Date().toISOString()
   };
+
+  if (includeEmailInPayload) {
+    payload.email = email;
+  }
 
   if (userProfilesState.isAdmin) {
     payload.employee_id = employeeId || null;
@@ -376,6 +419,32 @@ async function saveUserProfile(container) {
       await loadUserProfilesData(container);
       closeModal(container.querySelector('#user-profile-edit-modal'));
       return;
+    }
+  }
+
+  // Handle email change in auth.users
+  if (emailChanged) {
+    if (isOwnProfile) {
+      const { error: authEmailError } = await supabase.auth.updateUser({ email });
+      if (authEmailError) {
+        showToast(authEmailError.message || 'Профилът е обновен, но имейлът не беше сменен.', 'warning');
+        await loadUserProfilesData(container);
+        closeModal(container.querySelector('#user-profile-edit-modal'));
+        return;
+      }
+
+      closeModal(container.querySelector('#user-profile-edit-modal'));
+      await loadUserProfilesData(container);
+      showToast('Профилът е обновен. Изпратен линк за потвърждение на новия имейл.', 'info');
+      return;
+    } else if (userProfilesState.isAdmin) {
+      const { error: edgeFnError } = await adminChangeEmailViaEdgeFunction(id, email);
+      if (edgeFnError) {
+        showToast(edgeFnError, 'error');
+        await loadUserProfilesData(container);
+        closeModal(container.querySelector('#user-profile-edit-modal'));
+        return;
+      }
     }
   }
 
