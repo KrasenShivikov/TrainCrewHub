@@ -111,7 +111,13 @@ Deno.serve(async (req: Request) => {
     .eq('id', targetUserId);
 
   if (profileUpdateError) {
-    return json(500, { error: profileUpdateError.message });
+    // auth.users is already updated — return partial success so the caller knows
+    return json(207, {
+      ok: false,
+      partialSuccess: true,
+      authUpdated: true,
+      error: `auth.users updated but user_profiles sync failed: ${profileUpdateError.message}`
+    });
   }
 
   return json(200, { ok: true, userId: targetUserId, email: newEmail });

@@ -304,6 +304,10 @@ async function adminChangeEmailViaEdgeFunction(userId, newEmail) {
   }
 
   if (!res.ok || !result.ok) {
+    if (result.partialSuccess) {
+      return { error: 'Имейлът е сменен в Auth, но синхронизацията на профила е неуспешна. Свържи се с администратор.', partialSuccess: true };
+    }
+
     return { error: result.error || 'Имейлът не беше сменен.' };
   }
 
