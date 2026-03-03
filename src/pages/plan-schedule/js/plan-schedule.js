@@ -185,12 +185,38 @@ async function loadPlanScheduleData(container) {
   }
 
   const absenceByEmployeeId = buildAbsenceByEmployee(absenceRows || []);
+
+  const nextDate = new Date(`${selectedDate}T00:00:00`);
+  nextDate.setDate(nextDate.getDate() + 1);
+  const nextDateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+
+  const { data: nextDayAbsenceRows } = await supabase
+    .from('employee_absences')
+    .select('employee_id')
+    .lte('start_date', nextDateStr)
+    .gte('end_date', nextDateStr);
+
+  const nextDayAbsentEmployeeIds = new Set(
+    (nextDayAbsenceRows || []).map((row) => row?.employee_id).filter(Boolean)
+  );
+
+  const parentDutyIds = new Set(
+    (allDuties || [])
+      .filter((d) => d?.second_day && d?.parent_duty_id)
+      .map((d) => d.parent_duty_id)
+  );
+
   const groupedDuties = groupDutiesFromPlanned(
     (allDuties || []).map((duty) => ({ duties: duty }))
   );
-  const { assignmentsByDuty, absentAssignments } = buildAssignmentsByDuty(plannedRows || [], absenceByEmployeeId);
+  const { assignmentsByDuty, absentAssignments, nextDayAbsentNames } = buildAssignmentsByDuty(
+    plannedRows || [],
+    absenceByEmployeeId,
+    nextDayAbsentEmployeeIds,
+    parentDutyIds
+  );
 
-  renderBoards(container, groupedDuties, assignmentsByDuty);
+  renderBoards(container, groupedDuties, assignmentsByDuty, nextDayAbsentNames);
   renderAbsenceBoard(container.querySelector('#plan-schedule-absence'), absentAssignments);
 
   const totalCount = groupedDuties.train.length + groupedDuties.businessTrip.length + groupedDuties.dayOff.length;

@@ -87,6 +87,14 @@ export function getDateFromQuery() {
   return date;
 }
 
+export function getAbsenceReasonName(reason) {
+  const value = Array.isArray(reason)
+    ? reason[0]?.name
+    : (reason && typeof reason === 'object' ? reason.name : '');
+
+  return String(value || '').trim();
+}
+
 export function escapeHtml(value) {
   return String(value)
     .replaceAll('&', '&amp;')

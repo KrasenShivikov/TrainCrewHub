@@ -1,21 +1,57 @@
 import {
   normalizeTimeValue,
   getEmployeeName,
+  getAbsenceReasonName,
   resolveActualDutyRole,
   getDutyTypeName,
   getDutyFromRow,
   escapeHtml
 } from './helpers.js';
 
-export function buildAssignmentsByDuty(rows, absentEmployeeIds) {
+export function buildAbsenceByEmployee(absenceRows) {
+  const absenceByEmployeeId = new Map();
+
+  (absenceRows || []).forEach((row) => {
+    const employeeId = row?.employee_id;
+    if (!employeeId) {
+      return;
+    }
+
+    const existing = absenceByEmployeeId.get(employeeId) || {
+      employeeId,
+      employeeName: getEmployeeName(row.employees),
+      reasons: []
+    };
+
+    const reasonName = getAbsenceReasonName(row.absence_reasons);
+    if (reasonName && !existing.reasons.includes(reasonName)) {
+      existing.reasons.push(reasonName);
+    }
+
+    absenceByEmployeeId.set(employeeId, existing);
+  });
+
+  return absenceByEmployeeId;
+}
+
+export function buildAssignmentsByDuty(rows, absenceByEmployeeId, nextDayAbsentEmployeeIds, parentDutyIds) {
   const map = new Map();
+  const absentAssignmentsByEmployeeId = new Map();
 
   rows.forEach((row) => {
     if (!row?.duty_id || !row?.employees || !row?.id) {
       return;
     }
 
-    if (row?.employee_id && absentEmployeeIds?.has(row.employee_id)) {
+    if (row?.employee_id && absenceByEmployeeId?.has(row.employee_id)) {
+      const absentEntry = absenceByEmployeeId.get(row.employee_id);
+      if (absentEntry && !absentAssignmentsByEmployeeId.has(row.employee_id)) {
+        absentAssignmentsByEmployeeId.set(row.employee_id, {
+          employeeId: absentEntry.employeeId,
+          employeeName: absentEntry.employeeName,
+          reason: absentEntry.reasons.join(', ')
+        });
+      }
       return;
     }
 
@@ -34,7 +70,12 @@ export function buildAssignmentsByDuty(rows, absentEmployeeIds) {
       name: employeeName,
       dutyName: duty?.name || '',
       date: row.date || '',
-      cascade: Boolean(duty?.parent_duty_id)
+      cascade: Boolean(duty?.parent_duty_id),
+      nextDayAbsent: Boolean(
+        row?.employee_id &&
+        parentDutyIds?.has(row.duty_id) &&
+        nextDayAbsentEmployeeIds?.has(row.employee_id)
+      )
     };
 
     if (resolvedRole === 'chief') {
@@ -50,7 +91,60 @@ export function buildAssignmentsByDuty(rows, absentEmployeeIds) {
     map.set(row.duty_id, entry);
   });
 
-  return map;
+  // Also add all employees from absenceByEmployeeId who had no actual_duties entry that day
+  if (absenceByEmployeeId) {
+    absenceByEmployeeId.forEach((absentEntry, employeeId) => {
+      if (!absentAssignmentsByEmployeeId.has(employeeId)) {
+        absentAssignmentsByEmployeeId.set(employeeId, {
+          employeeId: absentEntry.employeeId,
+          employeeName: absentEntry.employeeName,
+          reason: absentEntry.reasons.join(', ')
+        });
+      }
+    });
+  }
+
+  return {
+    assignmentsByDuty: map,
+    absentAssignments: Array.from(absentAssignmentsByEmployeeId.values()).sort((left, right) =>
+      String(left?.employeeName || '').localeCompare(String(right?.employeeName || ''), 'bg')
+    )
+  };
+}
+
+export function renderAbsenceBoard(root, absentAssignments) {
+  if (!root) {
+    return;
+  }
+
+  if (!absentAssignments.length) {
+    root.innerHTML = '<p class="text-secondary mb-0">Няма служители в разход.</p>';
+    return;
+  }
+
+  const COLS = 5;
+  const padded = [...absentAssignments];
+  const remainder = padded.length % COLS;
+  if (remainder !== 0) {
+    for (let i = 0; i < COLS - remainder; i++) {
+      padded.push(null);
+    }
+  }
+
+  const cards = padded
+    .map((item) => item
+      ? `<article class="absence-card">
+           <span class="absence-card-name">${escapeHtml(item.employeeName || '')}</span>
+           <span class="absence-card-reason">${escapeHtml(item.reason || '')}</span>
+         </article>`
+      : `<article class="absence-card absence-card-empty">
+           <span class="absence-card-name"></span>
+           <span class="absence-card-reason"></span>
+         </article>`
+    )
+    .join('');
+
+  root.innerHTML = `<div class="absence-cards-grid">${cards}</div>`;
 }
 
 export function renderBoards(container, groupedDuties, assignmentsByDuty, selectedDate) {
@@ -432,15 +526,19 @@ function renderAssignmentItem(assignment, duty, selectedDate, options = {}) {
   }
 
   const allowEdit = options.allowEdit !== false;
+  const nextDayAbsentBadge = assignment.nextDayAbsent
+    ? `<i class="bi bi-exclamation-triangle-fill text-warning ms-1 no-print" title="Отсъства на следващия ден"></i>`
+    : '';
+
   if (!allowEdit) {
-    return escapeHtml(assignment.name || '');
+    return escapeHtml(assignment.name || '') + nextDayAbsentBadge;
   }
 
   const cascadeBadge = assignment.cascade
     ? `<i class="bi bi-link-45deg schedule-cascade-icon" title="Автоматично от родителска повеска"></i>`
     : '';
 
-  return `<button type="button" class="btn btn-link p-0 text-decoration-none align-baseline schedule-drag-btn" draggable="true" data-actual-edit-id="${assignment.id}" data-actual-drag-id="${assignment.id}"><i class="bi bi-grip-vertical schedule-drag-handle"></i>${escapeHtml(assignment.name || '')}${cascadeBadge}</button>`;
+  return `<button type="button" class="btn btn-link p-0 text-decoration-none align-baseline schedule-drag-btn" draggable="true" data-actual-edit-id="${assignment.id}" data-actual-drag-id="${assignment.id}"><i class="bi bi-grip-vertical schedule-drag-handle"></i>${escapeHtml(assignment.name || '')}${cascadeBadge}</button>${nextDayAbsentBadge}`;
 }
 
 function renderAddAssignmentButton(duty, selectedDate, options = {}) {

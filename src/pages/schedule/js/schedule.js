@@ -18,7 +18,9 @@ import { preparePrintLayout, cleanupPrintLayout } from './print.js';
 import { generateSchedulePdf } from '../../../utils/generateSchedulePdf.js';
 import {
   buildAssignmentsByDuty,
+  buildAbsenceByEmployee,
   renderBoards,
+  renderAbsenceBoard,
   setMessage,
   formatDateBg,
   compareByDutyStartTime,
@@ -187,6 +189,7 @@ export async function renderSchedulePage(container) {
   const printModalCancel = container.querySelector('#sch-print-modal-cancel');
   const printModalGo = container.querySelector('#sch-print-modal-go');
   const pdfModalGo    = container.querySelector('#sch-pdf-modal-go');
+  const pdfFullModalGo = container.querySelector('#sch-pdf-full-modal-go');
   const confirmModalCloseButton = container.querySelector('#schedule-confirm-modal-close');
   const confirmModalCancelButton = container.querySelector('#schedule-confirm-modal-cancel');
   const confirmModalConfirmButton = container.querySelector('#schedule-confirm-modal-confirm');
@@ -278,6 +281,35 @@ export async function renderSchedulePage(container) {
     } finally {
       pdfModalGo.disabled = false;
       pdfModalGo.innerHTML = '<i class="bi bi-file-earmark-pdf me-1"></i>Изтегли PDF';
+    }
+  });
+
+  pdfFullModalGo?.addEventListener('click', async () => {
+    const orientationInput = container.querySelector('input[name="sch-orientation"]:checked');
+    const compactInput     = container.querySelector('#sch-print-compact');
+
+    const orientation = orientationInput?.value === 'portrait' ? 'portrait' : 'landscape';
+    const compact     = compactInput?.checked ?? true;
+    const date        = dateInput?.value || new Date().toISOString().split('T')[0];
+
+    pdfFullModalGo.disabled = true;
+    pdfFullModalGo.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Генерира...';
+
+    try {
+      await generateSchedulePdf(container, {
+        orientation,
+        compact,
+        hideSecondDay: false,
+        showAllSections: true,
+        filename: `график-пълен-${date}.pdf`,
+      });
+      closePrintModal();
+      showToast('PDF файлът е готов.', 'success');
+    } catch {
+      showToast('Грешка при генериране на PDF.', 'error');
+    } finally {
+      pdfFullModalGo.disabled = false;
+      pdfFullModalGo.innerHTML = '<i class="bi bi-file-earmark-pdf me-1"></i>PDF чернова';
     }
   });
 
@@ -476,6 +508,7 @@ async function loadScheduleData(container) {
       businessTrip: [],
       dayOff: []
     }, new Map());
+    renderAbsenceBoard(container.querySelector('#schedule-absence'), []);
     setMessage(container, {
       hint: 'Избери дата.',
       error: '',
@@ -499,6 +532,7 @@ async function loadScheduleData(container) {
       businessTrip: [],
       dayOff: []
     }, new Map());
+    renderAbsenceBoard(container.querySelector('#schedule-absence'), []);
     setMessage(container, {
       hint: '',
       error: 'Грешка при зареждане на актуалните записи.',
@@ -511,7 +545,7 @@ async function loadScheduleData(container) {
 
   const { data: absenceRows, error: absenceError } = await supabase
     .from('employee_absences')
-    .select('employee_id')
+    .select('employee_id, start_date, end_date, employees(first_name, last_name), absence_reasons(name)')
     .lte('start_date', selectedDate)
     .gte('end_date', selectedDate);
 
@@ -523,6 +557,7 @@ async function loadScheduleData(container) {
       businessTrip: [],
       dayOff: []
     }, new Map());
+    renderAbsenceBoard(container.querySelector('#schedule-absence'), []);
     setMessage(container, {
       hint: '',
       error: 'Грешка при зареждане на отсъствията.',
@@ -543,6 +578,7 @@ async function loadScheduleData(container) {
       businessTrip: [],
       dayOff: []
     }, new Map());
+    renderAbsenceBoard(container.querySelector('#schedule-absence'), []);
     setMessage(container, {
       hint: '',
       error: 'Грешка при зареждане на повеските.',
@@ -553,7 +589,27 @@ async function loadScheduleData(container) {
     return;
   }
 
-  const absentEmployeeIds = new Set((absenceRows || []).map((row) => row?.employee_id).filter(Boolean));
+  const absenceByEmployeeId = buildAbsenceByEmployee(absenceRows || []);
+
+  const nextDate = new Date(`${selectedDate}T00:00:00`);
+  nextDate.setDate(nextDate.getDate() + 1);
+  const nextDateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+
+  const { data: nextDayAbsenceRows } = await supabase
+    .from('employee_absences')
+    .select('employee_id')
+    .lte('start_date', nextDateStr)
+    .gte('end_date', nextDateStr);
+
+  const nextDayAbsentEmployeeIds = new Set(
+    (nextDayAbsenceRows || []).map((row) => row?.employee_id).filter(Boolean)
+  );
+
+  const parentDutyIds = new Set(
+    (allDuties || [])
+      .filter((d) => d?.second_day && d?.parent_duty_id)
+      .map((d) => d.parent_duty_id)
+  );
 
   actualRowsById.clear();
   (rows || []).forEach((row) => {
@@ -589,15 +645,16 @@ async function loadScheduleData(container) {
   groupedDuties.businessTrip.sort(compareByScheduleKeyOrder);
   groupedDuties.dayOff.sort(compareByScheduleKeyOrder);
 
-  const assignmentsByDuty = buildAssignmentsByDuty(rows || [], absentEmployeeIds);
+  const { assignmentsByDuty, absentAssignments } = buildAssignmentsByDuty(rows || [], absenceByEmployeeId, nextDayAbsentEmployeeIds, parentDutyIds);
 
   renderBoards(container, groupedDuties, assignmentsByDuty, selectedDate);
+  renderAbsenceBoard(container.querySelector('#schedule-absence'), absentAssignments);
 
   const totalCount = groupedDuties.train.length + groupedDuties.businessTrip.length + groupedDuties.dayOff.length;
   setMessage(container, {
     hint: '',
     error: '',
-    empty: totalCount ? '' : 'Няма повески за показване по избраните типове.'
+    empty: totalCount || absentAssignments.length ? '' : 'Няма повески за показване по избраните типове.'
   });
 
   await loadSchedulePublicationStatus(container, selectedDate);

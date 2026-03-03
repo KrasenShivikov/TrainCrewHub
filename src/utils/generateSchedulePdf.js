@@ -55,6 +55,7 @@ const PDF_PRINT_STYLES = `
   html.pdf-compact .plan-schedule-sheet .table > :not(caption) > * > * { padding: 0.12rem 0.2rem; }
   html.pdf-compact .plan-schedule-sheet .plan-schedule-table tbody th,
   html.pdf-compact .plan-schedule-sheet .plan-schedule-table tbody td { height: 28px; }
+  .plan-schedule-sheet .no-print { display: none !important; }
   .plan-schedule-sheet .print-hide-train-only { display: none !important; }
   html.pdf-hide-second-day .plan-schedule-sheet .second-day-col { visibility: hidden !important; }
   .plan-schedule-sheet .print-as-cards .plan-schedule-table { display: none !important; }
@@ -202,6 +203,58 @@ const PDF_PRINT_STYLES = `
   }
   #plan-schedule-absence .absence-card-empty .absence-card-name,
   #plan-schedule-absence .absence-card-empty .absence-card-reason { color: transparent !important; }
+  #schedule-absence-section {
+    border: 1px solid #cfd4da; border-radius: 2px; padding: 6px;
+    margin-top: 0.5rem !important; background: #fff;
+  }
+  #schedule-absence-section h3 { margin-bottom: 0.3rem !important; font-size: 12px; letter-spacing: 0.2px; }
+  #schedule-absence .absence-cards-grid {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 3px !important;
+  }
+  #schedule-absence .absence-card {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    align-items: center !important;
+    border: 1px solid #b0b8c8 !important;
+    border-radius: 2px !important;
+    overflow: hidden !important;
+    background: #fff !important;
+    min-height: 20px !important;
+  }
+  #schedule-absence .absence-card-empty {
+    border-style: dashed !important;
+    border-color: #d0d7de !important;
+    background: #f8f9fa !important;
+  }
+  #schedule-absence .absence-card-name {
+    padding: 2px 4px !important;
+    font-size: 8px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    word-break: break-word !important;
+    border-right: 1px solid #b0b8c8 !important;
+  }
+  #schedule-absence .absence-card-reason {
+    padding: 2px 4px !important;
+    font-size: 7.5px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    min-width: 40px !important;
+    max-width: 70px !important;
+    color: #4a5568 !important;
+  }
+  #schedule-absence .absence-card-empty .absence-card-name,
+  #schedule-absence .absence-card-empty .absence-card-reason { color: transparent !important; }
+  html.pdf-full .plan-schedule-sheet .print-hide-train-only { display: block !important; }
+  html.pdf-full .plan-schedule-sheet .schedule-sheet-title-wrap h2 { font-size: 0 !important; }
+  html.pdf-full .plan-schedule-sheet .schedule-sheet-title-wrap h2::after { content: 'ЧЕРНОВА'; font-size: 1.25rem; font-weight: 700; letter-spacing: 2px; color: #1a3a6b; }
+  html.pdf-full #schedule-absence-section { display: block !important; }
+  html:not(.pdf-full) #schedule-absence-section { display: none !important; }
+  html.pdf-full .plan-schedule-sheet .print-as-cards .plan-schedule-table { display: table !important; }
+  html.pdf-full .plan-schedule-sheet .print-as-cards .print-only-duty-cards { display: none !important; }
 `;
 
 /**
@@ -216,13 +269,15 @@ const PDF_PRINT_STYLES = `
  * @param {object}      opts
  * @param {'landscape'|'portrait'} opts.orientation
  * @param {boolean}     opts.compact       - Whether to apply compact print styles
- * @param {boolean}     opts.hideSecondDay - Whether to hide second-day column
- * @param {string}      opts.filename      - Downloaded file name (e.g. 'plan-2026-02-26.pdf')
+ * @param {boolean}     opts.hideSecondDay    - Whether to hide second-day column
+ * @param {boolean}     opts.showAllSections  - Show all sections (business trips, day-offs, absences)
+ * @param {string}      opts.filename         - Downloaded file name (e.g. 'plan-2026-02-26.pdf')
  */
 export async function generateSchedulePdf(container, {
   orientation = 'landscape',
   compact = true,
   hideSecondDay = true,
+  showAllSections = false,
   filename = 'schedule.pdf',
 } = {}) {
   const sheet = container.querySelector('.plan-schedule-sheet');
@@ -250,8 +305,9 @@ export async function generateSchedulePdf(container, {
 
   // ── Apply visual classes ──────────────────────────────────────────────────
   root.classList.add('print-preparing');
-  if (compact)       root.classList.add('pdf-compact');
-  if (hideSecondDay) root.classList.add('pdf-hide-second-day');
+  if (compact)         root.classList.add('pdf-compact');
+  if (hideSecondDay)   root.classList.add('pdf-hide-second-day');
+  if (showAllSections) root.classList.add('pdf-full');
   sheet.classList.toggle('print-landscape-page', orientation === 'landscape');
   sheet.classList.toggle('print-portrait-page',  orientation === 'portrait');
 
@@ -298,7 +354,7 @@ export async function generateSchedulePdf(container, {
     sheet.style.minWidth = prevMinWidth;
     sheet.style.maxWidth = prevMaxWidth;
 
-    root.classList.remove('print-preparing', 'pdf-compact', 'pdf-hide-second-day');
+    root.classList.remove('print-preparing', 'pdf-compact', 'pdf-hide-second-day', 'pdf-full');
     sheet.classList.remove('print-landscape-page', 'print-portrait-page');
     styleTag.remove();
   }

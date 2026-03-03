@@ -79,9 +79,10 @@ export function groupDutiesFromPlanned(plannedRows) {
   return groupedDuties;
 }
 
-export function buildAssignmentsByDuty(rows, absenceByEmployeeId) {
+export function buildAssignmentsByDuty(rows, absenceByEmployeeId, nextDayAbsentEmployeeIds, parentDutyIds) {
   const map = new Map();
   const absentAssignmentsByEmployeeId = new Map();
+  const nextDayAbsentNames = new Set();
 
   rows.forEach((row) => {
     if (!row?.duty_id || !row?.employees) {
@@ -98,6 +99,14 @@ export function buildAssignmentsByDuty(rows, absenceByEmployeeId) {
         });
       }
       return;
+    }
+
+    if (
+      row?.employee_id &&
+      parentDutyIds?.has(row.duty_id) &&
+      nextDayAbsentEmployeeIds?.has(row.employee_id)
+    ) {
+      nextDayAbsentNames.add(getEmployeeName(row.employees));
     }
 
     const entry = map.get(row.duty_id) || {
@@ -157,18 +166,19 @@ export function buildAssignmentsByDuty(rows, absenceByEmployeeId) {
     assignmentsByDuty: map,
     absentAssignments: Array.from(absentAssignmentsByEmployeeId.values()).sort((left, right) =>
       String(left?.employeeName || '').localeCompare(String(right?.employeeName || ''), 'bg')
-    )
+    ),
+    nextDayAbsentNames
   };
 }
 
-export function renderBoards(container, groupedDuties, assignmentsByDuty) {
+export function renderBoards(container, groupedDuties, assignmentsByDuty, nextDayAbsentNames) {
   renderDutyBoard(container.querySelector('#plan-schedule-train'), groupedDuties.train, assignmentsByDuty, {
     conductorRows: 2,
     showHours: true,
     separateSecondDay: true,
     minPanels: 2,
     printAsCards: true
-  });
+  }, nextDayAbsentNames);
   renderDutyBoard(
     container.querySelector('#plan-schedule-business-trip'),
     groupedDuties.businessTrip,
@@ -179,7 +189,8 @@ export function renderBoards(container, groupedDuties, assignmentsByDuty) {
       minPanels: 1,
       hideEmptyConductorRows: true,
       printAsCards: true
-    }
+    },
+    nextDayAbsentNames
   );
   renderDutyBoard(container.querySelector('#plan-schedule-day-off'), groupedDuties.dayOff, assignmentsByDuty, {
     conductorRows: 3,
@@ -187,7 +198,7 @@ export function renderBoards(container, groupedDuties, assignmentsByDuty) {
     minPanels: 1,
     hideEmptyConductorRows: true,
     printAsCards: true
-  });
+  }, nextDayAbsentNames);
 }
 
 export function renderAbsenceBoard(root, absentAssignments) {
@@ -260,7 +271,7 @@ export function formatDateBg(value) {
   }).format(date);
 }
 
-function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
+function renderDutyBoard(root, duties, assignmentsByDuty, options = {}, nextDayAbsentNames) {
   if (!root) {
     return;
   }
@@ -332,8 +343,8 @@ function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
           }
 
           const assignment = assignmentsByDuty.get(duty.id) || { chiefs: [] };
-          const value = assignment.chiefs.length ? assignment.chiefs.join(', ') : '';
-          return `<td${classAttr}>${renderCellKeyBadge('НВ', 'chief')}${escapeHtml(value)}</td>`;
+          const value = assignment.chiefs.length ? renderChiefNames(assignment.chiefs, nextDayAbsentNames) : '';
+          return `<td${classAttr}>${renderCellKeyBadge('НВ', 'chief')}${value}</td>`;
         })
         .join('');
 
@@ -367,7 +378,7 @@ function renderDutyBoard(root, duties, assignmentsByDuty, options = {}) {
 
               const assignment = assignmentsByDuty.get(duty.id) || { conductors: [] };
               const value = assignment.conductors[rowIndex] || '';
-              return `<td${classAttr}>${renderCellKeyBadge('К-р', 'conductor')}${escapeHtml(value)}</td>`;
+              return `<td${classAttr}>${renderCellKeyBadge('К-р', 'conductor')}${renderNameWithWarning(value, nextDayAbsentNames)}</td>`;
             })
             .join('');
 
@@ -589,6 +600,27 @@ function buildDutiesWithSecondDaySeparator(duties) {
   }
 
   return [...firstDay, { __separator: true }, ...secondDay];
+}
+
+function renderNameWithWarning(name, nextDayAbsentNames) {
+  if (!name) {
+    return '';
+  }
+
+  const escaped = escapeHtml(name);
+  if (nextDayAbsentNames?.has(name)) {
+    return `${escaped}<i class="bi bi-exclamation-triangle-fill text-warning ms-1 no-print" title="Отсъства на следващия ден"></i>`;
+  }
+
+  return escaped;
+}
+
+function renderChiefNames(chiefs, nextDayAbsentNames) {
+  if (!chiefs?.length) {
+    return '';
+  }
+
+  return chiefs.map((name) => renderNameWithWarning(name, nextDayAbsentNames)).join(', ');
 }
 
 function isSeparatorDuty(duty) {
