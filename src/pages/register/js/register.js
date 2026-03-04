@@ -88,35 +88,10 @@ function attachRegisterFormListener(container) {
       return;
     }
 
-    const userId = data.user?.id;
-    if (userId) {
-      const { error: profileError } = await supabase.from('user_profiles').upsert(
-        {
-          id: userId,
-          username,
-          email,
-          first_name: firstName,
-          last_name: lastName,
-          created_from: email
-        },
-        { onConflict: 'id' }
-      );
-
-      if (profileError) {
-        submitButton.disabled = false;
-        submitButton.innerHTML = originalButtonHtml;
-        showToast(profileError.message, 'error');
-        return;
-      }
-    }
-
-    const hasSessionAfterSignUp = Boolean(data.session);
-
-    if (!hasSessionAfterSignUp) {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+    // If signUp didn't return a session (e.g. email confirmation required),
+    // try to sign in so auth.uid() is available for the profile insert.
+    if (!data.session) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
       if (signInError) {
         submitButton.disabled = false;
@@ -124,6 +99,28 @@ function attachRegisterFormListener(container) {
         showToast('Регистрацията е успешна, но автоматичният вход е достъпен след имейл потвърждение.', 'warning');
         window.history.pushState({}, '', '/login');
         window.dispatchEvent(new PopStateEvent('popstate'));
+        return;
+      }
+    }
+
+    // Create user profile now that we have an active session (auth.uid() is set).
+    const userId = data.user?.id;
+    if (userId) {
+      const { error: profileError } = await supabase.from('user_profiles').insert(
+        {
+          id: userId,
+          username,
+          email,
+          first_name: firstName,
+          last_name: lastName,
+          created_from: email
+        }
+      );
+
+      if (profileError) {
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonHtml;
+        showToast(profileError.message, 'error');
         return;
       }
     }
