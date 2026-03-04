@@ -280,35 +280,57 @@ function openEditModal(container, profileId) {
 }
 
 async function adminChangeEmailViaEdgeFunction(userId, newEmail) {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData?.session?.access_token || '';
-  if (!token) {
-    return { error: 'Не е намерена активна сесия.' };
-  }
-
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const res = await fetch(`${supabaseUrl}/functions/v1/admin-change-user-email`, {
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  const resolveAccessToken = async () => {
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+    if (!refreshError && refreshed?.session?.access_token) {
+      return refreshed.session.access_token;
+    }
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    return sessionData?.session?.access_token || '';
+  };
+
+  const doRequest = async (token) => fetch(`${supabaseUrl}/functions/v1/admin-change-user-email`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      apikey: supabaseKey,
       Authorization: `Bearer ${token}`
     },
     body: JSON.stringify({ userId, newEmail })
   });
 
-  let result;
-  try {
-    result = await res.json();
-  } catch {
-    result = {};
+  const parseResult = async (res) => {
+    let body = {};
+    try { body = await res.json(); } catch { /* ignore */ }
+    return { status: res.status, body };
+  };
+
+  let token = await resolveAccessToken();
+  if (!token) {
+    return { error: 'Липсва активна сесия. Влез отново и опитай пак.' };
   }
 
-  if (!res.ok || !result.ok) {
-    if (result.partialSuccess) {
+  let res = await doRequest(token);
+
+  // Retry once with a fresh token on 401
+  if (res.status === 401) {
+    token = await resolveAccessToken();
+    if (token) {
+      res = await doRequest(token);
+    }
+  }
+
+  const { body } = await parseResult(res);
+
+  if (!res.ok || !body?.ok) {
+    if (body?.partialSuccess) {
       return { error: 'Имейлът е сменен в Auth, но синхронизацията на профила е неуспешна. Свържи се с администратор.', partialSuccess: true };
     }
-
-    return { error: result.error || 'Имейлът не беше сменен.' };
+    return { error: body?.error || 'Имейлът не беше сменен.' };
   }
 
   return { error: null };
@@ -371,9 +393,9 @@ async function saveUserProfile(container) {
     saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Запис...';
   }
 
-  // When admin changes another user's email, the edge function handles auth.users + user_profiles.email.
-  // For own profile or no email change, include email in the regular payload.
-  const includeEmailInPayload = isOwnProfile || !emailChanged;
+  // When email changes, the edge function handles both auth.users + user_profiles.email (for self and admin).
+  // Only include email in the regular payload when it hasn't changed.
+  const includeEmailInPayload = !emailChanged;
 
   const payload = {
     username,
@@ -426,29 +448,14 @@ async function saveUserProfile(container) {
     }
   }
 
-  // Handle email change in auth.users
-  if (emailChanged) {
-    if (isOwnProfile) {
-      const { error: authEmailError } = await supabase.auth.updateUser({ email });
-      if (authEmailError) {
-        showToast(authEmailError.message || 'Профилът е обновен, но имейлът не беше сменен.', 'warning');
-        await loadUserProfilesData(container);
-        closeModal(container.querySelector('#user-profile-edit-modal'));
-        return;
-      }
-
-      closeModal(container.querySelector('#user-profile-edit-modal'));
+  // Handle email change — use edge function for both own profile and admin (immediate, no confirmation email).
+  if (emailChanged && (isOwnProfile || userProfilesState.isAdmin)) {
+    const { error: edgeFnError } = await adminChangeEmailViaEdgeFunction(id, email);
+    if (edgeFnError) {
+      showToast(edgeFnError, 'error');
       await loadUserProfilesData(container);
-      showToast('Профилът е обновен. Изпратен линк за потвърждение на новия имейл.', 'info');
+      closeModal(container.querySelector('#user-profile-edit-modal'));
       return;
-    } else if (userProfilesState.isAdmin) {
-      const { error: edgeFnError } = await adminChangeEmailViaEdgeFunction(id, email);
-      if (edgeFnError) {
-        showToast(edgeFnError, 'error');
-        await loadUserProfilesData(container);
-        closeModal(container.querySelector('#user-profile-edit-modal'));
-        return;
-      }
     }
   }
 

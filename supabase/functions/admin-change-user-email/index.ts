@@ -58,21 +58,6 @@ Deno.serve(async (req: Request) => {
 
   const callerUserId = callerUserData.user.id;
 
-  const { data: adminRows, error: adminError } = await adminClient
-    .from('user_roles')
-    .select('id')
-    .eq('user_id', callerUserId)
-    .eq('role', 'admin')
-    .limit(1);
-
-  if (adminError) {
-    return json(500, { error: adminError.message });
-  }
-
-  if (!Array.isArray(adminRows) || adminRows.length === 0) {
-    return json(403, { error: 'Only admins can change user emails' });
-  }
-
   let body: { userId?: string; newEmail?: string } = {};
   try {
     body = await req.json();
@@ -89,6 +74,25 @@ Deno.serve(async (req: Request) => {
 
   if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
     return json(400, { error: 'Invalid email address' });
+  }
+
+  // Allow if caller is changing their own email OR if caller is an admin.
+  const isSelf = targetUserId === callerUserId;
+  if (!isSelf) {
+    const { data: adminRows, error: adminError } = await adminClient
+      .from('user_roles')
+      .select('id')
+      .eq('user_id', callerUserId)
+      .eq('role', 'admin')
+      .limit(1);
+
+    if (adminError) {
+      return json(500, { error: adminError.message });
+    }
+
+    if (!Array.isArray(adminRows) || adminRows.length === 0) {
+      return json(403, { error: 'Only admins can change another user\'s email' });
+    }
   }
 
   const { data: targetUserData, error: targetUserError } = await adminClient.auth.admin.getUserById(targetUserId);
