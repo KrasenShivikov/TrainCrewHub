@@ -132,6 +132,31 @@ export function createScheduleModalHandlers({
       : null;
 
     if (id) {
+      // If the new employee already has a record for this duty+date (different row),
+      // delete it first to avoid the unique(date, employee_id, duty_id) constraint.
+      const { data: conflictRows } = await supabase
+        .from('actual_duties')
+        .select('id')
+        .eq('date', date)
+        .eq('employee_id', employeeId)
+        .eq('duty_id', dutyId)
+        .neq('id', id);
+
+      const conflictId = conflictRows?.[0]?.id;
+      if (conflictId) {
+        const { error: deleteError } = await supabase
+          .from('actual_duties')
+          .delete()
+          .eq('id', conflictId);
+
+        if (deleteError) {
+          saveButton.disabled = false;
+          saveButton.innerHTML = originalText;
+          showToast(deleteError.message, 'error');
+          return;
+        }
+      }
+
       ({ error } = await supabase
         .from('actual_duties')
         .update({ employee_id: employeeId, assignment_role: assignmentRole })

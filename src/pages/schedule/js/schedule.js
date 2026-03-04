@@ -521,8 +521,9 @@ async function loadScheduleData(container) {
 
   const { data: rows, error } = await supabase
     .from('actual_duties')
-    .select('id, date, duty_id, employee_id, assignment_role, employees(first_name, last_name, positions(title)), duties(id, name, schedule_key_id, display_order, start_time, end_time, second_day, parent_duty_id, duty_types(name))')
-    .eq('date', selectedDate);
+    .select('id, date, duty_id, employee_id, assignment_role, reported_at, employees(first_name, last_name, positions(title)), duties(id, name, schedule_key_id, display_order, start_time, end_time, second_day, parent_duty_id, duty_types(name))')
+    .eq('date', selectedDate)
+    .order('reported_at', { ascending: true });
 
   if (error) {
     showToast(error.message, 'error');
