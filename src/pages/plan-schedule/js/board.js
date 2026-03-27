@@ -57,19 +57,25 @@ export function groupDutiesFromPlanned(plannedRows) {
 
   Array.from(dutiesById.values()).forEach((duty) => {
     const typeName = getDutyTypeName(duty).toLowerCase();
-    if (typeName.includes('на влак')) {
-      groupedDuties.train.push(duty);
-      return;
-    }
+    const dutyName = String(duty?.name || '').toLowerCase();
+    const classificationText = `${typeName} ${dutyName}`;
 
-    if (typeName.includes('командировка')) {
+    if (classificationText.includes('командиров')) {
       groupedDuties.businessTrip.push(duty);
       return;
     }
 
-    if (typeName.includes('свободен ден')) {
+    if (
+      classificationText.includes('свободен ден')
+      || classificationText.includes('почив')
+      || classificationText.includes('отпуск')
+    ) {
       groupedDuties.dayOff.push(duty);
+      return;
     }
+
+    // Keep unmatched duties visible instead of dropping them.
+    groupedDuties.train.push(duty);
   });
 
   groupedDuties.train.sort(compareByDutyStartTime);

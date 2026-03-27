@@ -206,8 +206,25 @@ async function loadPlanScheduleData(container) {
       .map((d) => d.parent_duty_id)
   );
 
+  // Merge duties from schedule keys with duties present in planned rows.
+  // This prevents an empty board when planned records exist but key-based duty lookup misses some entries.
+  const dutiesById = new Map();
+
+  (allDuties || []).forEach((duty) => {
+    if (duty?.id && !dutiesById.has(duty.id)) {
+      dutiesById.set(duty.id, duty);
+    }
+  });
+
+  (plannedRows || []).forEach((row) => {
+    const duty = Array.isArray(row?.duties) ? row.duties[0] : row?.duties;
+    if (duty?.id && !dutiesById.has(duty.id)) {
+      dutiesById.set(duty.id, duty);
+    }
+  });
+
   const groupedDuties = groupDutiesFromPlanned(
-    (allDuties || []).map((duty) => ({ duties: duty }))
+    Array.from(dutiesById.values()).map((duty) => ({ duties: duty }))
   );
   const { assignmentsByDuty, absentAssignments, nextDayAbsentNames } = buildAssignmentsByDuty(
     plannedRows || [],
