@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { employees, positions } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
+import { setFlash } from "@/lib/flash";
 
 const nullableDate = z
   .string()
@@ -31,6 +32,7 @@ export async function createPositionAction(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
 
   if (!title) {
+    await setFlash({ kind: "error", text: "Въведи име на позиция." });
     return;
   }
 
@@ -39,6 +41,7 @@ export async function createPositionAction(formData: FormData) {
     createdFrom: user.id
   });
 
+  await setFlash({ kind: "success", text: "Позицията е добавена." });
   revalidatePath("/employees");
 }
 
@@ -55,6 +58,7 @@ export async function createEmployeeAction(formData: FormData) {
   });
 
   if (!parsed.success) {
+    await setFlash({ kind: "error", text: "Попълни име и фамилия на служителя." });
     return;
   }
 
@@ -63,6 +67,7 @@ export async function createEmployeeAction(formData: FormData) {
     createdFrom: user.id
   });
 
+  await setFlash({ kind: "success", text: "Служителят е добавен." });
   revalidatePath("/employees");
 }
 
@@ -80,6 +85,7 @@ export async function updateEmployeeAction(formData: FormData) {
   });
 
   if (!employeeId || !parsed.success) {
+    await setFlash({ kind: "error", text: "Провери данните за служителя." });
     return;
   }
 
@@ -91,6 +97,7 @@ export async function updateEmployeeAction(formData: FormData) {
     })
     .where(eq(employees.id, employeeId));
 
+  await setFlash({ kind: "success", text: "Служителят е обновен." });
   revalidatePath("/employees");
 }
 
@@ -99,9 +106,11 @@ export async function deleteEmployeeAction(formData: FormData) {
   const employeeId = String(formData.get("id") ?? "");
 
   if (!employeeId) {
+    await setFlash({ kind: "error", text: "Липсва служител за изтриване." });
     return;
   }
 
   await getDb().delete(employees).where(eq(employees.id, employeeId));
+  await setFlash({ kind: "success", text: "Служителят е изтрит." });
   revalidatePath("/employees");
 }

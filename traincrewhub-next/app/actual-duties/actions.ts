@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { actualDuties } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
+import { setFlash } from "@/lib/flash";
 
 const roleSchema = z.enum(["chief", "conductor"]);
 
@@ -33,13 +34,17 @@ function parseActualDuty(formData: FormData) {
 export async function createActualDutyAction(formData: FormData) {
   await requirePermission("actual_duties", "create");
   const parsed = parseActualDuty(formData);
-  if (!parsed.success) return;
+  if (!parsed.success) {
+    await setFlash({ kind: "error", text: "Провери данните за действителната повеска." });
+    return;
+  }
 
   await getDb().insert(actualDuties).values({
     ...parsed.data,
     reportedAt: new Date()
   });
 
+  await setFlash({ kind: "success", text: "Действителната повеска е добавена." });
   revalidatePath("/actual-duties");
   revalidatePath("/schedule");
 }
@@ -48,9 +53,13 @@ export async function updateActualDutyAction(formData: FormData) {
   await requirePermission("actual_duties", "edit");
   const id = String(formData.get("id") ?? "");
   const parsed = parseActualDuty(formData);
-  if (!id || !parsed.success) return;
+  if (!id || !parsed.success) {
+    await setFlash({ kind: "error", text: "Провери данните за действителната повеска." });
+    return;
+  }
 
   await getDb().update(actualDuties).set(parsed.data).where(eq(actualDuties.id, id));
+  await setFlash({ kind: "success", text: "Действителната повеска е обновена." });
   revalidatePath("/actual-duties");
   revalidatePath("/schedule");
 }
@@ -58,9 +67,13 @@ export async function updateActualDutyAction(formData: FormData) {
 export async function deleteActualDutyAction(formData: FormData) {
   await requirePermission("actual_duties", "delete");
   const id = String(formData.get("id") ?? "");
-  if (!id) return;
+  if (!id) {
+    await setFlash({ kind: "error", text: "Липсва действителна повеска за изтриване." });
+    return;
+  }
 
   await getDb().delete(actualDuties).where(eq(actualDuties.id, id));
+  await setFlash({ kind: "success", text: "Действителната повеска е изтрита." });
   revalidatePath("/actual-duties");
   revalidatePath("/schedule");
 }

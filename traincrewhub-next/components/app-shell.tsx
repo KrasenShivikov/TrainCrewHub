@@ -1,10 +1,12 @@
 import Link from "next/link";
 
+import { FlashBanner } from "@/components/flash-banner";
+import { consumeFlash } from "@/lib/flash";
 import { getCurrentUser } from "@/lib/auth/session";
 import { navigation } from "@/lib/navigation";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentUser();
+  const [user, flash] = await Promise.all([getCurrentUser(), consumeFlash()]);
   const displayName =
     user?.firstName || user?.lastName
       ? [user.firstName, user.lastName].filter(Boolean).join(" ")
@@ -68,7 +70,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="px-4 py-6 lg:px-8">{children}</main>
+        <main className="px-4 py-6 lg:px-8">
+          <FlashBanner message={flash} />
+          {children}
+        </main>
       </div>
     </div>
   );

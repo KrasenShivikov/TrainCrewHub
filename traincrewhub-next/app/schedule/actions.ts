@@ -6,12 +6,16 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { schedulePublications } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
+import { setFlash } from "@/lib/flash";
 
 export async function publishScheduleAction(formData: FormData) {
   const { user } = await requirePermission("schedule_publications", "create");
   const date = String(formData.get("date") ?? "");
 
-  if (!date) return;
+  if (!date) {
+    await setFlash({ kind: "error", text: "Избери дата за публикуване." });
+    return;
+  }
 
   await getDb()
     .insert(schedulePublications)
@@ -32,6 +36,7 @@ export async function publishScheduleAction(formData: FormData) {
       }
     });
 
+  await setFlash({ kind: "success", text: "Графикът е публикуван." });
   revalidatePath("/schedule");
 }
 
@@ -39,7 +44,10 @@ export async function confirmScheduleAction(formData: FormData) {
   const { user } = await requirePermission("schedule_publications", "edit");
   const date = String(formData.get("date") ?? "");
 
-  if (!date) return;
+  if (!date) {
+    await setFlash({ kind: "error", text: "Избери дата за потвърждение." });
+    return;
+  }
 
   await getDb()
     .update(schedulePublications)
@@ -49,5 +57,6 @@ export async function confirmScheduleAction(formData: FormData) {
     })
     .where(eq(schedulePublications.date, date));
 
+  await setFlash({ kind: "success", text: "Графикът е потвърден." });
   revalidatePath("/schedule");
 }

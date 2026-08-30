@@ -1,27 +1,27 @@
 import { getDb } from "@/db";
 import { rolePermissions, roles } from "@/db/schema";
 
+export const permissionResources = [
+  { key: "employees", label: "Служители" },
+  { key: "positions", label: "Позиции" },
+  { key: "trains", label: "Влакове" },
+  { key: "duty_types", label: "Типове повески" },
+  { key: "schedule_keys", label: "Ключ-графици" },
+  { key: "duties", label: "Повески" },
+  { key: "planned_duties", label: "Планирани" },
+  { key: "employee_absences", label: "Отсъствия" },
+  { key: "absence_reasons", label: "Причини" },
+  { key: "actual_duties", label: "Реални" },
+  { key: "schedule_publications", label: "Публикации" },
+  { key: "documents", label: "Документи" },
+  { key: "admin", label: "Админ" }
+];
+
 const defaultRoles = [
   { name: "admin", displayName: "Administrator", displayNameBg: "Администратор" },
   { name: "head_of_transport", displayName: "Head of Transport", displayNameBg: "Началник транспорт" },
   { name: "instructor", displayName: "Instructor", displayNameBg: "Инструктор" },
   { name: "user", displayName: "User", displayNameBg: "Потребител" }
-];
-
-const resources = [
-  "employees",
-  "positions",
-  "trains",
-  "duty_types",
-  "schedule_keys",
-  "duties",
-  "planned_duties",
-  "employee_absences",
-  "absence_reasons",
-  "actual_duties",
-  "schedule_publications",
-  "documents",
-  "admin"
 ];
 
 type PermissionSeed = typeof rolePermissions.$inferInsert;
@@ -53,6 +53,7 @@ export async function seedDefaultRolesAndPermissions() {
 
   await db.insert(roles).values(defaultRoles).onConflictDoNothing();
 
+  const resources = permissionResources.map((resource) => resource.key);
   const adminPermissions = resources.map((resource) => permission("admin", resource, true, true, true, true));
   const headPermissions = resources
     .filter((resource) => resource !== "admin")

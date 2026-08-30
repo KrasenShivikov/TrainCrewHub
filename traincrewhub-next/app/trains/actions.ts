@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { trains } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
+import { setFlash } from "@/lib/flash";
 
 const trainSchema = z.object({
   number: z.string().trim().min(1),
@@ -31,9 +32,13 @@ function parseTrain(formData: FormData) {
 export async function createTrainAction(formData: FormData) {
   const { user } = await requirePermission("trains", "create");
   const parsed = parseTrain(formData);
-  if (!parsed.success) return;
+  if (!parsed.success) {
+    await setFlash({ kind: "error", text: "Попълни задължителните данни за влака." });
+    return;
+  }
 
   await getDb().insert(trains).values({ ...parsed.data, createdFrom: user.id });
+  await setFlash({ kind: "success", text: "Влакът е добавен." });
   revalidatePath("/trains");
 }
 
@@ -41,17 +46,25 @@ export async function updateTrainAction(formData: FormData) {
   await requirePermission("trains", "edit");
   const id = String(formData.get("id") ?? "");
   const parsed = parseTrain(formData);
-  if (!id || !parsed.success) return;
+  if (!id || !parsed.success) {
+    await setFlash({ kind: "error", text: "Провери данните за влака." });
+    return;
+  }
 
   await getDb().update(trains).set(parsed.data).where(eq(trains.id, id));
+  await setFlash({ kind: "success", text: "Влакът е обновен." });
   revalidatePath("/trains");
 }
 
 export async function deleteTrainAction(formData: FormData) {
   await requirePermission("trains", "delete");
   const id = String(formData.get("id") ?? "");
-  if (!id) return;
+  if (!id) {
+    await setFlash({ kind: "error", text: "Липсва влак за изтриване." });
+    return;
+  }
 
   await getDb().delete(trains).where(eq(trains.id, id));
+  await setFlash({ kind: "success", text: "Влакът е изтрит." });
   revalidatePath("/trains");
 }

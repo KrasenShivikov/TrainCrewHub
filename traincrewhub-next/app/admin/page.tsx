@@ -5,11 +5,13 @@ import { AppShell } from "@/components/app-shell";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
-import { employees, roles, userProfiles, userRoleAuditLogs, userRoles, users } from "@/db/schema";
+import { employees, rolePermissions, roles, userProfiles, userRoleAuditLogs, userRoles, users } from "@/db/schema";
+import { permissionResources } from "@/lib/auth/default-permissions";
 import { requirePermission } from "@/lib/auth/permissions";
 import {
   deleteInactiveUserAction,
   linkUserEmployeeAction,
+  updateRolePermissionAction,
   updateUserRoleAction,
   updateUserStatusAction
 } from "./actions";
@@ -18,7 +20,7 @@ export default async function AdminPage() {
   await requirePermission("admin", "view");
   const db = getDb();
 
-  const [userRows, roleRows, employeeRows, auditRows] = await Promise.all([
+  const [userRows, roleRows, employeeRows, auditRows, permissionRows, roleAssignments] = await Promise.all([
     db
       .select({
         id: users.id,
@@ -45,17 +47,21 @@ export default async function AdminPage() {
       })
       .from(userRoleAuditLogs)
       .orderBy(desc(userRoleAuditLogs.changedAt))
-      .limit(20)
+      .limit(20),
+    db.select().from(rolePermissions),
+    db.select().from(userRoles)
   ]);
 
-  const roleAssignments = await db.select().from(userRoles);
   const rolesByUser = Map.groupBy(roleAssignments, (row) => row.userId);
+  const permissionByRoleResource = new Map(
+    permissionRows.map((row) => [`${row.role}:${row.resource}`, row])
+  );
 
   return (
     <AppShell>
-      <SectionHeader title="Админ" description="Активиране на потребители, роли и връзка към служител." />
+      <SectionHeader title="Админ" description="Потребители, роли, права и връзка към служител." />
 
-      <div className="grid gap-5 2xl:grid-cols-[1fr_360px]">
+      <div className="space-y-5">
         <section className="overflow-hidden rounded border border-rail-line bg-white shadow-panel">
           <div className="border-b border-rail-line px-4 py-3">
             <h3 className="text-base font-semibold">Потребители</h3>
@@ -129,7 +135,65 @@ export default async function AdminPage() {
           </div>
         </section>
 
-        <aside className="rounded border border-rail-line bg-white shadow-panel">
+        <section className="overflow-hidden rounded border border-rail-line bg-white shadow-panel">
+          <div className="border-b border-rail-line px-4 py-3">
+            <h3 className="text-base font-semibold">Права по роли</h3>
+            <p className="text-sm text-slate-600">Admin ролята е заключена с пълен достъп.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Роля</th>
+                  <th className="px-4 py-3">Ресурс</th>
+                  <th className="px-4 py-3">Преглед</th>
+                  <th className="px-4 py-3">Създаване</th>
+                  <th className="px-4 py-3">Редакция</th>
+                  <th className="px-4 py-3">Изтриване</th>
+                  <th className="px-4 py-3 text-right">Действия</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-rail-line">
+                {roleRows.flatMap((role) =>
+                  permissionResources.map((resource) => {
+                    const permission = permissionByRoleResource.get(`${role.name}:${resource.key}`);
+                    const locked = role.name === "admin";
+
+                    return (
+                      <tr key={`${role.name}:${resource.key}`}>
+                        <td className="px-4 py-3 font-medium">{role.displayNameBg || role.displayName}</td>
+                        <td className="px-4 py-3">{resource.label}</td>
+                        <form action={updateRolePermissionAction} className="contents">
+                            <input type="hidden" name="role" value={role.name} />
+                            <input type="hidden" name="resource" value={resource.key} />
+                            <td className="px-4 py-3">
+                            <Check name="canView" defaultChecked={locked || Boolean(permission?.canView)} disabled={locked} />
+                            </td>
+                            <td className="px-4 py-3">
+                            <Check name="canCreate" defaultChecked={locked || Boolean(permission?.canCreate)} disabled={locked} />
+                            </td>
+                            <td className="px-4 py-3">
+                            <Check name="canEdit" defaultChecked={locked || Boolean(permission?.canEdit)} disabled={locked} />
+                            </td>
+                            <td className="px-4 py-3">
+                            <Check name="canDelete" defaultChecked={locked || Boolean(permission?.canDelete)} disabled={locked} />
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                            <button disabled={locked} className="inline-flex h-9 items-center justify-center gap-2 rounded border border-rail-line px-3 text-sm font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50">
+                              <Save className="h-4 w-4" /> Запази
+                            </button>
+                            </td>
+                        </form>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="rounded border border-rail-line bg-white shadow-panel">
           <div className="border-b border-rail-line px-4 py-3">
             <h3 className="text-base font-semibold">Последни промени</h3>
           </div>
@@ -141,8 +205,23 @@ export default async function AdminPage() {
               </article>
             )) : <p className="p-4 text-sm text-slate-500">Няма записани промени.</p>}
           </div>
-        </aside>
+        </section>
       </div>
     </AppShell>
+  );
+}
+
+function Check({ name, defaultChecked, disabled }: { name: string; defaultChecked: boolean; disabled: boolean }) {
+  return (
+    <label className="flex items-center gap-2 text-sm">
+      <input
+        name={name}
+        type="checkbox"
+        defaultChecked={defaultChecked}
+        disabled={disabled}
+        className="h-4 w-4 rounded border-rail-line text-rail-route"
+      />
+      <span className="sr-only">{name}</span>
+    </label>
   );
 }

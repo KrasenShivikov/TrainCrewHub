@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { duties, dutyTrains, scheduleKeyDuties } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
+import { setFlash } from "@/lib/flash";
 
 const nullableUuid = z
   .string()
@@ -81,7 +82,10 @@ export async function createDutyAction(formData: FormData) {
   const { user } = await requirePermission("duties", "create");
   const parsed = parseDuty(formData);
 
-  if (!parsed.success) return;
+  if (!parsed.success) {
+    await setFlash({ kind: "error", text: "Провери данните за повеската." });
+    return;
+  }
 
   const db = getDb();
   const [orderRow] = await db
@@ -108,6 +112,7 @@ export async function createDutyAction(formData: FormData) {
     .returning({ id: duties.id });
 
   await syncDutyLinks(createdDuty.id, parsed.data.scheduleKeyIds, parsed.data.trainIds);
+  await setFlash({ kind: "success", text: "Повеската е добавена." });
   revalidatePath("/duties");
 }
 
@@ -116,7 +121,10 @@ export async function updateDutyAction(formData: FormData) {
   const dutyId = String(formData.get("id") ?? "");
   const parsed = parseDuty(formData);
 
-  if (!dutyId || !parsed.success) return;
+  if (!dutyId || !parsed.success) {
+    await setFlash({ kind: "error", text: "Провери данните за повеската." });
+    return;
+  }
 
   await getDb()
     .update(duties)
@@ -136,6 +144,7 @@ export async function updateDutyAction(formData: FormData) {
     .where(eq(duties.id, dutyId));
 
   await syncDutyLinks(dutyId, parsed.data.scheduleKeyIds, parsed.data.trainIds);
+  await setFlash({ kind: "success", text: "Повеската е обновена." });
   revalidatePath("/duties");
 }
 
@@ -143,9 +152,13 @@ export async function deleteDutyAction(formData: FormData) {
   await requirePermission("duties", "delete");
   const dutyId = String(formData.get("id") ?? "");
 
-  if (!dutyId) return;
+  if (!dutyId) {
+    await setFlash({ kind: "error", text: "Липсва повеска за изтриване." });
+    return;
+  }
 
   await getDb().delete(duties).where(eq(duties.id, dutyId));
+  await setFlash({ kind: "success", text: "Повеската е изтрита." });
   revalidatePath("/duties");
 }
 
@@ -153,7 +166,10 @@ export async function reorderDutiesAction(formData: FormData) {
   await requirePermission("duties", "edit");
   const ids = formData.getAll("dutyIds").map(String).filter(Boolean);
 
-  if (!ids.length) return;
+  if (!ids.length) {
+    await setFlash({ kind: "error", text: "Няма избрани повески за подреждане." });
+    return;
+  }
 
   const db = getDb();
   const existingRows = await db.select({ id: duties.id }).from(duties).where(inArray(duties.id, ids));
@@ -165,5 +181,6 @@ export async function reorderDutiesAction(formData: FormData) {
       .map((id, index) => db.update(duties).set({ displayOrder: index + 1 }).where(eq(duties.id, id)))
   );
 
+  await setFlash({ kind: "success", text: "Редът на повеските е обновен." });
   revalidatePath("/duties");
 }
