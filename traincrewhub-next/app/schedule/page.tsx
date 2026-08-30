@@ -13,7 +13,7 @@ import {
   employees,
   schedulePublications
 } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 import { confirmScheduleAction, publishScheduleAction } from "./actions";
 
 const roleLabels = {
@@ -34,7 +34,7 @@ export default async function SchedulePage({
 }: {
   searchParams: Promise<{ date?: string }>;
 }) {
-  await requireUser();
+  await requirePermission("actual_duties", "view");
   const params = await searchParams;
   const selectedDate = params.date || todayIso();
   const db = getDb();

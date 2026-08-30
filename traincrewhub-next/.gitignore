@@ -6,3 +6,8 @@ build
 .env*.local
 drizzle/meta
 *.log
+public/uploads/*
+!public/uploads/.gitkeep
+!public/uploads/documents/
+public/uploads/documents/*
+!public/uploads/documents/.gitkeep

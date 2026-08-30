@@ -2,10 +2,11 @@ import { asc } from "drizzle-orm";
 import { Plus, Save, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
 import { scheduleKeys } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 import {
   createScheduleKeyAction,
   deleteScheduleKeyAction,
@@ -19,7 +20,7 @@ const scheduleTypeLabels = {
 };
 
 export default async function ScheduleKeysPage() {
-  await requireUser();
+  await requirePermission("schedule_keys", "view");
   const rows = await getDb().select().from(scheduleKeys).orderBy(asc(scheduleKeys.validFrom), asc(scheduleKeys.name));
 
   return (
@@ -66,9 +67,9 @@ export default async function ScheduleKeysPage() {
                         </details>
                         <form action={deleteScheduleKeyAction}>
                           <input type="hidden" name="id" value={row.id} />
-                          <button className="inline-flex h-10 items-center gap-2 rounded border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50">
+                          <ConfirmSubmit message="Да изтрия ли този ключ-график?" className="inline-flex h-10 items-center gap-2 rounded border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50">
                             <Trash2 className="h-4 w-4" /> Изтрий
-                          </button>
+                          </ConfirmSubmit>
                         </form>
                       </div>
                     </td>

@@ -26,3 +26,11 @@ export function getDb() {
 
   return database;
 }
+
+export async function closeDb() {
+  if (client) {
+    await client.end();
+    client = null;
+    database = null;
+  }
+}

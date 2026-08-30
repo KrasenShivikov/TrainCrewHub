@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { getDb } from "@/db";
 import { employees, positions } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 
 const nullableDate = z
   .string()
@@ -27,7 +27,7 @@ const employeeSchema = z.object({
 });
 
 export async function createPositionAction(formData: FormData) {
-  const user = await requireUser();
+  const { user } = await requirePermission("positions", "create");
   const title = String(formData.get("title") ?? "").trim();
 
   if (!title) {
@@ -43,7 +43,7 @@ export async function createPositionAction(formData: FormData) {
 }
 
 export async function createEmployeeAction(formData: FormData) {
-  const user = await requireUser();
+  const { user } = await requirePermission("employees", "create");
   const parsed = employeeSchema.safeParse({
     firstName: formData.get("firstName"),
     lastName: formData.get("lastName"),
@@ -67,7 +67,7 @@ export async function createEmployeeAction(formData: FormData) {
 }
 
 export async function updateEmployeeAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("employees", "edit");
   const employeeId = String(formData.get("id") ?? "");
   const parsed = employeeSchema.safeParse({
     firstName: formData.get("firstName"),
@@ -95,7 +95,7 @@ export async function updateEmployeeAction(formData: FormData) {
 }
 
 export async function deleteEmployeeAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("employees", "delete");
   const employeeId = String(formData.get("id") ?? "");
 
   if (!employeeId) {

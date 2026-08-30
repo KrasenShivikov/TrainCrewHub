@@ -5,7 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
 import { absenceReasons, duties, dutyTypes, employeeAbsences, employees, plannedDuties } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 
 const roleLabels = {
   chief: "Началник влак",
@@ -21,7 +21,7 @@ export default async function PlanSchedulePage({
 }: {
   searchParams: Promise<{ date?: string }>;
 }) {
-  await requireUser();
+  await requirePermission("planned_duties", "view");
   const params = await searchParams;
   const selectedDate = params.date || todayIso();
   const db = getDb();

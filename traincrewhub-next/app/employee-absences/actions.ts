@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { getDb } from "@/db";
 import { absenceReasons, employeeAbsences } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 
 const absenceSchema = z.object({
   employeeId: z.string().uuid(),
@@ -27,7 +27,7 @@ function parseAbsence(formData: FormData) {
 }
 
 export async function createAbsenceReasonAction(formData: FormData) {
-  const user = await requireUser();
+  const { user } = await requirePermission("absence_reasons", "create");
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim() || null;
 
@@ -38,7 +38,7 @@ export async function createAbsenceReasonAction(formData: FormData) {
 }
 
 export async function createEmployeeAbsenceAction(formData: FormData) {
-  const user = await requireUser();
+  const { user } = await requirePermission("employee_absences", "create");
   const parsed = parseAbsence(formData);
   if (!parsed.success) return;
 
@@ -48,7 +48,7 @@ export async function createEmployeeAbsenceAction(formData: FormData) {
 }
 
 export async function updateEmployeeAbsenceAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("employee_absences", "edit");
   const id = String(formData.get("id") ?? "");
   const parsed = parseAbsence(formData);
   if (!id || !parsed.success) return;
@@ -59,7 +59,7 @@ export async function updateEmployeeAbsenceAction(formData: FormData) {
 }
 
 export async function deleteEmployeeAbsenceAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("employee_absences", "delete");
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
@@ -69,7 +69,7 @@ export async function deleteEmployeeAbsenceAction(formData: FormData) {
 }
 
 export async function deleteAbsenceReasonAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("absence_reasons", "delete");
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 

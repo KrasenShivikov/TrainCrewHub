@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { getDb } from "@/db";
 import { actualDuties } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 
 const roleSchema = z.enum(["chief", "conductor"]);
 
@@ -31,7 +31,7 @@ function parseActualDuty(formData: FormData) {
 }
 
 export async function createActualDutyAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("actual_duties", "create");
   const parsed = parseActualDuty(formData);
   if (!parsed.success) return;
 
@@ -45,7 +45,7 @@ export async function createActualDutyAction(formData: FormData) {
 }
 
 export async function updateActualDutyAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("actual_duties", "edit");
   const id = String(formData.get("id") ?? "");
   const parsed = parseActualDuty(formData);
   if (!id || !parsed.success) return;
@@ -56,7 +56,7 @@ export async function updateActualDutyAction(formData: FormData) {
 }
 
 export async function deleteActualDutyAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("actual_duties", "delete");
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 

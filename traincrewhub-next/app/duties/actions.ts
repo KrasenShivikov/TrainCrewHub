@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { getDb } from "@/db";
 import { duties, dutyTrains, scheduleKeyDuties } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 
 const nullableUuid = z
   .string()
@@ -78,7 +78,7 @@ async function syncDutyLinks(dutyId: string, scheduleKeyIds: string[], trainIds:
 }
 
 export async function createDutyAction(formData: FormData) {
-  const user = await requireUser();
+  const { user } = await requirePermission("duties", "create");
   const parsed = parseDuty(formData);
 
   if (!parsed.success) return;
@@ -112,7 +112,7 @@ export async function createDutyAction(formData: FormData) {
 }
 
 export async function updateDutyAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("duties", "edit");
   const dutyId = String(formData.get("id") ?? "");
   const parsed = parseDuty(formData);
 
@@ -140,7 +140,7 @@ export async function updateDutyAction(formData: FormData) {
 }
 
 export async function deleteDutyAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("duties", "delete");
   const dutyId = String(formData.get("id") ?? "");
 
   if (!dutyId) return;
@@ -150,7 +150,7 @@ export async function deleteDutyAction(formData: FormData) {
 }
 
 export async function reorderDutiesAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("duties", "edit");
   const ids = formData.getAll("dutyIds").map(String).filter(Boolean);
 
   if (!ids.length) return;

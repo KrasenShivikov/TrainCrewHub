@@ -2,10 +2,11 @@ import { asc, desc, eq } from "drizzle-orm";
 import { Plus, Save, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
 import { actualDuties, duties, dutyTypes, employees } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 import { createActualDutyAction, deleteActualDutyAction, updateActualDutyAction } from "./actions";
 
 const roleLabels = {
@@ -18,7 +19,7 @@ function asTime(value: string | null) {
 }
 
 export default async function ActualDutiesPage() {
-  await requireUser();
+  await requirePermission("actual_duties", "view");
   const db = getDb();
 
   const [rows, employeeRows, dutyRows] = await Promise.all([
@@ -96,9 +97,9 @@ export default async function ActualDutiesPage() {
                         </details>
                         <form action={deleteActualDutyAction}>
                           <input type="hidden" name="id" value={row.id} />
-                          <button className="inline-flex h-10 items-center gap-2 rounded border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50">
+                          <ConfirmSubmit message="Да изтрия ли това реално назначение?" className="inline-flex h-10 items-center gap-2 rounded border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50">
                             <Trash2 className="h-4 w-4" /> Изтрий
-                          </button>
+                          </ConfirmSubmit>
                         </form>
                       </div>
                     </td>

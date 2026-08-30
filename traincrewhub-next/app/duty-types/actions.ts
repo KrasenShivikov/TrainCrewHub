@@ -5,10 +5,10 @@ import { eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { dutyTypes } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 
 export async function createDutyTypeAction(formData: FormData) {
-  const user = await requireUser();
+  const { user } = await requirePermission("duty_types", "create");
   const name = String(formData.get("name") ?? "").trim();
 
   if (!name) return;
@@ -18,7 +18,7 @@ export async function createDutyTypeAction(formData: FormData) {
 }
 
 export async function updateDutyTypeAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("duty_types", "edit");
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
 
@@ -29,7 +29,7 @@ export async function updateDutyTypeAction(formData: FormData) {
 }
 
 export async function deleteDutyTypeAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("duty_types", "delete");
   const id = String(formData.get("id") ?? "");
 
   if (!id) return;

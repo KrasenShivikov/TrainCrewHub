@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { getDb } from "@/db";
 import { scheduleKeys } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 
 const scheduleKeySchema = z.object({
   name: z.string().trim().min(1),
@@ -29,7 +29,7 @@ function parseScheduleKey(formData: FormData) {
 }
 
 export async function createScheduleKeyAction(formData: FormData) {
-  const user = await requireUser();
+  const { user } = await requirePermission("schedule_keys", "create");
   const parsed = parseScheduleKey(formData);
   if (!parsed.success) return;
 
@@ -38,7 +38,7 @@ export async function createScheduleKeyAction(formData: FormData) {
 }
 
 export async function updateScheduleKeyAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("schedule_keys", "edit");
   const id = String(formData.get("id") ?? "");
   const parsed = parseScheduleKey(formData);
   if (!id || !parsed.success) return;
@@ -48,7 +48,7 @@ export async function updateScheduleKeyAction(formData: FormData) {
 }
 
 export async function deleteScheduleKeyAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("schedule_keys", "delete");
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 

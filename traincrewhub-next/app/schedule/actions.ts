@@ -5,10 +5,10 @@ import { eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { schedulePublications } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 
 export async function publishScheduleAction(formData: FormData) {
-  const user = await requireUser();
+  const { user } = await requirePermission("schedule_publications", "create");
   const date = String(formData.get("date") ?? "");
 
   if (!date) return;
@@ -36,7 +36,7 @@ export async function publishScheduleAction(formData: FormData) {
 }
 
 export async function confirmScheduleAction(formData: FormData) {
-  const user = await requireUser();
+  const { user } = await requirePermission("schedule_publications", "edit");
   const date = String(formData.get("date") ?? "");
 
   if (!date) return;

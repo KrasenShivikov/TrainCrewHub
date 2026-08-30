@@ -5,7 +5,8 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/db";
-import { roles, userProfiles, userRoles, users } from "@/db/schema";
+import { userProfiles, userRoles, users } from "@/db/schema";
+import { seedDefaultRolesAndPermissions } from "@/lib/auth/default-permissions";
 import { hashPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 
@@ -54,15 +55,7 @@ export async function registerAction(formData: FormData) {
   const [firstUser] = await db.select({ id: users.id }).from(users).limit(1);
   const isBootstrapAdmin = !firstUser;
 
-  await db
-    .insert(roles)
-    .values([
-      { name: "admin", displayName: "Administrator", displayNameBg: "Администратор" },
-      { name: "head_of_transport", displayName: "Head of Transport", displayNameBg: "Началник транспорт" },
-      { name: "instructor", displayName: "Instructor", displayNameBg: "Инструктор" },
-      { name: "user", displayName: "User", displayNameBg: "Потребител" }
-    ])
-    .onConflictDoNothing();
+  await seedDefaultRolesAndPermissions();
 
   const [createdUser] = await db
     .insert(users)

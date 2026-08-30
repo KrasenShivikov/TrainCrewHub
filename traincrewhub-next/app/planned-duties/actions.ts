@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { getDb } from "@/db";
 import { actualDuties, plannedDuties } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 
 const assignmentRoleSchema = z.enum(["chief", "conductor"]);
 
@@ -27,7 +27,7 @@ function parsePlannedDuty(formData: FormData) {
 }
 
 export async function createPlannedDutyAction(formData: FormData) {
-  const user = await requireUser();
+  const { user } = await requirePermission("planned_duties", "create");
   const parsed = parsePlannedDuty(formData);
 
   if (!parsed.success) return;
@@ -41,7 +41,7 @@ export async function createPlannedDutyAction(formData: FormData) {
 }
 
 export async function updatePlannedDutyAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("planned_duties", "edit");
   const id = String(formData.get("id") ?? "");
   const parsed = parsePlannedDuty(formData);
 
@@ -52,7 +52,7 @@ export async function updatePlannedDutyAction(formData: FormData) {
 }
 
 export async function deletePlannedDutyAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("planned_duties", "delete");
   const id = String(formData.get("id") ?? "");
 
   if (!id) return;
@@ -62,7 +62,8 @@ export async function deletePlannedDutyAction(formData: FormData) {
 }
 
 export async function copyPlannedToActualAction(formData: FormData) {
-  const user = await requireUser();
+  await requirePermission("planned_duties", "create");
+  await requirePermission("actual_duties", "create");
   const id = String(formData.get("id") ?? "");
 
   if (!id) return;
@@ -86,7 +87,6 @@ export async function copyPlannedToActualAction(formData: FormData) {
     })
     .onConflictDoNothing();
 
-  void user;
   revalidatePath("/planned-duties");
   revalidatePath("/actual-duties");
 }

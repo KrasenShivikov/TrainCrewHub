@@ -1,6 +1,7 @@
 import "server-only";
 
 import { and, eq, inArray } from "drizzle-orm";
+import { redirect } from "next/navigation";
 
 import { getDb } from "@/db";
 import { rolePermissions } from "@/db/schema";
@@ -64,7 +65,7 @@ export async function requirePermission(resource: string, action: PermissionActi
   const permission = await getPermission(user, resource, action);
 
   if (!permission.allowed) {
-    throw new Error(`Missing permission: ${resource}.${action}`);
+    redirect(`/forbidden?resource=${encodeURIComponent(resource)}&action=${encodeURIComponent(action)}`);
   }
 
   return { user, permission };

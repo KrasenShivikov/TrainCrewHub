@@ -2,10 +2,11 @@ import { asc, eq } from "drizzle-orm";
 import { Plus, Save, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
 import { duties, dutyTrains, dutyTypes, scheduleKeyDuties, scheduleKeys, trains } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 import { createDutyAction, deleteDutyAction, updateDutyAction } from "./actions";
 
 type DutyRow = typeof duties.$inferSelect & {
@@ -28,7 +29,7 @@ function asIntervalInput(value: unknown) {
 }
 
 export default async function DutiesPage() {
-  await requireUser();
+  await requirePermission("duties", "view");
   const db = getDb();
 
   const [rawDuties, dutyTypeRows, scheduleKeyRows, trainRows, scheduleLinks, trainLinks] = await Promise.all([
@@ -146,9 +147,9 @@ export default async function DutiesPage() {
                         </details>
                         <form action={deleteDutyAction}>
                           <input type="hidden" name="id" value={duty.id} />
-                          <button className="inline-flex h-10 items-center gap-2 rounded border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50">
+                          <ConfirmSubmit message="Да изтрия ли тази повеска?" className="inline-flex h-10 items-center gap-2 rounded border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50">
                             <Trash2 className="h-4 w-4" /> Изтрий
-                          </button>
+                          </ConfirmSubmit>
                         </form>
                       </div>
                     </td>

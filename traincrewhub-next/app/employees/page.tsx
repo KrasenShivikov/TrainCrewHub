@@ -2,10 +2,11 @@ import { asc, eq } from "drizzle-orm";
 import { Plus, Save, Trash2, UserRoundPlus } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
 import { employees, positions } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 import {
   createEmployeeAction,
   createPositionAction,
@@ -22,7 +23,7 @@ function dateValue(value: string | Date | null) {
 }
 
 export default async function EmployeesPage() {
-  await requireUser();
+  await requirePermission("employees", "view");
 
   const db = getDb();
   const [employeeRows, positionRows] = await Promise.all([
@@ -188,10 +189,10 @@ export default async function EmployeesPage() {
                       <td className="px-4 py-3 text-right">
                         <form action={deleteEmployeeAction}>
                           <input type="hidden" name="id" value={employee.id} />
-                          <button type="submit" className="inline-flex h-9 items-center gap-2 rounded border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50">
+                          <ConfirmSubmit message="Да изтрия ли този служител?" className="inline-flex h-9 items-center gap-2 rounded border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50">
                             <Trash2 className="h-4 w-4" />
                             Изтрий
-                          </button>
+                          </ConfirmSubmit>
                         </form>
                       </td>
                     </tr>

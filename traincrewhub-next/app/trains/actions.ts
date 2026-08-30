@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { getDb } from "@/db";
 import { trains } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/permissions";
 
 const trainSchema = z.object({
   number: z.string().trim().min(1),
@@ -29,7 +29,7 @@ function parseTrain(formData: FormData) {
 }
 
 export async function createTrainAction(formData: FormData) {
-  const user = await requireUser();
+  const { user } = await requirePermission("trains", "create");
   const parsed = parseTrain(formData);
   if (!parsed.success) return;
 
@@ -38,7 +38,7 @@ export async function createTrainAction(formData: FormData) {
 }
 
 export async function updateTrainAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("trains", "edit");
   const id = String(formData.get("id") ?? "");
   const parsed = parseTrain(formData);
   if (!id || !parsed.success) return;
@@ -48,7 +48,7 @@ export async function updateTrainAction(formData: FormData) {
 }
 
 export async function deleteTrainAction(formData: FormData) {
-  await requireUser();
+  await requirePermission("trains", "delete");
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
