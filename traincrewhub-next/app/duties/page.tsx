@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
-import { Plus, Save, Trash2 } from "lucide-react";
+import { Eye, Plus, Save, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { ConfirmSubmit } from "@/components/confirm-submit";
@@ -130,6 +131,9 @@ export default async function DutiesPage() {
                     <td className="max-w-xs px-4 py-3 text-slate-600">{duty.notes || "-"}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
+                        <Link href={`/duties/${duty.id}`} className="inline-flex h-10 items-center gap-2 rounded border border-rail-line px-3 text-sm font-medium hover:bg-slate-100">
+                          <Eye className="h-4 w-4" /> Детайли
+                        </Link>
                         <details className="text-left">
                           <summary className="cursor-pointer rounded border border-rail-line px-3 py-2 text-sm font-medium hover:bg-slate-100">Редакция</summary>
                           <div className="absolute right-8 z-10 mt-2 w-[min(620px,calc(100vw-2rem))] rounded border border-rail-line bg-white p-4 shadow-lg">
