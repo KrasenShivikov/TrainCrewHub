@@ -196,6 +196,35 @@ export const actualDuties = pgTable(
   })
 );
 
+export const users = pgTable("users", {
+  id: id(),
+  email: text("email").notNull().unique(),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  isActive: boolean("is_active").default(false).notNull(),
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt()
+});
+
+export const sessions = pgTable("sessions", {
+  id: id(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: createdAt()
+});
+
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: id(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: createdAt()
+});
+
 export const roles = pgTable("roles", {
   name: text("name").primaryKey(),
   displayName: text("display_name").notNull(),
@@ -204,13 +233,10 @@ export const roles = pgTable("roles", {
 });
 
 export const userProfiles = pgTable("user_profiles", {
-  id: uuid("id").primaryKey(),
-  username: text("username").unique(),
-  email: text("email"),
+  id: uuid("id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
   firstName: text("first_name"),
   lastName: text("last_name"),
   employeeId: uuid("employee_id").references(() => employees.id),
-  isActive: boolean("is_active").default(false),
   createdAt: createdAt(),
   createdFrom: createdFrom(),
   updatedAt: updatedAt()
@@ -220,9 +246,9 @@ export const userRoles = pgTable(
   "user_roles",
   {
     id: id(),
-    userId: uuid("user_id").notNull(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     role: text("role").notNull().references(() => roles.name),
-    grantedBy: uuid("granted_by"),
+    grantedBy: uuid("granted_by").references(() => users.id),
     createdAt: createdAt(),
     createdFrom: createdFrom()
   },
@@ -259,9 +285,9 @@ export const schedulePublications = pgTable(
     id: id(),
     date: date("date").notNull().unique(),
     publishedAt: timestamp("published_at", { withTimezone: true }).defaultNow(),
-    publishedBy: uuid("published_by"),
+    publishedBy: uuid("published_by").references(() => users.id),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
-    confirmedBy: uuid("confirmed_by"),
+    confirmedBy: uuid("confirmed_by").references(() => users.id),
     invalidatedAt: timestamp("invalidated_at", { withTimezone: true })
   }
 );
@@ -273,7 +299,7 @@ export const scheduleChangeEvents = pgTable("schedule_change_events", {
   dutyId: uuid("duty_id").references(() => duties.id),
   action: text("action").notNull(),
   createdAt: createdAt(),
-  createdBy: uuid("created_by")
+  createdBy: uuid("created_by").references(() => users.id)
 });
 
 export const documentCategories = pgTable("document_categories", {
@@ -298,9 +324,9 @@ export const documents = pgTable("documents", {
 
 export const userRoleAuditLogs = pgTable("user_role_audit_logs", {
   id: id(),
-  targetUserId: uuid("target_user_id").notNull(),
+  targetUserId: uuid("target_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: text("role").notNull(),
   action: text("action").notNull(),
-  changedBy: uuid("changed_by"),
+  changedBy: uuid("changed_by").references(() => users.id),
   changedAt: timestamp("changed_at", { withTimezone: true }).defaultNow()
 });

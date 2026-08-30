@@ -1,8 +1,15 @@
 import Link from "next/link";
 
+import { getCurrentUser } from "@/lib/auth/session";
 import { navigation } from "@/lib/navigation";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export async function AppShell({ children }: { children: React.ReactNode }) {
+  const user = await getCurrentUser();
+  const displayName =
+    user?.firstName || user?.lastName
+      ? [user.firstName, user.lastName].filter(Boolean).join(" ")
+      : user?.username;
+
   return (
     <div className="min-h-screen bg-rail-mist text-rail-ink">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-rail-line bg-white px-4 py-5 lg:block">
@@ -35,12 +42,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </p>
               <h1 className="text-lg font-semibold">TrainCrewHub</h1>
             </div>
-            <Link
-              href="/login"
-              className="rounded bg-rail-ink px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
-            >
-              Вход
-            </Link>
+            {user ? (
+              <div className="flex items-center gap-3">
+                <div className="hidden text-right sm:block">
+                  <p className="text-sm font-medium">{displayName}</p>
+                  <p className="text-xs text-slate-500">{user.roles.join(", ") || "без роля"}</p>
+                </div>
+                <form action="/logout" method="post">
+                  <button
+                    type="submit"
+                    className="rounded border border-rail-line bg-white px-3 py-2 text-sm font-medium hover:bg-slate-100"
+                  >
+                    Изход
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="rounded bg-rail-ink px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
+              >
+                Вход
+              </Link>
+            )}
           </div>
         </header>
 
