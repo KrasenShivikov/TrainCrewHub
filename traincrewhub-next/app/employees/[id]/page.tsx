@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { asc, desc, eq } from "drizzle-orm";
-import { ArrowLeft, BadgeCheck, CalendarDays, CircleAlert, Clock3, UserRound } from "lucide-react";
+import { AlertTriangle, ArrowLeft, BadgeCheck, CalendarDays, CircleAlert, Clock3, UserRound } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { SectionHeader } from "@/components/section-header";
@@ -32,24 +32,16 @@ function fullName(firstName: string | null, lastName: string | null) {
 }
 
 function documentStatus(value: string | Date | null) {
-  if (!value) {
-    return { label: "Липсва дата", tone: "neutral" as const };
-  }
+  if (!value) return { label: "Липсва дата", tone: "neutral" as const, warning: "липсва дата" };
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const expiry = new Date(String(value).slice(0, 10));
   const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / 86_400_000);
 
-  if (diffDays < 0) {
-    return { label: "Изтекъл", tone: "danger" as const };
-  }
-
-  if (diffDays <= 30) {
-    return { label: `${diffDays} дни`, tone: "warning" as const };
-  }
-
-  return { label: `${diffDays} дни`, tone: "ok" as const };
+  if (diffDays < 0) return { label: "Изтекъл", tone: "danger" as const, warning: "е изтекъл" };
+  if (diffDays <= 30) return { label: `${diffDays} дни`, tone: "warning" as const, warning: `изтича след ${diffDays} дни` };
+  return { label: `${diffDays} дни`, tone: "ok" as const, warning: null };
 }
 
 function toneClass(tone: "ok" | "warning" | "danger" | "neutral") {
@@ -71,22 +63,18 @@ export default async function EmployeeDetailsPage({ params }: { params: Promise<
       id: employees.id,
       firstName: employees.firstName,
       lastName: employees.lastName,
-      photoUrl: employees.photoUrl,
       positionTitle: positions.title,
       isActive: employees.isActive,
       psychologicalAssessmentExpiry: employees.psychologicalAssessmentExpiry,
       medicalCertificateExpiry: employees.medicalCertificateExpiry,
-      licenseExpiry: employees.licenseExpiry,
-      createdAt: employees.createdAt
+      licenseExpiry: employees.licenseExpiry
     })
     .from(employees)
     .leftJoin(positions, eq(employees.positionId, positions.id))
     .where(eq(employees.id, id))
     .limit(1);
 
-  if (!employee) {
-    notFound();
-  }
+  if (!employee) notFound();
 
   const [absenceRows, plannedRows, actualRows] = await Promise.all([
     db
@@ -146,6 +134,13 @@ export default async function EmployeeDetailsPage({ params }: { params: Promise<
     { label: "Медицинско", value: employee.medicalCertificateExpiry },
     { label: "Лиценз", value: employee.licenseExpiry }
   ];
+  const warnings = [
+    ...(employee.isActive ? [] : ["Служителят е неактивен и не трябва да се използва за нови назначения."]),
+    ...documents.flatMap((document) => {
+      const status = documentStatus(document.value);
+      return status.warning ? [`${document.label}: ${status.warning}.`] : [];
+    })
+  ];
 
   return (
     <AppShell>
@@ -157,6 +152,8 @@ export default async function EmployeeDetailsPage({ params }: { params: Promise<
       </div>
 
       <SectionHeader title={name} description="Профил, валидности, отсъствия и назначения на служителя." />
+
+      {warnings.length ? <WarningList title="Предупреждения" items={warnings} /> : null}
 
       <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
         <aside className="grid content-start gap-5">
@@ -171,7 +168,7 @@ export default async function EmployeeDetailsPage({ params }: { params: Promise<
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <span className={employee.isActive ? "rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700" : "rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600"}>
+              <span className={employee.isActive ? "rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700" : "rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-700"}>
                 {employee.isActive ? "Активен" : "Неактивен"}
               </span>
             </div>
@@ -186,9 +183,7 @@ export default async function EmployeeDetailsPage({ params }: { params: Promise<
                   <div key={item.label} className="px-4 py-3 text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <span className="font-medium">{item.label}</span>
-                      <span className={`rounded border px-2 py-1 text-xs font-medium ${toneClass(status.tone)}`}>
-                        {status.label}
-                      </span>
+                      <span className={`rounded border px-2 py-1 text-xs font-medium ${toneClass(status.tone)}`}>{status.label}</span>
                     </div>
                     <div className="mt-1 text-slate-600">{item.value ? String(item.value).slice(0, 10) : "-"}</div>
                   </div>
@@ -214,43 +209,25 @@ export default async function EmployeeDetailsPage({ params }: { params: Promise<
             </div>
           </section>
 
-          <section className="rounded border border-rail-line bg-white shadow-panel">
-            <Header title="Планирани повески" count={plannedRows.length} />
-            <div className="divide-y divide-rail-line">
-              {plannedRows.length ? plannedRows.map((row) => (
-                <Assignment
-                  key={row.id}
-                  date={row.date}
-                  dutyId={row.dutyId}
-                  dutyName={row.dutyName}
-                  dutyTypeName={row.dutyTypeName}
-                  role={row.assignmentRole}
-                  time={`${asTime(row.dutyStartTime)} - ${asTime(row.dutyEndTime)}`}
-                />
-              )) : <Empty icon={<CalendarDays className="h-4 w-4" />} text="Няма планирани повески." />}
-            </div>
-          </section>
-
-          <section className="rounded border border-rail-line bg-white shadow-panel">
-            <Header title="Действителни повески" count={actualRows.length} />
-            <div className="divide-y divide-rail-line">
-              {actualRows.length ? actualRows.map((row) => (
-                <Assignment
-                  key={row.id}
-                  date={row.date}
-                  dutyId={row.dutyId}
-                  dutyName={row.dutyName}
-                  dutyTypeName={row.dutyTypeName}
-                  role={row.assignmentRole}
-                  time={`${asTime(row.startTimeOverride ?? row.dutyStartTime)} - ${asTime(row.endTimeOverride ?? row.dutyEndTime)}`}
-                  meta={row.startTimeOverride || row.endTimeOverride ? "Коригирани часове" : undefined}
-                />
-              )) : <Empty icon={<BadgeCheck className="h-4 w-4" />} text="Няма действителни повески." />}
-            </div>
-          </section>
+          <Assignments title="Планирани повески" rows={plannedRows} emptyText="Няма планирани повески." />
+          <Assignments title="Действителни повески" rows={actualRows} emptyText="Няма действителни повески." actual />
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function WarningList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <section className="mb-5 rounded border border-amber-200 bg-amber-50 p-4 text-amber-900">
+      <div className="flex items-center gap-2 font-semibold">
+        <AlertTriangle className="h-5 w-5" />
+        {title}
+      </div>
+      <ul className="mt-2 space-y-1 text-sm">
+        {items.map((item) => <li key={item}>{item}</li>)}
+      </ul>
+    </section>
   );
 }
 
@@ -264,23 +241,45 @@ function Header({ title, count }: { title: string; count: number }) {
 }
 
 function Empty({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return <div className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-slate-500">{icon}{text}</div>;
+}
+
+function Assignments({ title, rows, emptyText, actual = false }: { title: string; rows: AssignmentRow[]; emptyText: string; actual?: boolean }) {
   return (
-    <div className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-slate-500">
-      {icon}
-      {text}
-    </div>
+    <section className="rounded border border-rail-line bg-white shadow-panel">
+      <Header title={title} count={rows.length} />
+      <div className="divide-y divide-rail-line">
+        {rows.length ? rows.map((row) => (
+          <Assignment
+            key={row.id}
+            date={row.date}
+            dutyId={row.dutyId}
+            dutyName={row.dutyName}
+            dutyTypeName={row.dutyTypeName}
+            role={row.assignmentRole}
+            time={`${asTime((actual ? row.startTimeOverride : null) ?? row.dutyStartTime)} - ${asTime((actual ? row.endTimeOverride : null) ?? row.dutyEndTime)}`}
+            meta={actual && (row.startTimeOverride || row.endTimeOverride) ? "Коригирани часове" : undefined}
+          />
+        )) : <Empty icon={actual ? <BadgeCheck className="h-4 w-4" /> : <CalendarDays className="h-4 w-4" />} text={emptyText} />}
+      </div>
+    </section>
   );
 }
 
-function Assignment({
-  date,
-  dutyId,
-  dutyName,
-  dutyTypeName,
-  role,
-  time,
-  meta
-}: {
+type AssignmentRow = {
+  id: string;
+  date: string;
+  assignmentRole: string | null;
+  dutyId: string | null;
+  dutyName: string | null;
+  dutyStartTime: string | null;
+  dutyEndTime: string | null;
+  dutyTypeName: string | null;
+  startTimeOverride?: string | null;
+  endTimeOverride?: string | null;
+};
+
+function Assignment({ date, dutyId, dutyName, dutyTypeName, role, time, meta }: {
   date: string;
   dutyId: string | null;
   dutyName: string | null;
@@ -293,21 +292,12 @@ function Assignment({
     <div className="grid gap-3 px-4 py-3 text-sm md:grid-cols-[140px_1fr_140px]">
       <div className="font-medium">{date}</div>
       <div>
-        {dutyId ? (
-          <Link href={`/duties/${dutyId}`} className="font-medium text-rail-route hover:underline">
-            {dutyName ?? "-"}
-          </Link>
-        ) : (
-          <span className="font-medium">{dutyName ?? "-"}</span>
-        )}
+        {dutyId ? <Link href={`/duties/${dutyId}`} className="font-medium text-rail-route hover:underline">{dutyName ?? "-"}</Link> : <span className="font-medium">{dutyName ?? "-"}</span>}
         {dutyTypeName ? <div className="mt-1 text-xs text-slate-500">{dutyTypeName}</div> : null}
         {meta ? <div className="mt-1 text-xs font-medium text-rail-signal">{meta}</div> : null}
       </div>
       <div>
-        <div className="inline-flex items-center gap-1 text-slate-700">
-          <Clock3 className="h-4 w-4" />
-          {time}
-        </div>
+        <div className="inline-flex items-center gap-1 text-slate-700"><Clock3 className="h-4 w-4" />{time}</div>
         <div className="mt-1 text-xs text-slate-500">{roleLabels[(role ?? "conductor") as keyof typeof roleLabels] ?? role}</div>
       </div>
     </div>

@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq, gte, lte, ne } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/db";
-import { actualDuties } from "@/db/schema";
+import { absenceReasons, actualDuties, employeeAbsences, scheduleChangeEvents } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
 import { setFlash } from "@/lib/flash";
 
@@ -31,26 +31,83 @@ function parseActualDuty(formData: FormData) {
   });
 }
 
+function revalidateActualDutyViews(date: string, employeeId?: string | null, dutyId?: string | null) {
+  revalidatePath("/actual-duties");
+  revalidatePath("/schedule");
+  revalidatePath(`/schedule/${date}`);
+
+  if (employeeId) {
+    revalidatePath(`/employees/${employeeId}`);
+  }
+
+  if (dutyId) {
+    revalidatePath(`/duties/${dutyId}`);
+  }
+}
+
+async function findActualDutyConflict(date: string, employeeId: string, ignoreId?: string) {
+  const db = getDb();
+  const actualWhere = ignoreId
+    ? and(eq(actualDuties.employeeId, employeeId), eq(actualDuties.date, date), ne(actualDuties.id, ignoreId))
+    : and(eq(actualDuties.employeeId, employeeId), eq(actualDuties.date, date));
+
+  const [existingActual] = await db.select({ id: actualDuties.id }).from(actualDuties).where(actualWhere).limit(1);
+
+  if (existingActual) {
+    return "Служителят вече има действителна повеска за тази дата.";
+  }
+
+  const [absence] = await db
+    .select({
+      reasonName: absenceReasons.name,
+      startDate: employeeAbsences.startDate,
+      endDate: employeeAbsences.endDate
+    })
+    .from(employeeAbsences)
+    .leftJoin(absenceReasons, eq(employeeAbsences.reasonId, absenceReasons.id))
+    .where(and(eq(employeeAbsences.employeeId, employeeId), lte(employeeAbsences.startDate, date), gte(employeeAbsences.endDate, date)))
+    .limit(1);
+
+  if (absence) {
+    return `Служителят е в отсъствие за тази дата (${absence.reasonName ?? "без причина"}, ${absence.startDate} - ${absence.endDate}).`;
+  }
+
+  return null;
+}
+
 export async function createActualDutyAction(formData: FormData) {
-  await requirePermission("actual_duties", "create");
+  const { user } = await requirePermission("actual_duties", "create");
   const parsed = parseActualDuty(formData);
   if (!parsed.success) {
     await setFlash({ kind: "error", text: "Провери данните за действителната повеска." });
     return;
   }
 
-  await getDb().insert(actualDuties).values({
+  const conflict = await findActualDutyConflict(parsed.data.date, parsed.data.employeeId);
+  if (conflict) {
+    await setFlash({ kind: "error", text: conflict });
+    return;
+  }
+
+  const db = getDb();
+  await db.insert(actualDuties).values({
     ...parsed.data,
     reportedAt: new Date()
   });
+  await db.insert(scheduleChangeEvents).values({
+    date: parsed.data.date,
+    employeeId: parsed.data.employeeId,
+    dutyId: parsed.data.dutyId,
+    action: "actual_duty_created",
+    createdBy: user.id
+  });
 
   await setFlash({ kind: "success", text: "Действителната повеска е добавена." });
-  revalidatePath("/actual-duties");
-  revalidatePath("/schedule");
+  revalidateActualDutyViews(parsed.data.date, parsed.data.employeeId, parsed.data.dutyId);
 }
 
 export async function updateActualDutyAction(formData: FormData) {
-  await requirePermission("actual_duties", "edit");
+  const { user } = await requirePermission("actual_duties", "edit");
   const id = String(formData.get("id") ?? "");
   const parsed = parseActualDuty(formData);
   if (!id || !parsed.success) {
@@ -58,22 +115,57 @@ export async function updateActualDutyAction(formData: FormData) {
     return;
   }
 
-  await getDb().update(actualDuties).set(parsed.data).where(eq(actualDuties.id, id));
+  const conflict = await findActualDutyConflict(parsed.data.date, parsed.data.employeeId, id);
+  if (conflict) {
+    await setFlash({ kind: "error", text: conflict });
+    return;
+  }
+
+  const db = getDb();
+  const [existing] = await db.select().from(actualDuties).where(eq(actualDuties.id, id)).limit(1);
+
+  await db.update(actualDuties).set(parsed.data).where(eq(actualDuties.id, id));
+  await db.insert(scheduleChangeEvents).values({
+    date: parsed.data.date,
+    employeeId: parsed.data.employeeId,
+    dutyId: parsed.data.dutyId,
+    action: "actual_duty_updated",
+    createdBy: user.id
+  });
+
   await setFlash({ kind: "success", text: "Действителната повеска е обновена." });
-  revalidatePath("/actual-duties");
-  revalidatePath("/schedule");
+  revalidateActualDutyViews(parsed.data.date, parsed.data.employeeId, parsed.data.dutyId);
+
+  if (existing?.date && existing.date !== parsed.data.date) {
+    revalidateActualDutyViews(existing.date, existing.employeeId, existing.dutyId);
+  }
 }
 
 export async function deleteActualDutyAction(formData: FormData) {
-  await requirePermission("actual_duties", "delete");
+  const { user } = await requirePermission("actual_duties", "delete");
   const id = String(formData.get("id") ?? "");
   if (!id) {
     await setFlash({ kind: "error", text: "Липсва действителна повеска за изтриване." });
     return;
   }
 
-  await getDb().delete(actualDuties).where(eq(actualDuties.id, id));
+  const db = getDb();
+  const [existing] = await db.select().from(actualDuties).where(eq(actualDuties.id, id)).limit(1);
+
+  if (!existing) {
+    await setFlash({ kind: "error", text: "Действителната повеска не е намерена." });
+    return;
+  }
+
+  await db.delete(actualDuties).where(eq(actualDuties.id, id));
+  await db.insert(scheduleChangeEvents).values({
+    date: existing.date,
+    employeeId: existing.employeeId,
+    dutyId: existing.dutyId,
+    action: "actual_duty_deleted",
+    createdBy: user.id
+  });
+
   await setFlash({ kind: "success", text: "Действителната повеска е изтрита." });
-  revalidatePath("/actual-duties");
-  revalidatePath("/schedule");
+  revalidateActualDutyViews(existing.date, existing.employeeId, existing.dutyId);
 }

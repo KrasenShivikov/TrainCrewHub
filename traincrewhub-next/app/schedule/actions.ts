@@ -4,9 +4,14 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { schedulePublications } from "@/db/schema";
+import { scheduleChangeEvents, schedulePublications } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
 import { setFlash } from "@/lib/flash";
+
+function revalidateScheduleViews(date: string) {
+  revalidatePath("/schedule");
+  revalidatePath(`/schedule/${date}`);
+}
 
 export async function publishScheduleAction(formData: FormData) {
   const { user } = await requirePermission("schedule_publications", "create");
@@ -17,7 +22,8 @@ export async function publishScheduleAction(formData: FormData) {
     return;
   }
 
-  await getDb()
+  const db = getDb();
+  await db
     .insert(schedulePublications)
     .values({
       date,
@@ -35,9 +41,14 @@ export async function publishScheduleAction(formData: FormData) {
         invalidatedAt: null
       }
     });
+  await db.insert(scheduleChangeEvents).values({
+    date,
+    action: "schedule_published",
+    createdBy: user.id
+  });
 
   await setFlash({ kind: "success", text: "Графикът е публикуван." });
-  revalidatePath("/schedule");
+  revalidateScheduleViews(date);
 }
 
 export async function confirmScheduleAction(formData: FormData) {
@@ -49,14 +60,20 @@ export async function confirmScheduleAction(formData: FormData) {
     return;
   }
 
-  await getDb()
+  const db = getDb();
+  await db
     .update(schedulePublications)
     .set({
       confirmedAt: new Date(),
       confirmedBy: user.id
     })
     .where(eq(schedulePublications.date, date));
+  await db.insert(scheduleChangeEvents).values({
+    date,
+    action: "schedule_confirmed",
+    createdBy: user.id
+  });
 
   await setFlash({ kind: "success", text: "Графикът е потвърден." });
-  revalidatePath("/schedule");
+  revalidateScheduleViews(date);
 }

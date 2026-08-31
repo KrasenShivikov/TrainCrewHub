@@ -94,6 +94,9 @@ export default async function SchedulePage({
         <Link href="/actual-duties" className="inline-flex h-10 items-center rounded border border-rail-line px-4 text-sm font-medium hover:bg-slate-100">
           Реални повески
         </Link>
+        <Link href={`/schedule/${selectedDate}`} className="inline-flex h-10 items-center rounded border border-rail-line px-4 text-sm font-medium hover:bg-slate-100">
+          Детайли за деня
+        </Link>
         <span className={isConfirmed ? "rounded bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700" : isPublished ? "rounded bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700" : "rounded bg-slate-100 px-3 py-2 text-sm font-medium text-slate-600"}>
           {isConfirmed ? "Потвърден" : isPublished ? "Публикуван" : "Чернова"}
         </span>
@@ -106,7 +109,7 @@ export default async function SchedulePage({
         </form>
         <form action={confirmScheduleAction}>
           <input type="hidden" name="date" value={selectedDate} />
-          <button className="h-10 rounded border border-rail-line bg-white px-4 text-sm font-medium hover:bg-slate-100" disabled={!isPublished}>
+          <button className="h-10 rounded border border-rail-line bg-white px-4 text-sm font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50" disabled={!isPublished}>
             Потвърди
           </button>
         </form>

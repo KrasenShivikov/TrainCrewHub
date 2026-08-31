@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 import { FlashBanner } from "@/components/flash-banner";
-import { consumeFlash } from "@/lib/flash";
+import { NavLinks } from "@/components/nav-links";
 import { getCurrentUser } from "@/lib/auth/session";
-import { navigation } from "@/lib/navigation";
+import { consumeFlash } from "@/lib/flash";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const [user, flash] = await Promise.all([getCurrentUser(), consumeFlash()]);
@@ -21,18 +21,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           </span>
           TrainCrewHub
         </Link>
-        <nav className="mt-8 space-y-1">
-          {navigation.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex h-10 items-center gap-3 rounded px-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <NavLinks />
       </aside>
 
       <div className="lg:pl-64">
@@ -67,6 +56,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                 Вход
               </Link>
             )}
+          </div>
+          <div className="mt-3 lg:hidden">
+            <NavLinks compact />
           </div>
         </header>
 
