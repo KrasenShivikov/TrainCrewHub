@@ -2,16 +2,18 @@ import { and, asc, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { ArrowRight, Plus, Save, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
+import { AutoPlannedDutyForm } from "@/components/auto-planned-duty-form";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { EditDialog } from "@/components/edit-dialog";
 import { DateFilter, ListFilters, SelectFilter } from "@/components/list-filters";
 import { Pagination } from "@/components/pagination";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
-import { duties, dutyTypes, employees, plannedDuties } from "@/db/schema";
+import { duties, dutyTypes, employees, plannedDuties, scheduleKeyDuties, scheduleKeys } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
 import { defaultPageSize, pageOffset, paginationMeta, parsePage } from "@/lib/pagination";
 import {
+  autoGeneratePlannedDutiesAction,
   copyPlannedToActualAction,
   createPlannedDutyAction,
   deletePlannedDutyAction,
@@ -65,7 +67,7 @@ export default async function PlannedDutiesPage({
     .where(where);
   const paginatedRows = paginationMeta(totalItems, page);
 
-  const [rows, employeeRows, dutyRows] = await Promise.all([
+  const [rows, employeeRows, dutyRows, scheduleKeyRows, cycleDutyRows] = await Promise.all([
     db
       .select({
         id: plannedDuties.id,
@@ -86,7 +88,14 @@ export default async function PlannedDutiesPage({
       .orderBy(desc(plannedDuties.date))
       .limit(defaultPageSize)
       .offset(pageOffset(paginatedRows.page)),
-    db.select().from(employees).orderBy(asc(employees.lastName), asc(employees.firstName)),
+    db
+      .select({
+        id: employees.id,
+        firstName: employees.firstName,
+        lastName: employees.lastName
+      })
+      .from(employees)
+      .orderBy(asc(employees.lastName), asc(employees.firstName)),
     db
       .select({
         id: duties.id,
@@ -95,7 +104,24 @@ export default async function PlannedDutiesPage({
       })
       .from(duties)
       .leftJoin(dutyTypes, eq(duties.dutyTypeId, dutyTypes.id))
-      .orderBy(asc(duties.displayOrder), asc(duties.name))
+      .orderBy(asc(duties.displayOrder), asc(duties.name)),
+    db
+      .select({
+        id: scheduleKeys.id,
+        name: scheduleKeys.name,
+        crewRole: scheduleKeys.crewRole
+      })
+      .from(scheduleKeys)
+      .orderBy(asc(scheduleKeys.name)),
+    db
+      .select({
+        id: duties.id,
+        name: duties.name,
+        scheduleKeyId: scheduleKeyDuties.scheduleKeyId
+      })
+      .from(scheduleKeyDuties)
+      .innerJoin(duties, eq(scheduleKeyDuties.dutyId, duties.id))
+      .orderBy(asc(scheduleKeyDuties.displayOrder), asc(duties.displayOrder), asc(duties.name))
   ]);
 
   return (
@@ -117,6 +143,14 @@ export default async function PlannedDutiesPage({
       </ListFilters>
 
       <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
+        <section className="space-y-5">
+          <AutoPlannedDutyForm
+            action={autoGeneratePlannedDutiesAction}
+            employees={employeeRows}
+            scheduleKeys={scheduleKeyRows}
+            cycleDuties={cycleDutyRows}
+          />
+
         <PlannedDutyForm
           action={createPlannedDutyAction}
           title="Ново планиране"
@@ -124,6 +158,7 @@ export default async function PlannedDutiesPage({
           employees={employeeRows}
           duties={dutyRows}
         />
+        </section>
 
         <section className="overflow-hidden rounded border border-rail-line bg-white shadow-panel">
           <div className="border-b border-rail-line px-4 py-3">
@@ -210,7 +245,7 @@ function PlannedDutyForm({
     dutyId: string | null;
     assignmentRole: string | null;
   };
-  employees: Array<typeof employees.$inferSelect>;
+  employees: Array<{ id: string; firstName: string; lastName: string }>;
   duties: Array<{ id: string; name: string; typeName: string | null }>;
 }) {
   return (
