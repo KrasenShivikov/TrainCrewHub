@@ -1,12 +1,16 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, lte, or, type SQL } from "drizzle-orm";
 import { Plus, Save, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { ConfirmSubmit } from "@/components/confirm-submit";
+import { EditDialog } from "@/components/edit-dialog";
+import { DateFilter, ListFilters, SelectFilter } from "@/components/list-filters";
+import { Pagination } from "@/components/pagination";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
 import { absenceReasons, employeeAbsences, employees } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
+import { defaultPageSize, pageOffset, paginationMeta, parsePage } from "@/lib/pagination";
 import {
   createAbsenceReasonAction,
   createEmployeeAbsenceAction,
@@ -15,9 +19,46 @@ import {
   updateEmployeeAbsenceAction
 } from "./actions";
 
-export default async function EmployeeAbsencesPage() {
+export default async function EmployeeAbsencesPage({
+  searchParams
+}: {
+  searchParams: Promise<{ q?: string; date?: string; reasonId?: string; page?: string }>;
+}) {
   await requirePermission("employee_absences", "view");
+  const { q: rawQ, date = "", reasonId = "", page: rawPage } = await searchParams;
+  const q = (rawQ ?? "").trim();
+  const page = parsePage(rawPage);
   const db = getDb();
+  const filters: SQL[] = [];
+
+  if (q) {
+    const term = `%${q}%`;
+    const queryFilter = or(
+      ilike(employees.firstName, term),
+      ilike(employees.lastName, term),
+      ilike(absenceReasons.name, term),
+      ilike(employeeAbsences.notes, term)
+    );
+
+    if (queryFilter) filters.push(queryFilter);
+  }
+
+  if (reasonId) {
+    filters.push(eq(employeeAbsences.reasonId, reasonId));
+  }
+
+  if (date) {
+    filters.push(and(lte(employeeAbsences.startDate, date), gte(employeeAbsences.endDate, date))!);
+  }
+
+  const where = filters.length ? and(...filters) : undefined;
+  const [{ totalItems }] = await db
+    .select({ totalItems: count() })
+    .from(employeeAbsences)
+    .leftJoin(employees, eq(employeeAbsences.employeeId, employees.id))
+    .leftJoin(absenceReasons, eq(employeeAbsences.reasonId, absenceReasons.id))
+    .where(where);
+  const paginatedRows = paginationMeta(totalItems, page);
 
   const [rows, employeeRows, reasonRows] = await Promise.all([
     db
@@ -35,7 +76,10 @@ export default async function EmployeeAbsencesPage() {
       .from(employeeAbsences)
       .leftJoin(employees, eq(employeeAbsences.employeeId, employees.id))
       .leftJoin(absenceReasons, eq(employeeAbsences.reasonId, absenceReasons.id))
-      .orderBy(desc(employeeAbsences.startDate)),
+      .where(where)
+      .orderBy(desc(employeeAbsences.startDate))
+      .limit(defaultPageSize)
+      .offset(pageOffset(paginatedRows.page)),
     db.select().from(employees).orderBy(asc(employees.lastName), asc(employees.firstName)),
     db.select().from(absenceReasons).orderBy(asc(absenceReasons.name))
   ]);
@@ -43,6 +87,19 @@ export default async function EmployeeAbsencesPage() {
   return (
     <AppShell>
       <SectionHeader title="Отсъствия" description="Периоди на отсъствие и причини, използвани при планиране." />
+
+      <ListFilters q={rawQ}>
+        <DateFilter name="date" label="Дата в периода" value={date} />
+        <SelectFilter
+          name="reasonId"
+          label="Причина"
+          value={reasonId}
+          options={[
+            { value: "", label: "Всички" },
+            ...reasonRows.map((reason) => ({ value: reason.id, label: reason.name }))
+          ]}
+        />
+      </ListFilters>
 
       <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
         <section className="space-y-5">
@@ -71,7 +128,7 @@ export default async function EmployeeAbsencesPage() {
           <div className="overflow-hidden rounded border border-rail-line bg-white shadow-panel">
             <div className="border-b border-rail-line px-4 py-3">
               <h3 className="text-base font-semibold">Списък отсъствия</h3>
-              <p className="text-sm text-slate-600">Общо: {rows.length}</p>
+              <p className="text-sm text-slate-600">Общо: {paginatedRows.totalItems}</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[920px] text-left text-sm">
@@ -93,19 +150,16 @@ export default async function EmployeeAbsencesPage() {
                       <td className="max-w-xs px-4 py-3 text-slate-600">{row.notes || "-"}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">
-                          <details className="text-left">
-                            <summary className="cursor-pointer rounded border border-rail-line px-3 py-2 text-sm font-medium hover:bg-slate-100">Редакция</summary>
-                            <div className="absolute right-8 z-10 mt-2 w-[min(520px,calc(100vw-2rem))] rounded border border-rail-line bg-white p-4 shadow-lg">
-                              <AbsenceForm
-                                action={updateEmployeeAbsenceAction}
-                                title="Редакция"
-                                buttonLabel="Запази"
-                                absence={row}
-                                employees={employeeRows}
-                                reasons={reasonRows}
-                              />
-                            </div>
-                          </details>
+                          <EditDialog>
+                            <AbsenceForm
+                              action={updateEmployeeAbsenceAction}
+                              title="Редакция"
+                              buttonLabel="Запази"
+                              absence={row}
+                              employees={employeeRows}
+                              reasons={reasonRows}
+                            />
+                          </EditDialog>
                           <form action={deleteEmployeeAbsenceAction}>
                             <input type="hidden" name="id" value={row.id} />
                             <ConfirmSubmit message="Да изтрия ли това отсъствие?" className="inline-flex h-10 items-center gap-2 rounded border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50">
@@ -121,6 +175,7 @@ export default async function EmployeeAbsencesPage() {
                 </tbody>
               </table>
             </div>
+            <Pagination pathname="/employee-absences" params={{ q: rawQ, date, reasonId }} {...paginatedRows} />
           </div>
 
           <div className="rounded border border-rail-line bg-white shadow-panel">

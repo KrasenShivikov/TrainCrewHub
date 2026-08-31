@@ -1,28 +1,60 @@
-import { asc } from "drizzle-orm";
+import { and, asc, count, ilike, or, type SQL } from "drizzle-orm";
 import { ExternalLink, Plus, Save, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { ConfirmSubmit } from "@/components/confirm-submit";
+import { EditDialog } from "@/components/edit-dialog";
+import { ListFilters } from "@/components/list-filters";
+import { Pagination } from "@/components/pagination";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
 import { trains } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
+import { defaultPageSize, pageOffset, paginationMeta, parsePage } from "@/lib/pagination";
 import { createTrainAction, deleteTrainAction, updateTrainAction } from "./actions";
 
-export default async function TrainsPage() {
+export default async function TrainsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
   await requirePermission("trains", "view");
-  const rows = await getDb().select().from(trains).orderBy(asc(trains.number));
+  const { q: rawQ, page: rawPage } = await searchParams;
+  const q = (rawQ ?? "").trim();
+  const page = parsePage(rawPage);
+  const db = getDb();
+  const filters: SQL[] = [];
+
+  if (q) {
+    const term = `%${q}%`;
+    const queryFilter = or(
+      ilike(trains.number, term),
+      ilike(trains.originStation, term),
+      ilike(trains.destinationStation, term),
+      ilike(trains.timetableUrl, term)
+    );
+
+    if (queryFilter) filters.push(queryFilter);
+  }
+
+  const where = filters.length ? and(...filters) : undefined;
+  const [{ totalItems }] = await db.select({ totalItems: count() }).from(trains).where(where);
+  const paginatedRows = paginationMeta(totalItems, page);
+  const rows = await db
+    .select()
+    .from(trains)
+    .where(where)
+    .orderBy(asc(trains.number))
+    .limit(defaultPageSize)
+    .offset(pageOffset(paginatedRows.page));
 
   return (
     <AppShell>
-      <SectionHeader title="Влакове" description="CRUD за влакове и връзки към разписания." />
+      <SectionHeader title="Влакове" description="Влакове, маршрути, часове и връзки към разписания." />
+      <ListFilters q={rawQ} />
       <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
         <TrainForm action={createTrainAction} title="Нов влак" buttonLabel="Добави" />
 
         <section className="overflow-hidden rounded border border-rail-line bg-white shadow-panel">
           <div className="border-b border-rail-line px-4 py-3">
             <h3 className="text-base font-semibold">Списък влакове</h3>
-            <p className="text-sm text-slate-600">Общо: {rows.length}</p>
+            <p className="text-sm text-slate-600">Общо: {paginatedRows.totalItems}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[920px] text-left text-sm">
@@ -39,7 +71,7 @@ export default async function TrainsPage() {
                 {rows.length ? rows.map((train) => (
                   <tr key={train.id} className="align-top">
                     <td className="px-4 py-3 font-medium">{train.number}</td>
-                    <td className="px-4 py-3">{train.originStation} → {train.destinationStation}</td>
+                    <td className="px-4 py-3">{train.originStation} {"->"} {train.destinationStation}</td>
                     <td className="px-4 py-3">{train.departureTime} - {train.arrivalTime}</td>
                     <td className="px-4 py-3">
                       {train.timetableUrl ? (
@@ -50,12 +82,9 @@ export default async function TrainsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
-                        <details className="text-left">
-                          <summary className="cursor-pointer rounded border border-rail-line px-3 py-2 text-sm font-medium hover:bg-slate-100">Редакция</summary>
-                          <div className="absolute right-8 z-10 mt-2 w-[min(520px,calc(100vw-2rem))] rounded border border-rail-line bg-white p-4 shadow-lg">
-                            <TrainForm action={updateTrainAction} title="Редакция" buttonLabel="Запази" train={train} />
-                          </div>
-                        </details>
+                        <EditDialog>
+                          <TrainForm action={updateTrainAction} title="Редакция" buttonLabel="Запази" train={train} />
+                        </EditDialog>
                         <form action={deleteTrainAction}>
                           <input type="hidden" name="id" value={train.id} />
                           <ConfirmSubmit message="Да изтрия ли този влак?" className="inline-flex h-10 items-center gap-2 rounded border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50">
@@ -71,18 +100,14 @@ export default async function TrainsPage() {
               </tbody>
             </table>
           </div>
+          <Pagination pathname="/trains" params={{ q: rawQ }} {...paginatedRows} />
         </section>
       </div>
     </AppShell>
   );
 }
 
-function TrainForm({
-  action,
-  title,
-  buttonLabel,
-  train
-}: {
+function TrainForm({ action, title, buttonLabel, train }: {
   action: (formData: FormData) => Promise<void>;
   title: string;
   buttonLabel: string;

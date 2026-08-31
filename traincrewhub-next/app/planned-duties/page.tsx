@@ -1,12 +1,16 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { ArrowRight, Plus, Save, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { ConfirmSubmit } from "@/components/confirm-submit";
+import { EditDialog } from "@/components/edit-dialog";
+import { DateFilter, ListFilters, SelectFilter } from "@/components/list-filters";
+import { Pagination } from "@/components/pagination";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
 import { duties, dutyTypes, employees, plannedDuties } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
+import { defaultPageSize, pageOffset, paginationMeta, parsePage } from "@/lib/pagination";
 import {
   copyPlannedToActualAction,
   createPlannedDutyAction,
@@ -19,9 +23,47 @@ const roleLabels = {
   conductor: "Кондуктор"
 };
 
-export default async function PlannedDutiesPage() {
+export default async function PlannedDutiesPage({
+  searchParams
+}: {
+  searchParams: Promise<{ q?: string; date?: string; role?: string; page?: string }>;
+}) {
   await requirePermission("planned_duties", "view");
+  const { q: rawQ, date = "", role = "", page: rawPage } = await searchParams;
+  const q = (rawQ ?? "").trim();
+  const page = parsePage(rawPage);
   const db = getDb();
+  const filters: SQL[] = [];
+
+  if (q) {
+    const term = `%${q}%`;
+    const queryFilter = or(
+      ilike(employees.firstName, term),
+      ilike(employees.lastName, term),
+      ilike(duties.name, term),
+      ilike(dutyTypes.name, term)
+    );
+
+    if (queryFilter) filters.push(queryFilter);
+  }
+
+  if (date) {
+    filters.push(eq(plannedDuties.date, date));
+  }
+
+  if (role) {
+    filters.push(eq(plannedDuties.assignmentRole, role));
+  }
+
+  const where = filters.length ? and(...filters) : undefined;
+  const [{ totalItems }] = await db
+    .select({ totalItems: count() })
+    .from(plannedDuties)
+    .leftJoin(employees, eq(plannedDuties.employeeId, employees.id))
+    .leftJoin(duties, eq(plannedDuties.dutyId, duties.id))
+    .leftJoin(dutyTypes, eq(duties.dutyTypeId, dutyTypes.id))
+    .where(where);
+  const paginatedRows = paginationMeta(totalItems, page);
 
   const [rows, employeeRows, dutyRows] = await Promise.all([
     db
@@ -40,7 +82,10 @@ export default async function PlannedDutiesPage() {
       .leftJoin(employees, eq(plannedDuties.employeeId, employees.id))
       .leftJoin(duties, eq(plannedDuties.dutyId, duties.id))
       .leftJoin(dutyTypes, eq(duties.dutyTypeId, dutyTypes.id))
-      .orderBy(desc(plannedDuties.date)),
+      .where(where)
+      .orderBy(desc(plannedDuties.date))
+      .limit(defaultPageSize)
+      .offset(pageOffset(paginatedRows.page)),
     db.select().from(employees).orderBy(asc(employees.lastName), asc(employees.firstName)),
     db
       .select({
@@ -57,6 +102,20 @@ export default async function PlannedDutiesPage() {
     <AppShell>
       <SectionHeader title="Планирани повески" description="Планиране на служител, повеска, дата и роля." />
 
+      <ListFilters q={rawQ}>
+        <DateFilter name="date" label="Дата" value={date} />
+        <SelectFilter
+          name="role"
+          label="Роля"
+          value={role}
+          options={[
+            { value: "", label: "Всички" },
+            { value: "chief", label: "Началник влак" },
+            { value: "conductor", label: "Кондуктор" }
+          ]}
+        />
+      </ListFilters>
+
       <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
         <PlannedDutyForm
           action={createPlannedDutyAction}
@@ -69,7 +128,7 @@ export default async function PlannedDutiesPage() {
         <section className="overflow-hidden rounded border border-rail-line bg-white shadow-panel">
           <div className="border-b border-rail-line px-4 py-3">
             <h3 className="text-base font-semibold">Списък планирани повески</h3>
-            <p className="text-sm text-slate-600">Общо: {rows.length}</p>
+            <p className="text-sm text-slate-600">Общо: {paginatedRows.totalItems}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[980px] text-left text-sm">
@@ -99,19 +158,16 @@ export default async function PlannedDutiesPage() {
                             <ArrowRight className="h-4 w-4" /> Към реални
                           </button>
                         </form>
-                        <details className="text-left">
-                          <summary className="cursor-pointer rounded border border-rail-line px-3 py-2 text-sm font-medium hover:bg-slate-100">Редакция</summary>
-                          <div className="absolute right-8 z-10 mt-2 w-[min(520px,calc(100vw-2rem))] rounded border border-rail-line bg-white p-4 shadow-lg">
-                            <PlannedDutyForm
-                              action={updatePlannedDutyAction}
-                              title="Редакция"
-                              buttonLabel="Запази"
-                              plannedDuty={row}
-                              employees={employeeRows}
-                              duties={dutyRows}
-                            />
-                          </div>
-                        </details>
+                        <EditDialog>
+                          <PlannedDutyForm
+                            action={updatePlannedDutyAction}
+                            title="Редакция"
+                            buttonLabel="Запази"
+                            plannedDuty={row}
+                            employees={employeeRows}
+                            duties={dutyRows}
+                          />
+                        </EditDialog>
                         <form action={deletePlannedDutyAction}>
                           <input type="hidden" name="id" value={row.id} />
                           <ConfirmSubmit message="Да изтрия ли това планиране?" className="inline-flex h-10 items-center gap-2 rounded border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50">
@@ -129,6 +185,7 @@ export default async function PlannedDutiesPage() {
               </tbody>
             </table>
           </div>
+          <Pagination pathname="/planned-duties" params={{ q: rawQ, date, role }} {...paginatedRows} />
         </section>
       </div>
     </AppShell>

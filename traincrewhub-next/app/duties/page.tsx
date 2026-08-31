@@ -1,13 +1,17 @@
 import Link from "next/link";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, count, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { Eye, Plus, Save, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { ConfirmSubmit } from "@/components/confirm-submit";
+import { EditDialog } from "@/components/edit-dialog";
+import { ListFilters, SelectFilter } from "@/components/list-filters";
+import { Pagination } from "@/components/pagination";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
 import { duties, dutyTrains, dutyTypes, scheduleKeyDuties, scheduleKeys, trains } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
+import { defaultPageSize, pageOffset, paginationMeta, parsePage } from "@/lib/pagination";
 import { createDutyAction, deleteDutyAction, updateDutyAction } from "./actions";
 
 type DutyRow = typeof duties.$inferSelect & {
@@ -29,11 +33,56 @@ function asIntervalInput(value: unknown) {
   return match ? `${match[1].padStart(2, "0")}:${match[2]}` : raw;
 }
 
-export default async function DutiesPage() {
+export default async function DutiesPage({
+  searchParams
+}: {
+  searchParams: Promise<{ q?: string; dutyTypeId?: string; page?: string }>;
+}) {
   await requirePermission("duties", "view");
+  const { q: rawQ, dutyTypeId = "", page: rawPage } = await searchParams;
+  const q = (rawQ ?? "").trim();
+  const page = parsePage(rawPage);
   const db = getDb();
+  const filters: SQL[] = [];
 
-  const [rawDuties, dutyTypeRows, scheduleKeyRows, trainRows, scheduleLinks, trainLinks] = await Promise.all([
+  if (q) {
+    const term = `%${q}%`;
+    const queryFilter = or(
+      ilike(duties.name, term),
+      ilike(dutyTypes.name, term),
+      ilike(duties.notes, term),
+      sql`exists (
+        select 1
+        from ${scheduleKeyDuties}
+        inner join ${scheduleKeys} on ${scheduleKeys.id} = ${scheduleKeyDuties.scheduleKeyId}
+        where ${scheduleKeyDuties.dutyId} = ${duties.id}
+          and ${scheduleKeys.name} ilike ${term}
+      )`,
+      sql`exists (
+        select 1
+        from ${dutyTrains}
+        inner join ${trains} on ${trains.id} = ${dutyTrains.trainId}
+        where ${dutyTrains.dutyId} = ${duties.id}
+          and ${trains.number} ilike ${term}
+      )`
+    );
+
+    if (queryFilter) filters.push(queryFilter);
+  }
+
+  if (dutyTypeId) {
+    filters.push(eq(duties.dutyTypeId, dutyTypeId));
+  }
+
+  const where = filters.length ? and(...filters) : undefined;
+  const [{ totalItems }] = await db
+    .select({ totalItems: count() })
+    .from(duties)
+    .leftJoin(dutyTypes, eq(duties.dutyTypeId, dutyTypes.id))
+    .where(where);
+  const paginatedDuties = paginationMeta(totalItems, page);
+
+  const [rawDuties, dutyTypeRows, scheduleKeyRows, trainRows, parentDutyRows] = await Promise.all([
     db
       .select({
         id: duties.id,
@@ -56,13 +105,23 @@ export default async function DutiesPage() {
       })
       .from(duties)
       .leftJoin(dutyTypes, eq(duties.dutyTypeId, dutyTypes.id))
-      .orderBy(asc(duties.displayOrder), asc(duties.name)),
+      .where(where)
+      .orderBy(asc(duties.displayOrder), asc(duties.name))
+      .limit(defaultPageSize)
+      .offset(pageOffset(paginatedDuties.page)),
     db.select().from(dutyTypes).orderBy(asc(dutyTypes.name)),
     db.select().from(scheduleKeys).orderBy(asc(scheduleKeys.name)),
     db.select().from(trains).orderBy(asc(trains.number)),
-    db.select().from(scheduleKeyDuties),
-    db.select().from(dutyTrains).orderBy(asc(dutyTrains.sequenceOrder))
+    db.select({ id: duties.id, name: duties.name }).from(duties).orderBy(asc(duties.displayOrder), asc(duties.name))
   ]);
+
+  const dutyIds = rawDuties.map((duty) => duty.id);
+  const [scheduleLinks, trainLinks] = dutyIds.length
+    ? await Promise.all([
+        db.select().from(scheduleKeyDuties).where(inArray(scheduleKeyDuties.dutyId, dutyIds)),
+        db.select().from(dutyTrains).where(inArray(dutyTrains.dutyId, dutyIds)).orderBy(asc(dutyTrains.sequenceOrder))
+      ])
+    : [[], []];
 
   const scheduleNameById = new Map(scheduleKeyRows.map((row) => [row.id, row.name]));
   const trainNumberById = new Map(trainRows.map((row) => [row.id, row.number]));
@@ -80,10 +139,21 @@ export default async function DutiesPage() {
       trainNumbers: dutyTrainLinks.map((row) => trainNumberById.get(row.trainId)).filter(Boolean) as string[]
     };
   });
-
   return (
     <AppShell>
       <SectionHeader title="Повески" description="Основни данни, типове, ключ-графици и влакове към повеска." />
+
+      <ListFilters q={rawQ}>
+        <SelectFilter
+          name="dutyTypeId"
+          label="Тип"
+          value={dutyTypeId}
+          options={[
+            { value: "", label: "Всички" },
+            ...dutyTypeRows.map((type) => ({ value: type.id, label: type.name }))
+          ]}
+        />
+      </ListFilters>
 
       <div className="grid gap-5 2xl:grid-cols-[460px_1fr]">
         <DutyForm
@@ -93,13 +163,13 @@ export default async function DutiesPage() {
           dutyTypeOptions={dutyTypeRows}
           scheduleKeys={scheduleKeyRows}
           trains={trainRows}
-          parentDuties={dutyRows}
+          parentDuties={parentDutyRows}
         />
 
         <section className="overflow-hidden rounded border border-rail-line bg-white shadow-panel">
           <div className="border-b border-rail-line px-4 py-3">
             <h3 className="text-base font-semibold">Списък повески</h3>
-            <p className="text-sm text-slate-600">Общо: {dutyRows.length}</p>
+            <p className="text-sm text-slate-600">Общо: {paginatedDuties.totalItems}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1100px] text-left text-sm">
@@ -134,21 +204,18 @@ export default async function DutiesPage() {
                         <Link href={`/duties/${duty.id}`} className="inline-flex h-10 items-center gap-2 rounded border border-rail-line px-3 text-sm font-medium hover:bg-slate-100">
                           <Eye className="h-4 w-4" /> Детайли
                         </Link>
-                        <details className="text-left">
-                          <summary className="cursor-pointer rounded border border-rail-line px-3 py-2 text-sm font-medium hover:bg-slate-100">Редакция</summary>
-                          <div className="absolute right-8 z-10 mt-2 w-[min(620px,calc(100vw-2rem))] rounded border border-rail-line bg-white p-4 shadow-lg">
-                            <DutyForm
-                              action={updateDutyAction}
-                              title="Редакция"
-                              buttonLabel="Запази"
-                              duty={duty}
-                              dutyTypeOptions={dutyTypeRows}
-                              scheduleKeys={scheduleKeyRows}
-                              trains={trainRows}
-                              parentDuties={dutyRows.filter((item) => item.id !== duty.id)}
-                            />
-                          </div>
-                        </details>
+                        <EditDialog>
+                          <DutyForm
+                            action={updateDutyAction}
+                            title="Редакция"
+                            buttonLabel="Запази"
+                            duty={duty}
+                            dutyTypeOptions={dutyTypeRows}
+                            scheduleKeys={scheduleKeyRows}
+                            trains={trainRows}
+                            parentDuties={parentDutyRows.filter((item) => item.id !== duty.id)}
+                          />
+                        </EditDialog>
                         <form action={deleteDutyAction}>
                           <input type="hidden" name="id" value={duty.id} />
                           <ConfirmSubmit message="Да изтрия ли тази повеска?" className="inline-flex h-10 items-center gap-2 rounded border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50">
@@ -166,6 +233,7 @@ export default async function DutiesPage() {
               </tbody>
             </table>
           </div>
+          <Pagination pathname="/duties" params={{ q: rawQ, dutyTypeId }} {...paginatedDuties} />
         </section>
       </div>
     </AppShell>
@@ -189,7 +257,7 @@ function DutyForm({
   dutyTypeOptions: Array<typeof dutyTypes.$inferSelect>;
   scheduleKeys: Array<typeof scheduleKeys.$inferSelect>;
   trains: Array<typeof trains.$inferSelect>;
-  parentDuties: DutyRow[];
+  parentDuties: Array<{ id: string; name: string }>;
 }) {
   const selectedScheduleKeyIds = new Set(duty?.scheduleKeyIds ?? []);
   const selectedTrainIds = new Set(duty?.trainIds ?? []);

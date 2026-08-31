@@ -1,12 +1,16 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { ExternalLink, Plus, Save, Trash2, Upload } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { ConfirmSubmit } from "@/components/confirm-submit";
+import { EditDialog } from "@/components/edit-dialog";
+import { ListFilters, SelectFilter } from "@/components/list-filters";
+import { Pagination } from "@/components/pagination";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
 import { documentCategories, documents } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
+import { defaultPageSize, pageOffset, paginationMeta, parsePage } from "@/lib/pagination";
 import {
   createDocumentAction,
   createDocumentCategoryAction,
@@ -15,9 +19,41 @@ import {
   updateDocumentAction
 } from "./actions";
 
-export default async function DocumentsPage() {
+export default async function DocumentsPage({
+  searchParams
+}: {
+  searchParams: Promise<{ q?: string; categoryId?: string; page?: string }>;
+}) {
   await requirePermission("documents", "view");
+  const { q: rawQ, categoryId = "", page: rawPage } = await searchParams;
+  const q = (rawQ ?? "").trim();
+  const page = parsePage(rawPage);
   const db = getDb();
+  const filters: SQL[] = [];
+
+  if (q) {
+    const term = `%${q}%`;
+    const queryFilter = or(
+      ilike(documents.title, term),
+      ilike(documentCategories.name, term),
+      ilike(documents.notes, term),
+      ilike(documents.documentUrl, term)
+    );
+
+    if (queryFilter) filters.push(queryFilter);
+  }
+
+  if (categoryId) {
+    filters.push(eq(documents.categoryId, categoryId));
+  }
+
+  const where = filters.length ? and(...filters) : undefined;
+  const [{ totalItems }] = await db
+    .select({ totalItems: count() })
+    .from(documents)
+    .leftJoin(documentCategories, eq(documents.categoryId, documentCategories.id))
+    .where(where);
+  const paginatedDocuments = paginationMeta(totalItems, page);
 
   const [documentRows, categoryRows] = await Promise.all([
     db
@@ -33,13 +69,28 @@ export default async function DocumentsPage() {
       })
       .from(documents)
       .leftJoin(documentCategories, eq(documents.categoryId, documentCategories.id))
-      .orderBy(desc(documents.createdAt)),
+      .where(where)
+      .orderBy(desc(documents.createdAt))
+      .limit(defaultPageSize)
+      .offset(pageOffset(paginatedDocuments.page)),
     db.select().from(documentCategories).orderBy(asc(documentCategories.name))
   ]);
 
   return (
     <AppShell>
       <SectionHeader title="Документи" description="Категории, линкове и локално качени файлове." />
+
+      <ListFilters q={rawQ}>
+        <SelectFilter
+          name="categoryId"
+          label="Категория"
+          value={categoryId}
+          options={[
+            { value: "", label: "Всички" },
+            ...categoryRows.map((category) => ({ value: category.id, label: category.name }))
+          ]}
+        />
+      </ListFilters>
 
       <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
         <section className="space-y-5">
@@ -62,7 +113,7 @@ export default async function DocumentsPage() {
           <div className="overflow-hidden rounded border border-rail-line bg-white shadow-panel">
             <div className="border-b border-rail-line px-4 py-3">
               <h3 className="text-base font-semibold">Списък документи</h3>
-              <p className="text-sm text-slate-600">Общо: {documentRows.length}</p>
+              <p className="text-sm text-slate-600">Общо: {paginatedDocuments.totalItems}</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[940px] text-left text-sm">
@@ -90,12 +141,9 @@ export default async function DocumentsPage() {
                       <td className="max-w-xs px-4 py-3 text-slate-600">{document.notes || "-"}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">
-                          <details className="text-left">
-                            <summary className="cursor-pointer rounded border border-rail-line px-3 py-2 text-sm font-medium hover:bg-slate-100">Редакция</summary>
-                            <div className="absolute right-8 z-10 mt-2 w-[min(560px,calc(100vw-2rem))] rounded border border-rail-line bg-white p-4 shadow-lg">
-                              <DocumentForm action={updateDocumentAction} title="Редакция" buttonLabel="Запази" document={document} categories={categoryRows} />
-                            </div>
-                          </details>
+                          <EditDialog>
+                            <DocumentForm action={updateDocumentAction} title="Редакция" buttonLabel="Запази" document={document} categories={categoryRows} />
+                          </EditDialog>
                           <form action={deleteDocumentAction}>
                             <input type="hidden" name="id" value={document.id} />
                             <ConfirmSubmit message="Да изтрия ли този документ?" className="inline-flex h-10 items-center gap-2 rounded border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50">
@@ -110,6 +158,7 @@ export default async function DocumentsPage() {
               </table>
             </div>
           </div>
+          <Pagination pathname="/documents" params={{ q: rawQ, categoryId }} {...paginatedDocuments} />
 
           <div className="rounded border border-rail-line bg-white shadow-panel">
             <div className="border-b border-rail-line px-4 py-3">
