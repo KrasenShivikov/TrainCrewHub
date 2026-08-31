@@ -158,32 +158,33 @@ export default async function AdminPage() {
                   permissionResources.map((resource) => {
                     const permission = permissionByRoleResource.get(`${role.name}:${resource.key}`);
                     const locked = role.name === "admin";
+                    const formId = `permission-${role.name}-${resource.key}`;
 
                     return (
                       <tr key={`${role.name}:${resource.key}`}>
                         <td className="px-4 py-3 font-medium">{role.displayNameBg || role.displayName}</td>
                         <td className="px-4 py-3">{resource.label}</td>
-                        <form action={updateRolePermissionAction} className="contents">
-                            <input type="hidden" name="role" value={role.name} />
-                            <input type="hidden" name="resource" value={resource.key} />
-                            <td className="px-4 py-3">
-                            <Check name="canView" defaultChecked={locked || Boolean(permission?.canView)} disabled={locked} />
+                        <td className="px-4 py-3">
+                          <Check form={formId} name="canView" defaultChecked={locked || Boolean(permission?.canView)} disabled={locked} />
                             </td>
                             <td className="px-4 py-3">
-                            <Check name="canCreate" defaultChecked={locked || Boolean(permission?.canCreate)} disabled={locked} />
+                          <Check form={formId} name="canCreate" defaultChecked={locked || Boolean(permission?.canCreate)} disabled={locked} />
                             </td>
                             <td className="px-4 py-3">
-                            <Check name="canEdit" defaultChecked={locked || Boolean(permission?.canEdit)} disabled={locked} />
+                          <Check form={formId} name="canEdit" defaultChecked={locked || Boolean(permission?.canEdit)} disabled={locked} />
                             </td>
                             <td className="px-4 py-3">
-                            <Check name="canDelete" defaultChecked={locked || Boolean(permission?.canDelete)} disabled={locked} />
+                          <Check form={formId} name="canDelete" defaultChecked={locked || Boolean(permission?.canDelete)} disabled={locked} />
                             </td>
                             <td className="px-4 py-3 text-right">
-                            <button disabled={locked} className="inline-flex h-9 items-center justify-center gap-2 rounded border border-rail-line px-3 text-sm font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50">
+                            <form id={formId} action={updateRolePermissionAction} className="contents">
+                              <input type="hidden" name="role" value={role.name} />
+                              <input type="hidden" name="resource" value={resource.key} />
+                              <button disabled={locked} className="inline-flex h-9 items-center justify-center gap-2 rounded border border-rail-line px-3 text-sm font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50">
                               <Save className="h-4 w-4" /> Запази
-                            </button>
+                              </button>
+                            </form>
                             </td>
-                        </form>
                       </tr>
                     );
                   })
@@ -211,10 +212,11 @@ export default async function AdminPage() {
   );
 }
 
-function Check({ name, defaultChecked, disabled }: { name: string; defaultChecked: boolean; disabled: boolean }) {
+function Check({ form, name, defaultChecked, disabled }: { form?: string; name: string; defaultChecked: boolean; disabled: boolean }) {
   return (
     <label className="flex items-center gap-2 text-sm">
       <input
+        form={form}
         name={name}
         type="checkbox"
         defaultChecked={defaultChecked}

@@ -67,6 +67,7 @@ export default async function ScheduleDatePage({ params }: { params: Promise<{ d
         dutyName: duties.name,
         dutyStartTime: duties.startTime,
         dutyEndTime: duties.endTime,
+        dutyIsSecondDay: duties.isSecondDay,
         dutyTypeName: dutyTypes.name
       })
       .from(actualDuties)
@@ -74,7 +75,7 @@ export default async function ScheduleDatePage({ params }: { params: Promise<{ d
       .leftJoin(duties, eq(actualDuties.dutyId, duties.id))
       .leftJoin(dutyTypes, eq(duties.dutyTypeId, dutyTypes.id))
       .where(eq(actualDuties.date, date))
-      .orderBy(asc(dutyTypes.name), asc(duties.displayOrder), asc(duties.startTime)),
+      .orderBy(asc(dutyTypes.name), asc(duties.isSecondDay), asc(duties.startTime), asc(duties.displayOrder), asc(duties.name)),
     db
       .select({
         id: employeeAbsences.id,
@@ -109,8 +110,10 @@ export default async function ScheduleDatePage({ params }: { params: Promise<{ d
       .limit(12)
   ]);
 
-  const grouped = Map.groupBy(actualRows, (row) => row.dutyTypeName || "Без тип");
-  const byDuty = Map.groupBy(actualRows.filter((row) => row.dutyId), (row) => row.dutyId as string);
+  const absentEmployeeIds = new Set(absenceRows.map((row) => row.employeeId).filter(Boolean));
+  const visibleActualRows = actualRows.filter((row) => !row.employeeId || !absentEmployeeIds.has(row.employeeId));
+  const grouped = Map.groupBy(visibleActualRows, (row) => row.dutyTypeName || "Без тип");
+  const byDuty = Map.groupBy(visibleActualRows.filter((row) => row.dutyId), (row) => row.dutyId as string);
   const status = publicationStatus(publication);
   const isPublished = Boolean(publication?.publishedAt && !publication.invalidatedAt);
   const isConfirmed = Boolean(publication?.confirmedAt && !publication.invalidatedAt);
@@ -125,8 +128,8 @@ export default async function ScheduleDatePage({ params }: { params: Promise<{ d
         ...(roles.has("conductor") ? [] : [`${dutyName}: липсва кондуктор.`])
       ];
     }),
-    ...actualRows.flatMap((row) => row.employeeIsActive === false ? [`${fullName(row.employeeFirstName, row.employeeLastName)} е неактивен служител.`] : []),
-    ...actualRows.flatMap((row) => row.startTimeOverride || row.endTimeOverride ? [`${row.dutyName ?? "Повеска"} има коригирани часове.`] : [])
+    ...visibleActualRows.flatMap((row) => row.employeeIsActive === false ? [`${fullName(row.employeeFirstName, row.employeeLastName)} е неактивен служител.`] : []),
+    ...visibleActualRows.flatMap((row) => row.startTimeOverride || row.endTimeOverride ? [`${row.dutyName ?? "Повеска"} има коригирани часове.`] : [])
   ];
 
   return (
@@ -147,7 +150,7 @@ export default async function ScheduleDatePage({ params }: { params: Promise<{ d
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">
             <span className={`rounded px-3 py-2 text-sm font-medium ${status.className}`}>{status.label}</span>
-            <span className="rounded bg-slate-100 px-3 py-2 text-sm font-medium text-slate-600">Назначения: {actualRows.length}</span>
+            <span className="rounded bg-slate-100 px-3 py-2 text-sm font-medium text-slate-600">Назначения: {visibleActualRows.length}</span>
             <span className="rounded bg-slate-100 px-3 py-2 text-sm font-medium text-slate-600">Отсъстващи: {absenceRows.length}</span>
             <span className={warningItems.length ? "rounded bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800" : "rounded bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700"}>
               Предупреждения: {new Set(warningItems).size}

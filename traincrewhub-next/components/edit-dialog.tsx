@@ -36,7 +36,7 @@ export function EditDialog({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="p-4">{children}</div>
+        <div className="p-4" onSubmitCapture={() => dialogRef.current?.close()}>{children}</div>
       </dialog>
     </>
   );

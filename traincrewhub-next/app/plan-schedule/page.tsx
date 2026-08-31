@@ -31,12 +31,15 @@ export default async function PlanSchedulePage({
       .select({
         id: plannedDuties.id,
         date: plannedDuties.date,
+        dutyId: plannedDuties.dutyId,
+        employeeId: plannedDuties.employeeId,
         assignmentRole: plannedDuties.assignmentRole,
         employeeFirstName: employees.firstName,
         employeeLastName: employees.lastName,
         dutyName: duties.name,
         dutyStartTime: duties.startTime,
         dutyEndTime: duties.endTime,
+        dutyIsSecondDay: duties.isSecondDay,
         dutyTypeName: dutyTypes.name
       })
       .from(plannedDuties)
@@ -44,10 +47,11 @@ export default async function PlanSchedulePage({
       .leftJoin(duties, eq(plannedDuties.dutyId, duties.id))
       .leftJoin(dutyTypes, eq(duties.dutyTypeId, dutyTypes.id))
       .where(eq(plannedDuties.date, selectedDate))
-      .orderBy(asc(dutyTypes.name), asc(duties.displayOrder), asc(duties.name)),
+      .orderBy(asc(dutyTypes.name), asc(duties.isSecondDay), asc(duties.startTime), asc(duties.displayOrder), asc(duties.name)),
     db
       .select({
         id: employeeAbsences.id,
+        employeeId: employeeAbsences.employeeId,
         startDate: employeeAbsences.startDate,
         endDate: employeeAbsences.endDate,
         notes: employeeAbsences.notes,
@@ -62,7 +66,9 @@ export default async function PlanSchedulePage({
       .orderBy(asc(employees.lastName), asc(employees.firstName))
   ]);
 
-  const grouped = Map.groupBy(plannedRows, (row) => row.dutyTypeName || "Без тип");
+  const absentEmployeeIds = new Set(absenceRows.map((row) => row.employeeId).filter(Boolean));
+  const visiblePlannedRows = plannedRows.filter((row) => !row.employeeId || !absentEmployeeIds.has(row.employeeId));
+  const grouped = Map.groupBy(visiblePlannedRows, (row) => row.dutyTypeName || "Без тип");
 
   return (
     <AppShell>
@@ -88,18 +94,22 @@ export default async function PlanSchedulePage({
                 <p className="text-sm text-slate-600">Назначения: {rows.length}</p>
               </div>
               <div className="grid gap-px bg-rail-line md:grid-cols-2 xl:grid-cols-3">
-                {rows.map((row) => (
-                  <article key={row.id} className="bg-white p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h4 className="font-semibold">{row.dutyName ?? "-"}</h4>
-                        <p className="mt-1 text-sm text-slate-600">{row.dutyStartTime?.slice(0, 5)} - {row.dutyEndTime?.slice(0, 5)}</p>
-                      </div>
-                      <span className="rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
-                        {roleLabels[(row.assignmentRole ?? "conductor") as keyof typeof roleLabels]}
-                      </span>
+                {[...Map.groupBy(rows, (row) => row.dutyId ?? row.dutyName ?? row.id).entries()].map(([dutyKey, dutyRows]) => (
+                  <article key={dutyKey} className="bg-white p-4">
+                    <h4 className="font-semibold">{dutyRows[0]?.dutyName ?? "-"}</h4>
+                    <p className="mt-1 text-sm text-slate-600">{dutyRows[0]?.dutyStartTime?.slice(0, 5)} - {dutyRows[0]?.dutyEndTime?.slice(0, 5)}</p>
+                    <div className="mt-4 grid gap-2">
+                      {(["chief", "conductor"] as const).map((role) => {
+                        const assigned = dutyRows.find((row) => row.assignmentRole === role);
+
+                        return (
+                          <div key={role} className="rounded border border-rail-line bg-slate-50 px-3 py-2">
+                            <p className="text-xs font-medium text-slate-500">{roleLabels[role]}</p>
+                            <p className="mt-1 text-sm font-semibold">{assigned ? [assigned.employeeFirstName, assigned.employeeLastName].filter(Boolean).join(" ") || "-" : "-"}</p>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <p className="mt-4 text-sm font-medium">{[row.employeeFirstName, row.employeeLastName].filter(Boolean).join(" ") || "-"}</p>
                   </article>
                 ))}
               </div>

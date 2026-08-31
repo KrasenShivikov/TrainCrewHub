@@ -44,6 +44,8 @@ export default async function SchedulePage({
       .select({
         id: actualDuties.id,
         date: actualDuties.date,
+        dutyId: actualDuties.dutyId,
+        employeeId: actualDuties.employeeId,
         assignmentRole: actualDuties.assignmentRole,
         startTimeOverride: actualDuties.startTimeOverride,
         endTimeOverride: actualDuties.endTimeOverride,
@@ -52,6 +54,7 @@ export default async function SchedulePage({
         dutyName: duties.name,
         dutyStartTime: duties.startTime,
         dutyEndTime: duties.endTime,
+        dutyIsSecondDay: duties.isSecondDay,
         dutyTypeName: dutyTypes.name
       })
       .from(actualDuties)
@@ -59,10 +62,11 @@ export default async function SchedulePage({
       .leftJoin(duties, eq(actualDuties.dutyId, duties.id))
       .leftJoin(dutyTypes, eq(duties.dutyTypeId, dutyTypes.id))
       .where(eq(actualDuties.date, selectedDate))
-      .orderBy(asc(dutyTypes.name), asc(duties.displayOrder), asc(duties.name)),
+      .orderBy(asc(dutyTypes.name), asc(duties.isSecondDay), asc(duties.startTime), asc(duties.displayOrder), asc(duties.name)),
     db
       .select({
         id: employeeAbsences.id,
+        employeeId: employeeAbsences.employeeId,
         startDate: employeeAbsences.startDate,
         endDate: employeeAbsences.endDate,
         employeeFirstName: employees.firstName,
@@ -77,7 +81,9 @@ export default async function SchedulePage({
     db.select().from(schedulePublications).where(eq(schedulePublications.date, selectedDate)).limit(1)
   ]);
 
-  const grouped = Map.groupBy(actualRows, (row) => row.dutyTypeName || "Без тип");
+  const absentEmployeeIds = new Set(absenceRows.map((row) => row.employeeId).filter(Boolean));
+  const visibleActualRows = actualRows.filter((row) => !row.employeeId || !absentEmployeeIds.has(row.employeeId));
+  const grouped = Map.groupBy(visibleActualRows, (row) => row.dutyTypeName || "Без тип");
   const isPublished = Boolean(publication?.publishedAt && !publication.invalidatedAt);
   const isConfirmed = Boolean(publication?.confirmedAt);
 
@@ -124,22 +130,31 @@ export default async function SchedulePage({
                 <p className="text-sm text-slate-600">Реални назначения: {rows.length}</p>
               </div>
               <div className="grid gap-px bg-rail-line md:grid-cols-2 xl:grid-cols-3">
-                {rows.map((row) => (
-                  <article key={row.id} className="bg-white p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h4 className="font-semibold">{row.dutyName ?? "-"}</h4>
-                        <p className="mt-1 text-sm text-slate-600">
-                          {asTime(row.startTimeOverride) || asTime(row.dutyStartTime)} - {asTime(row.endTimeOverride) || asTime(row.dutyEndTime)}
-                        </p>
+                {[...Map.groupBy(rows, (row) => row.dutyId ?? row.dutyName ?? row.id).entries()].map(([dutyKey, dutyRows]) => {
+                  const base = dutyRows[0];
+
+                  return (
+                    <article key={dutyKey} className="bg-white p-4">
+                      <h4 className="font-semibold">{base?.dutyName ?? "-"}</h4>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {asTime(base?.startTimeOverride ?? null) || asTime(base?.dutyStartTime ?? null)} - {asTime(base?.endTimeOverride ?? null) || asTime(base?.dutyEndTime ?? null)}
+                      </p>
+                      <div className="mt-4 grid gap-2">
+                        {(["chief", "conductor"] as const).map((role) => {
+                          const assigned = dutyRows.find((row) => row.assignmentRole === role);
+
+                          return (
+                            <div key={role} className="rounded border border-rail-line bg-slate-50 px-3 py-2">
+                              <p className="text-xs font-medium text-slate-500">{roleLabels[role]}</p>
+                              <p className="mt-1 text-sm font-semibold">{assigned ? [assigned.employeeFirstName, assigned.employeeLastName].filter(Boolean).join(" ") || "-" : "-"}</p>
+                              {assigned?.startTimeOverride || assigned?.endTimeOverride ? <p className="mt-1 text-xs text-rail-signal">коригирано</p> : null}
+                            </div>
+                          );
+                        })}
                       </div>
-                      <span className="rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
-                        {roleLabels[(row.assignmentRole ?? "conductor") as keyof typeof roleLabels]}
-                      </span>
-                    </div>
-                    <p className="mt-4 text-sm font-medium">{[row.employeeFirstName, row.employeeLastName].filter(Boolean).join(" ") || "-"}</p>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             </div>
           )) : (

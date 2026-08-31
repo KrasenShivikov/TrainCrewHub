@@ -1,16 +1,20 @@
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { Plus, Save, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { EditDialog } from "@/components/edit-dialog";
+import { ScheduleKeyDutyOrderForm } from "@/components/schedule-key-duty-order-form";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
-import { scheduleKeys } from "@/db/schema";
+import { duties, dutyTypes, scheduleKeyDuties, scheduleKeys } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
 import {
+  attachDutyToScheduleKeyAction,
+  createDutyForScheduleKeyAction,
   createScheduleKeyAction,
   deleteScheduleKeyAction,
+  reorderScheduleKeyDutiesAction,
   updateScheduleKeyAction
 } from "./actions";
 
@@ -22,7 +26,32 @@ const scheduleTypeLabels = {
 
 export default async function ScheduleKeysPage() {
   await requirePermission("schedule_keys", "view");
-  const rows = await getDb().select().from(scheduleKeys).orderBy(asc(scheduleKeys.validFrom), asc(scheduleKeys.name));
+  const db = getDb();
+  const [rows, dutyOrderRows, dutyCatalogRows, dutyTypeRows] = await Promise.all([
+    db.select().from(scheduleKeys).orderBy(asc(scheduleKeys.validFrom), asc(scheduleKeys.name)),
+    db
+      .select({
+        scheduleKeyId: scheduleKeyDuties.scheduleKeyId,
+        dutyId: duties.id,
+        dutyName: duties.name,
+        dutyTypeName: dutyTypes.name
+      })
+      .from(scheduleKeyDuties)
+      .innerJoin(duties, eq(scheduleKeyDuties.dutyId, duties.id))
+      .leftJoin(dutyTypes, eq(duties.dutyTypeId, dutyTypes.id))
+      .orderBy(asc(scheduleKeyDuties.displayOrder), asc(duties.displayOrder), asc(duties.name)),
+    db
+      .select({
+        id: duties.id,
+        name: duties.name,
+        dutyTypeName: dutyTypes.name
+      })
+      .from(duties)
+      .leftJoin(dutyTypes, eq(duties.dutyTypeId, dutyTypes.id))
+      .orderBy(asc(duties.name)),
+    db.select().from(dutyTypes).orderBy(asc(dutyTypes.name))
+  ]);
+  const dutiesByScheduleKey = Map.groupBy(dutyOrderRows, (row) => row.scheduleKeyId);
 
   return (
     <AppShell>
@@ -60,6 +89,17 @@ export default async function ScheduleKeysPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
+                        <EditDialog title="Подредба на повески" buttonLabel="Повески">
+                          <ScheduleKeyDutyOrderForm
+                            attachAction={attachDutyToScheduleKeyAction}
+                            createAction={createDutyForScheduleKeyAction}
+                            reorderAction={reorderScheduleKeyDutiesAction}
+                            scheduleKeyId={row.id}
+                            duties={dutiesByScheduleKey.get(row.id) ?? []}
+                            dutyCatalog={dutyCatalogRows}
+                            dutyTypes={dutyTypeRows}
+                          />
+                        </EditDialog>
                         <EditDialog>
                           <ScheduleKeyForm action={updateScheduleKeyAction} title="Редакция" buttonLabel="Запази" scheduleKey={row} />
                         </EditDialog>
