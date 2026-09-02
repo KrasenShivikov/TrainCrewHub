@@ -6,6 +6,8 @@ import { z } from "zod";
 
 import { getDb } from "@/db";
 import { absenceReasons, actualDuties, duties, employeeAbsences, plannedDuties, scheduleChangeEvents, scheduleKeyDuties } from "@/db/schema";
+import { createSecondDayActualDutyForParent, secondDayFlashSuffix } from "@/lib/actual-duty-second-day";
+import { findActualDutyRestConflict } from "@/lib/actual-duty-rest-window";
 import { requirePermission } from "@/lib/auth/permissions";
 import { setFlash } from "@/lib/flash";
 
@@ -343,13 +345,26 @@ export async function copyPlannedToActualAction(formData: FormData) {
     return;
   }
 
-  await db.insert(actualDuties).values({
+  const restConflict = await findActualDutyRestConflict({
+    date: planned.date,
+    employeeId: planned.employeeId,
+    dutyId: planned.dutyId
+  });
+  if (restConflict) {
+    await setFlash({ kind: "error", text: restConflict });
+    return;
+  }
+
+  const [createdActual] = await db.insert(actualDuties).values({
     date: planned.date,
     employeeId: planned.employeeId,
     dutyId: planned.dutyId,
     assignmentRole: planned.assignmentRole,
+    originalEmployeeId: planned.employeeId,
+    originalDutyId: planned.dutyId,
+    originalAssignmentRole: planned.assignmentRole,
     reportedAt: new Date()
-  });
+  }).returning({ id: actualDuties.id });
   await db.insert(scheduleChangeEvents).values({
     date: planned.date,
     employeeId: planned.employeeId,
@@ -357,9 +372,112 @@ export async function copyPlannedToActualAction(formData: FormData) {
     action: "planned_duty_copied_to_actual",
     createdBy: user.id
   });
+  const secondDayResult = await createSecondDayActualDutyForParent({
+    date: planned.date,
+    employeeId: planned.employeeId,
+    dutyId: planned.dutyId,
+    assignmentRole: planned.assignmentRole,
+    sourceActualDutyId: createdActual.id,
+    createdBy: user.id
+  });
 
-  await setFlash({ kind: "success", text: "Планираната повеска е копирана в действителни." });
+  await setFlash({ kind: "success", text: `Планираната повеска е копирана в действителни.${secondDayFlashSuffix(secondDayResult)}` });
   revalidatePath("/actual-duties");
   revalidatePath("/schedule");
   revalidatePlannedDutyViews(planned.date, planned.employeeId, planned.dutyId);
+  if (secondDayResult.status === "created" || secondDayResult.status === "already-created" || secondDayResult.status === "slot-conflict") {
+    revalidatePlannedDutyViews(secondDayResult.date, planned.employeeId, secondDayResult.dutyId);
+  }
+}
+
+export async function copySelectedPlannedToActualAction(formData: FormData) {
+  await requirePermission("planned_duties", "create");
+  const { user } = await requirePermission("actual_duties", "create");
+  const ids = formData.getAll("ids").map(String).filter(Boolean);
+
+  if (!ids.length) {
+    await setFlash({ kind: "error", text: "Избери поне една планирана повеска за прехвърляне." });
+    return;
+  }
+
+  const db = getDb();
+  const selectedRows = await db.select().from(plannedDuties).where(inArray(plannedDuties.id, ids));
+  const validRows = selectedRows.filter((row) => row.employeeId && row.dutyId);
+  const invalidCount = selectedRows.length - validRows.length;
+  let copiedCount = 0;
+  let secondDayCreatedCount = 0;
+  let secondDayConflictCount = 0;
+  let conflictCount = 0;
+  let restConflictCount = 0;
+
+  for (const planned of validRows) {
+    const conflict = await findActualDutyConflict(planned.date, planned.employeeId!);
+    if (conflict) {
+      conflictCount += 1;
+      continue;
+    }
+
+    const restConflict = await findActualDutyRestConflict({
+      date: planned.date,
+      employeeId: planned.employeeId!,
+      dutyId: planned.dutyId!
+    });
+    if (restConflict) {
+      restConflictCount += 1;
+      continue;
+    }
+
+    const [createdActual] = await db.insert(actualDuties).values({
+      date: planned.date,
+      employeeId: planned.employeeId,
+      dutyId: planned.dutyId,
+      assignmentRole: planned.assignmentRole,
+      originalEmployeeId: planned.employeeId,
+      originalDutyId: planned.dutyId,
+      originalAssignmentRole: planned.assignmentRole,
+      reportedAt: new Date()
+    }).returning({ id: actualDuties.id });
+    await db.insert(scheduleChangeEvents).values({
+      date: planned.date,
+      employeeId: planned.employeeId,
+      dutyId: planned.dutyId,
+      action: "planned_duty_copied_to_actual",
+      createdBy: user.id
+    });
+    const secondDayResult = await createSecondDayActualDutyForParent({
+      date: planned.date,
+      employeeId: planned.employeeId!,
+      dutyId: planned.dutyId!,
+      assignmentRole: planned.assignmentRole,
+      sourceActualDutyId: createdActual.id,
+      createdBy: user.id
+    });
+    if (secondDayResult.status === "created") {
+      secondDayCreatedCount += 1;
+    }
+    if (secondDayResult.status === "employee-conflict" || secondDayResult.status === "slot-conflict") {
+      secondDayConflictCount += 1;
+    }
+    copiedCount += 1;
+    revalidatePlannedDutyViews(planned.date, planned.employeeId, planned.dutyId);
+    if (secondDayResult.status === "created" || secondDayResult.status === "already-created" || secondDayResult.status === "slot-conflict") {
+      revalidatePlannedDutyViews(secondDayResult.date, planned.employeeId, secondDayResult.dutyId);
+    }
+  }
+
+  revalidatePath("/actual-duties");
+  revalidatePath("/schedule");
+
+  if (!copiedCount) {
+    await setFlash({ kind: "error", text: "Няма прехвърлени повески. Провери за конфликти или непълни записи." });
+    return;
+  }
+
+  const parts = [`Прехвърлени към реални: ${copiedCount}`];
+  if (secondDayCreatedCount) parts.push(`създадени втори дни: ${secondDayCreatedCount}`);
+  if (secondDayConflictCount) parts.push(`втори дни с конфликт: ${secondDayConflictCount}`);
+  if (conflictCount) parts.push(`пропуснати с конфликт: ${conflictCount}`);
+  if (restConflictCount) parts.push(`пропуснати с под 12 ч. почивка: ${restConflictCount}`);
+  if (invalidCount) parts.push(`пропуснати непълни: ${invalidCount}`);
+  await setFlash({ kind: "success", text: `${parts.join(". ")}.` });
 }

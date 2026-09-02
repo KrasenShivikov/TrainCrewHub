@@ -15,6 +15,7 @@ import { defaultPageSize, pageOffset, paginationMeta, parsePage } from "@/lib/pa
 import {
   autoGeneratePlannedDutiesAction,
   copyPlannedToActualAction,
+  copySelectedPlannedToActualAction,
   createPlannedDutyAction,
   deletePlannedDutyAction,
   updatePlannedDutyAction
@@ -161,14 +162,25 @@ export default async function PlannedDutiesPage({
         </section>
 
         <section className="overflow-hidden rounded border border-rail-line bg-white shadow-panel">
-          <div className="border-b border-rail-line px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rail-line px-4 py-3">
             <h3 className="text-base font-semibold">Списък планирани повески</h3>
-            <p className="text-sm text-slate-600">Общо: {paginatedRows.totalItems}</p>
+            <div>
+              <p className="text-sm text-slate-600">Общо: {paginatedRows.totalItems}</p>
+            </div>
+            <form id="copy-selected-planned-form" action={copySelectedPlannedToActualAction}>
+              <button className="inline-flex h-10 items-center gap-2 rounded bg-rail-route px-4 text-sm font-medium text-white hover:bg-emerald-800">
+                <ArrowRight className="h-4 w-4" />
+                Избраните към реални
+              </button>
+            </form>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[980px] text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
+                  <th className="px-4 py-3">
+                    <span className="sr-only">Избор</span>
+                  </th>
                   <th className="px-4 py-3">Дата</th>
                   <th className="px-4 py-3">Служител</th>
                   <th className="px-4 py-3">Роля</th>
@@ -180,6 +192,16 @@ export default async function PlannedDutiesPage({
               <tbody className="divide-y divide-rail-line">
                 {rows.length ? rows.map((row) => (
                   <tr key={row.id} className="align-top">
+                    <td className="px-4 py-3">
+                      <input
+                        form="copy-selected-planned-form"
+                        type="checkbox"
+                        name="ids"
+                        value={row.id}
+                        className="h-4 w-4 rounded border-rail-line text-rail-route"
+                        aria-label="Избери планирана повеска"
+                      />
+                    </td>
                     <td className="px-4 py-3 font-medium">{row.date}</td>
                     <td className="px-4 py-3">{[row.employeeFirstName, row.employeeLastName].filter(Boolean).join(" ") || "-"}</td>
                     <td className="px-4 py-3">{roleLabels[(row.assignmentRole ?? "conductor") as keyof typeof roleLabels]}</td>
@@ -214,7 +236,7 @@ export default async function PlannedDutiesPage({
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-slate-500">Няма планирани повески.</td>
+                    <td colSpan={7} className="px-4 py-10 text-center text-slate-500">Няма планирани повески.</td>
                   </tr>
                 )}
               </tbody>

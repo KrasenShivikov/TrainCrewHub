@@ -11,7 +11,7 @@ import { getDb } from "@/db";
 import { actualDuties, duties, dutyTypes, employees } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
 import { defaultPageSize, pageOffset, paginationMeta, parsePage } from "@/lib/pagination";
-import { createActualDutyAction, deleteActualDutyAction, updateActualDutyAction } from "./actions";
+import { createActualDutyAction, deleteActualDutyAction, deleteSelectedActualDutiesAction, updateActualDutyAction } from "./actions";
 
 const roleLabels = {
   chief: "Началник влак",
@@ -120,13 +120,23 @@ export default async function ActualDutiesPage({
 
         <section className="overflow-hidden rounded border border-rail-line bg-white shadow-panel">
           <div className="border-b border-rail-line px-4 py-3">
-            <h3 className="text-base font-semibold">Списък реални повески</h3>
-            <p className="text-sm text-slate-600">Общо: {paginatedRows.totalItems}</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-semibold">Списък реални повески</h3>
+                <p className="text-sm text-slate-600">Общо: {paginatedRows.totalItems}</p>
+              </div>
+              <form id="delete-selected-actual-duties-form" action={deleteSelectedActualDutiesAction}>
+                <ConfirmSubmit message="Да изтрия ли избраните реални повески?" className="inline-flex h-10 items-center gap-2 rounded border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50">
+                  <Trash2 className="h-4 w-4" /> Изтрий избраните
+                </ConfirmSubmit>
+              </form>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1040px] text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
+                  <th className="w-12 px-4 py-3"></th>
                   <th className="px-4 py-3">Дата</th>
                   <th className="px-4 py-3">Служител</th>
                   <th className="px-4 py-3">Роля</th>
@@ -138,6 +148,9 @@ export default async function ActualDutiesPage({
               <tbody className="divide-y divide-rail-line">
                 {rows.length ? rows.map((row) => (
                   <tr key={row.id} className="align-top">
+                    <td className="px-4 py-3">
+                      <input form="delete-selected-actual-duties-form" type="checkbox" name="ids" value={row.id} className="h-4 w-4 rounded border-rail-line text-rail-route focus:ring-rail-route" />
+                    </td>
                     <td className="px-4 py-3 font-medium">{row.date}</td>
                     <td className="px-4 py-3">{[row.employeeFirstName, row.employeeLastName].filter(Boolean).join(" ") || "-"}</td>
                     <td className="px-4 py-3">{roleLabels[(row.assignmentRole ?? "conductor") as keyof typeof roleLabels]}</td>
@@ -161,7 +174,7 @@ export default async function ActualDutiesPage({
                     </td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-500">Няма реални назначения.</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-500">Няма реални назначения.</td></tr>
                 )}
               </tbody>
             </table>

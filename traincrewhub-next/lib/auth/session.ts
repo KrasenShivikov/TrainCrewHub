@@ -57,23 +57,42 @@ export async function getCurrentUser() {
     return null;
   }
 
-  const [session] = await getDb()
-    .select({
-      sessionId: sessions.id,
-      expiresAt: sessions.expiresAt,
-      userId: users.id,
-      email: users.email,
-      username: users.username,
-      isActive: users.isActive,
-      firstName: userProfiles.firstName,
-      lastName: userProfiles.lastName,
-      employeeId: userProfiles.employeeId
-    })
-    .from(sessions)
-    .innerJoin(users, eq(sessions.userId, users.id))
-    .leftJoin(userProfiles, eq(userProfiles.id, users.id))
-    .where(and(eq(sessions.tokenHash, hashToken(token)), gt(sessions.expiresAt, new Date())))
-    .limit(1);
+  let session:
+    | {
+        sessionId: string;
+        expiresAt: Date;
+        userId: string;
+        email: string;
+        username: string;
+        isActive: boolean;
+        firstName: string | null;
+        lastName: string | null;
+        employeeId: string | null;
+      }
+    | undefined;
+
+  try {
+    [session] = await getDb()
+      .select({
+        sessionId: sessions.id,
+        expiresAt: sessions.expiresAt,
+        userId: users.id,
+        email: users.email,
+        username: users.username,
+        isActive: users.isActive,
+        firstName: userProfiles.firstName,
+        lastName: userProfiles.lastName,
+        employeeId: userProfiles.employeeId
+      })
+      .from(sessions)
+      .innerJoin(users, eq(sessions.userId, users.id))
+      .leftJoin(userProfiles, eq(userProfiles.id, users.id))
+      .where(and(eq(sessions.tokenHash, hashToken(token)), gt(sessions.expiresAt, new Date())))
+      .limit(1);
+  } catch {
+    cookieStore.delete(sessionCookieName);
+    return null;
+  }
 
   if (!session || !session.isActive) {
     return null;

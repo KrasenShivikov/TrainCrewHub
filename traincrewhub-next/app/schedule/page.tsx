@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { asc, and, eq, gte, lte } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import { AppShell } from "@/components/app-shell";
+import { ScheduleAssignmentBoard } from "@/components/schedule-assignment-board";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
 import {
@@ -11,22 +13,14 @@ import {
   dutyTypes,
   employeeAbsences,
   employees,
+  positions,
   schedulePublications
 } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
-import { confirmScheduleAction, publishScheduleAction } from "./actions";
-
-const roleLabels = {
-  chief: "Началник влак",
-  conductor: "Кондуктор"
-};
+import { assignMissingActualDutyAction, confirmScheduleAction, publishScheduleAction, restoreActualDutyOriginalAction } from "./actions";
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function asTime(value: string | null) {
-  return value ? value.slice(0, 5) : "";
 }
 
 export default async function SchedulePage({
@@ -38,8 +32,9 @@ export default async function SchedulePage({
   const params = await searchParams;
   const selectedDate = params.date || todayIso();
   const db = getDb();
+  const originalEmployees = alias(employees, "original_employees");
 
-  const [actualRows, absenceRows, [publication]] = await Promise.all([
+  const [actualRows, absenceRows, [publication], employeeRows] = await Promise.all([
     db
       .select({
         id: actualDuties.id,
@@ -47,10 +42,14 @@ export default async function SchedulePage({
         dutyId: actualDuties.dutyId,
         employeeId: actualDuties.employeeId,
         assignmentRole: actualDuties.assignmentRole,
+        originalEmployeeId: actualDuties.originalEmployeeId,
+        originalAssignmentRole: actualDuties.originalAssignmentRole,
         startTimeOverride: actualDuties.startTimeOverride,
         endTimeOverride: actualDuties.endTimeOverride,
         employeeFirstName: employees.firstName,
         employeeLastName: employees.lastName,
+        originalEmployeeFirstName: originalEmployees.firstName,
+        originalEmployeeLastName: originalEmployees.lastName,
         dutyName: duties.name,
         dutyStartTime: duties.startTime,
         dutyEndTime: duties.endTime,
@@ -59,6 +58,7 @@ export default async function SchedulePage({
       })
       .from(actualDuties)
       .leftJoin(employees, eq(actualDuties.employeeId, employees.id))
+      .leftJoin(originalEmployees, eq(actualDuties.originalEmployeeId, originalEmployees.id))
       .leftJoin(duties, eq(actualDuties.dutyId, duties.id))
       .leftJoin(dutyTypes, eq(duties.dutyTypeId, dutyTypes.id))
       .where(eq(actualDuties.date, selectedDate))
@@ -79,11 +79,50 @@ export default async function SchedulePage({
       .where(and(lte(employeeAbsences.startDate, selectedDate), gte(employeeAbsences.endDate, selectedDate)))
       .orderBy(asc(employees.lastName), asc(employees.firstName)),
     db.select().from(schedulePublications).where(eq(schedulePublications.date, selectedDate)).limit(1)
+    ,
+    db
+      .select({
+        id: employees.id,
+        firstName: employees.firstName,
+        lastName: employees.lastName,
+        positionTitle: positions.title
+      })
+      .from(employees)
+      .leftJoin(positions, eq(employees.positionId, positions.id))
+      .where(eq(employees.isActive, true))
+      .orderBy(asc(employees.lastName), asc(employees.firstName))
   ]);
 
   const absentEmployeeIds = new Set(absenceRows.map((row) => row.employeeId).filter(Boolean));
+  const assignedEmployeeIds = new Set(actualRows.map((row) => row.employeeId).filter(Boolean));
   const visibleActualRows = actualRows.filter((row) => !row.employeeId || !absentEmployeeIds.has(row.employeeId));
-  const grouped = Map.groupBy(visibleActualRows, (row) => row.dutyTypeName || "Без тип");
+  const visibleDutyKeys = new Set(visibleActualRows.map((row) => row.dutyId ?? row.dutyName ?? row.id));
+  const placeholderDutyKeys = new Set<string>();
+  const boardRows = actualRows.flatMap((row) => {
+    const dutyKey = row.dutyId ?? row.dutyName ?? row.id;
+
+    if (!row.employeeId || !absentEmployeeIds.has(row.employeeId)) {
+      return [row];
+    }
+
+    if (visibleDutyKeys.has(dutyKey) || placeholderDutyKeys.has(dutyKey)) {
+      return [];
+    }
+
+    placeholderDutyKeys.add(dutyKey);
+
+    return [{
+      ...row,
+      id: `placeholder-${row.id}`,
+      employeeId: null,
+      assignmentRole: null,
+      startTimeOverride: null,
+      endTimeOverride: null,
+      employeeFirstName: null,
+      employeeLastName: null
+    }];
+  });
+  const availableEmployees = employeeRows.filter((row) => !absentEmployeeIds.has(row.id) && !assignedEmployeeIds.has(row.id));
   const isPublished = Boolean(publication?.publishedAt && !publication.invalidatedAt);
   const isConfirmed = Boolean(publication?.confirmedAt);
 
@@ -122,47 +161,13 @@ export default async function SchedulePage({
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
-        <section className="space-y-5">
-          {[...grouped.entries()].length ? [...grouped.entries()].map(([typeName, rows]) => (
-            <div key={typeName} className="overflow-hidden rounded border border-rail-line bg-white shadow-panel">
-              <div className="border-b border-rail-line px-4 py-3">
-                <h3 className="text-base font-semibold">{typeName}</h3>
-                <p className="text-sm text-slate-600">Реални назначения: {rows.length}</p>
-              </div>
-              <div className="grid gap-px bg-rail-line md:grid-cols-2 xl:grid-cols-3">
-                {[...Map.groupBy(rows, (row) => row.dutyId ?? row.dutyName ?? row.id).entries()].map(([dutyKey, dutyRows]) => {
-                  const base = dutyRows[0];
-
-                  return (
-                    <article key={dutyKey} className="bg-white p-4">
-                      <h4 className="font-semibold">{base?.dutyName ?? "-"}</h4>
-                      <p className="mt-1 text-sm text-slate-600">
-                        {asTime(base?.startTimeOverride ?? null) || asTime(base?.dutyStartTime ?? null)} - {asTime(base?.endTimeOverride ?? null) || asTime(base?.dutyEndTime ?? null)}
-                      </p>
-                      <div className="mt-4 grid gap-2">
-                        {(["chief", "conductor"] as const).map((role) => {
-                          const assigned = dutyRows.find((row) => row.assignmentRole === role);
-
-                          return (
-                            <div key={role} className="rounded border border-rail-line bg-slate-50 px-3 py-2">
-                              <p className="text-xs font-medium text-slate-500">{roleLabels[role]}</p>
-                              <p className="mt-1 text-sm font-semibold">{assigned ? [assigned.employeeFirstName, assigned.employeeLastName].filter(Boolean).join(" ") || "-" : "-"}</p>
-                              {assigned?.startTimeOverride || assigned?.endTimeOverride ? <p className="mt-1 text-xs text-rail-signal">коригирано</p> : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </div>
-          )) : (
-            <div className="rounded border border-dashed border-rail-line bg-white px-4 py-12 text-center text-sm text-slate-500">
-              Няма реални назначения за {selectedDate}.
-            </div>
-          )}
-        </section>
+        <ScheduleAssignmentBoard
+          date={selectedDate}
+          assignments={boardRows}
+          employees={availableEmployees}
+          assignAction={assignMissingActualDutyAction}
+          restoreAction={restoreActualDutyOriginalAction}
+        />
 
         <aside className="rounded border border-rail-line bg-white shadow-panel">
           <div className="border-b border-rail-line px-4 py-3">

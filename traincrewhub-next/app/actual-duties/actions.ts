@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, gte, lte, ne } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, ne, or } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/db";
 import { absenceReasons, actualDuties, employeeAbsences, scheduleChangeEvents } from "@/db/schema";
+import { createSecondDayActualDutyForParent, secondDayFlashSuffix, syncSecondDayActualDutyFromParent } from "@/lib/actual-duty-second-day";
+import { findActualDutyRestConflict } from "@/lib/actual-duty-rest-window";
 import { requirePermission } from "@/lib/auth/permissions";
 import { setFlash } from "@/lib/flash";
 
@@ -89,11 +91,20 @@ export async function createActualDutyAction(formData: FormData) {
     return;
   }
 
+  const restConflict = await findActualDutyRestConflict(parsed.data);
+  if (restConflict) {
+    await setFlash({ kind: "error", text: restConflict });
+    return;
+  }
+
   const db = getDb();
-  await db.insert(actualDuties).values({
+  const [createdActual] = await db.insert(actualDuties).values({
     ...parsed.data,
+    originalEmployeeId: parsed.data.employeeId,
+    originalDutyId: parsed.data.dutyId,
+    originalAssignmentRole: parsed.data.assignmentRole,
     reportedAt: new Date()
-  });
+  }).returning({ id: actualDuties.id });
   await db.insert(scheduleChangeEvents).values({
     date: parsed.data.date,
     employeeId: parsed.data.employeeId,
@@ -101,9 +112,20 @@ export async function createActualDutyAction(formData: FormData) {
     action: "actual_duty_created",
     createdBy: user.id
   });
+  const secondDayResult = await createSecondDayActualDutyForParent({
+    date: parsed.data.date,
+    employeeId: parsed.data.employeeId,
+    dutyId: parsed.data.dutyId,
+    assignmentRole: parsed.data.assignmentRole,
+    sourceActualDutyId: createdActual.id,
+    createdBy: user.id
+  });
 
-  await setFlash({ kind: "success", text: "Действителната повеска е добавена." });
+  await setFlash({ kind: "success", text: `Действителната повеска е добавена.${secondDayFlashSuffix(secondDayResult)}` });
   revalidateActualDutyViews(parsed.data.date, parsed.data.employeeId, parsed.data.dutyId);
+  if (secondDayResult.status === "created" || secondDayResult.status === "updated" || secondDayResult.status === "already-created" || secondDayResult.status === "slot-conflict") {
+    revalidateActualDutyViews(secondDayResult.date, parsed.data.employeeId, secondDayResult.dutyId);
+  }
 }
 
 export async function updateActualDutyAction(formData: FormData) {
@@ -121,6 +143,12 @@ export async function updateActualDutyAction(formData: FormData) {
     return;
   }
 
+  const restConflict = await findActualDutyRestConflict({ ...parsed.data, ignoreActualDutyIds: [id] });
+  if (restConflict) {
+    await setFlash({ kind: "error", text: restConflict });
+    return;
+  }
+
   const db = getDb();
   const [existing] = await db.select().from(actualDuties).where(eq(actualDuties.id, id)).limit(1);
 
@@ -132,9 +160,22 @@ export async function updateActualDutyAction(formData: FormData) {
     action: "actual_duty_updated",
     createdBy: user.id
   });
+  const secondDayResult = existing?.sourceActualDutyId
+    ? null
+    : await syncSecondDayActualDutyFromParent({
+        date: parsed.data.date,
+        employeeId: parsed.data.employeeId,
+        dutyId: parsed.data.dutyId,
+        assignmentRole: parsed.data.assignmentRole,
+        sourceActualDutyId: id,
+        createdBy: user.id
+      });
 
-  await setFlash({ kind: "success", text: "Действителната повеска е обновена." });
+  await setFlash({ kind: "success", text: `Действителната повеска е обновена.${secondDayResult ? secondDayFlashSuffix(secondDayResult) : ""}` });
   revalidateActualDutyViews(parsed.data.date, parsed.data.employeeId, parsed.data.dutyId);
+  if (secondDayResult?.status === "created" || secondDayResult?.status === "updated" || secondDayResult?.status === "already-created" || secondDayResult?.status === "slot-conflict") {
+    revalidateActualDutyViews(secondDayResult.date, parsed.data.employeeId, secondDayResult.dutyId);
+  }
 
   if (existing?.date && existing.date !== parsed.data.date) {
     revalidateActualDutyViews(existing.date, existing.employeeId, existing.dutyId);
@@ -168,4 +209,46 @@ export async function deleteActualDutyAction(formData: FormData) {
 
   await setFlash({ kind: "success", text: "Действителната повеска е изтрита." });
   revalidateActualDutyViews(existing.date, existing.employeeId, existing.dutyId);
+}
+
+export async function deleteSelectedActualDutiesAction(formData: FormData) {
+  const { user } = await requirePermission("actual_duties", "delete");
+  const ids = formData.getAll("ids").map(String).filter(Boolean);
+
+  if (!ids.length) {
+    await setFlash({ kind: "error", text: "Избери поне една реална повеска за изтриване." });
+    return;
+  }
+
+  const db = getDb();
+  const rowsToDelete = await db
+    .select()
+    .from(actualDuties)
+    .where(or(inArray(actualDuties.id, ids), inArray(actualDuties.sourceActualDutyId, ids)));
+
+  if (!rowsToDelete.length) {
+    await setFlash({ kind: "error", text: "Избраните реални повески не са намерени." });
+    return;
+  }
+
+  await db.delete(actualDuties).where(inArray(actualDuties.id, rowsToDelete.map((row) => row.id)));
+
+  for (const row of rowsToDelete) {
+    await db.insert(scheduleChangeEvents).values({
+      date: row.date,
+      employeeId: row.employeeId,
+      dutyId: row.dutyId,
+      action: "actual_duty_deleted",
+      createdBy: user.id
+    });
+    revalidateActualDutyViews(row.date, row.employeeId, row.dutyId);
+  }
+
+  const linkedCount = rowsToDelete.filter((row) => row.sourceActualDutyId && ids.includes(row.sourceActualDutyId)).length;
+  const parts = [`Изтрити реални повески: ${rowsToDelete.length}`];
+  if (linkedCount) {
+    parts.push(`включително втори дни: ${linkedCount}`);
+  }
+
+  await setFlash({ kind: "success", text: `${parts.join(". ")}.` });
 }
