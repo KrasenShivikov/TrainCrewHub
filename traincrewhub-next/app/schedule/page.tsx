@@ -17,6 +17,7 @@ import {
   schedulePublications
 } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
+import { loadDutiesForScheduleDate } from "@/lib/schedule-duties";
 import { assignMissingActualDutyAction, confirmScheduleAction, publishScheduleAction, restoreActualDutyOriginalAction } from "./actions";
 
 function todayIso() {
@@ -34,7 +35,7 @@ export default async function SchedulePage({
   const db = getDb();
   const originalEmployees = alias(employees, "original_employees");
 
-  const [actualRows, absenceRows, [publication], employeeRows] = await Promise.all([
+  const [actualRows, absenceRows, [publication], employeeRows, scheduleDuties] = await Promise.all([
     db
       .select({
         id: actualDuties.id,
@@ -91,6 +92,8 @@ export default async function SchedulePage({
       .leftJoin(positions, eq(employees.positionId, positions.id))
       .where(eq(employees.isActive, true))
       .orderBy(asc(employees.lastName), asc(employees.firstName))
+    ,
+    loadDutiesForScheduleDate(selectedDate)
   ]);
 
   const absentEmployeeIds = new Set(absenceRows.map((row) => row.employeeId).filter(Boolean));
@@ -98,7 +101,7 @@ export default async function SchedulePage({
   const visibleActualRows = actualRows.filter((row) => !row.employeeId || !absentEmployeeIds.has(row.employeeId));
   const visibleDutyKeys = new Set(visibleActualRows.map((row) => row.dutyId ?? row.dutyName ?? row.id));
   const placeholderDutyKeys = new Set<string>();
-  const boardRows = actualRows.flatMap((row) => {
+  const boardRowsFromActual = actualRows.flatMap((row) => {
     const dutyKey = row.dutyId ?? row.dutyName ?? row.id;
 
     if (!row.employeeId || !absentEmployeeIds.has(row.employeeId)) {
@@ -122,6 +125,30 @@ export default async function SchedulePage({
       employeeLastName: null
     }];
   });
+  const visibleBoardDutyKeys = new Set(boardRowsFromActual.map((row) => row.dutyId ?? row.dutyName ?? row.id));
+  const scheduleDutyPlaceholders = scheduleDuties
+    .filter((duty) => !visibleBoardDutyKeys.has(duty.id))
+    .map((duty) => ({
+      id: `schedule-duty-${duty.id}`,
+      date: selectedDate,
+      dutyId: duty.id,
+      employeeId: null,
+      assignmentRole: null,
+      originalEmployeeId: null,
+      originalAssignmentRole: null,
+      startTimeOverride: null,
+      endTimeOverride: null,
+      employeeFirstName: null,
+      employeeLastName: null,
+      originalEmployeeFirstName: null,
+      originalEmployeeLastName: null,
+      dutyName: duty.name,
+      dutyStartTime: duty.startTime,
+      dutyEndTime: duty.endTime,
+      dutyIsSecondDay: duty.isSecondDay,
+      dutyTypeName: duty.dutyTypeName
+    }));
+  const boardRows = [...boardRowsFromActual, ...scheduleDutyPlaceholders];
   const availableEmployees = employeeRows.filter((row) => !absentEmployeeIds.has(row.id) && !assignedEmployeeIds.has(row.id));
   const isPublished = Boolean(publication?.publishedAt && !publication.invalidatedAt);
   const isConfirmed = Boolean(publication?.confirmedAt);

@@ -89,8 +89,11 @@ export async function getCurrentUser() {
       .leftJoin(userProfiles, eq(userProfiles.id, users.id))
       .where(and(eq(sessions.tokenHash, hashToken(token)), gt(sessions.expiresAt, new Date())))
       .limit(1);
-  } catch {
-    cookieStore.delete(sessionCookieName);
+  } catch (error) {
+    // Server Components may read cookies, but Next.js only permits modifying
+    // them from a Server Action or Route Handler. Treat database/session lookup
+    // failures as an unauthenticated request and let /logout perform cleanup.
+    console.error("Unable to resolve the current session", error);
     return null;
   }
 

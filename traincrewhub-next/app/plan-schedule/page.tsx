@@ -2,15 +2,39 @@ import Link from "next/link";
 import { asc, and, eq, gte, lte } from "drizzle-orm";
 
 import { AppShell } from "@/components/app-shell";
+import { PlanSchedulePdfButton, type PlanSchedulePdfDuty } from "@/components/plan-schedule-pdf-button";
 import { SectionHeader } from "@/components/section-header";
 import { getDb } from "@/db";
 import { absenceReasons, duties, dutyTypes, employeeAbsences, employees, plannedDuties } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
+import { loadDutiesForScheduleDate } from "@/lib/schedule-duties";
 
 const roleLabels = {
   chief: "Началник влак",
   conductor: "Кондуктор"
 };
+
+type DutyCardRow = {
+  dutyIsSecondDay: boolean | null;
+  dutyStartTime: string | null;
+  dutyName: string | null;
+};
+
+function compareDutyCardRows(left: DutyCardRow | undefined, right: DutyCardRow | undefined) {
+  const leftSecondDay = Boolean(left?.dutyIsSecondDay);
+  const rightSecondDay = Boolean(right?.dutyIsSecondDay);
+  if (leftSecondDay !== rightSecondDay) {
+    return leftSecondDay ? 1 : -1;
+  }
+
+  const leftStart = left?.dutyStartTime ?? "";
+  const rightStart = right?.dutyStartTime ?? "";
+  if (leftStart !== rightStart) {
+    return leftStart.localeCompare(rightStart);
+  }
+
+  return (left?.dutyName ?? "").localeCompare(right?.dutyName ?? "");
+}
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -26,7 +50,7 @@ export default async function PlanSchedulePage({
   const selectedDate = params.date || todayIso();
   const db = getDb();
 
-  const [plannedRows, absenceRows] = await Promise.all([
+  const [plannedRows, absenceRows, scheduleDuties] = await Promise.all([
     db
       .select({
         id: plannedDuties.id,
@@ -63,12 +87,67 @@ export default async function PlanSchedulePage({
       .leftJoin(employees, eq(employeeAbsences.employeeId, employees.id))
       .leftJoin(absenceReasons, eq(employeeAbsences.reasonId, absenceReasons.id))
       .where(and(lte(employeeAbsences.startDate, selectedDate), gte(employeeAbsences.endDate, selectedDate)))
-      .orderBy(asc(employees.lastName), asc(employees.firstName))
+      .orderBy(asc(employees.lastName), asc(employees.firstName)),
+    loadDutiesForScheduleDate(selectedDate)
   ]);
 
   const absentEmployeeIds = new Set(absenceRows.map((row) => row.employeeId).filter(Boolean));
   const visiblePlannedRows = plannedRows.filter((row) => !row.employeeId || !absentEmployeeIds.has(row.employeeId));
-  const grouped = Map.groupBy(visiblePlannedRows, (row) => row.dutyTypeName || "Без тип");
+  const scheduledDutyRows = scheduleDuties.map((duty) => ({
+    id: `schedule-duty-${duty.id}`,
+    date: selectedDate,
+    dutyId: duty.id,
+    employeeId: null,
+    assignmentRole: null,
+    employeeFirstName: null,
+    employeeLastName: null,
+    dutyName: duty.name,
+    dutyStartTime: duty.startTime,
+    dutyEndTime: duty.endTime,
+    dutyIsSecondDay: duty.isSecondDay,
+    dutyTypeName: duty.dutyTypeName
+  }));
+  const scheduledDutyIds = new Set(scheduleDuties.map((duty) => duty.id));
+  const plannedRowsOutsideScheduleKeys = visiblePlannedRows.filter((row) => row.dutyId && !scheduledDutyIds.has(row.dutyId));
+  const plannedRowsForScheduleKeys = visiblePlannedRows.filter((row) => row.dutyId && scheduledDutyIds.has(row.dutyId));
+  const grouped = Map.groupBy([...scheduledDutyRows, ...plannedRowsOutsideScheduleKeys, ...plannedRowsForScheduleKeys], (row) => row.dutyTypeName || "Без тип");
+
+  const pdfDuties = [...grouped.entries()].flatMap(([typeName, rows]) =>
+    [...Map.groupBy(rows, (row) => row.dutyId ?? row.dutyName ?? row.id).entries()].map(([dutyKey, dutyRows]) => {
+      const first = dutyRows[0];
+      const employeeName = (row: (typeof dutyRows)[number]) => [row.employeeFirstName, row.employeeLastName].filter(Boolean).join(" ");
+      const pdfDuty: PlanSchedulePdfDuty & { classification: string; reportingTime: string; isSecondDay: boolean } = {
+        id: String(dutyKey),
+        name: first?.dutyName ?? "-",
+        time: [first?.dutyStartTime?.slice(0, 5), first?.dutyEndTime?.slice(0, 5)].filter(Boolean).join(" - "),
+        chiefs: dutyRows.filter((row) => row.assignmentRole === "chief").map(employeeName).filter(Boolean),
+        conductors: dutyRows.filter((row) => row.assignmentRole === "conductor").map(employeeName).filter(Boolean),
+        classification: `${typeName} ${first?.dutyName ?? ""}`.toLocaleLowerCase("bg"),
+        reportingTime: first?.dutyStartTime?.slice(0, 5) ?? "",
+        isSecondDay: Boolean(first?.dutyIsSecondDay)
+      };
+      return pdfDuty;
+    })
+  );
+  const isBusinessTrip = (duty: (typeof pdfDuties)[number]) => duty.classification.includes("командиров");
+  const isDayOff = (duty: (typeof pdfDuties)[number]) => ["свобод", "почив", "отпуск"].some((term) => duty.classification.includes(term));
+  const businessTrips = pdfDuties.filter(isBusinessTrip);
+  const daysOff = pdfDuties.filter((duty) => !isBusinessTrip(duty) && isDayOff(duty));
+  const trainDuties = pdfDuties
+    .filter((duty) => !isBusinessTrip(duty) && !isDayOff(duty))
+    .sort((left, right) => {
+      if (left.isSecondDay !== right.isSecondDay) return left.isSecondDay ? 1 : -1;
+      if (!left.reportingTime && right.reportingTime) return 1;
+      if (left.reportingTime && !right.reportingTime) return -1;
+      return left.reportingTime.localeCompare(right.reportingTime) || left.name.localeCompare(right.name, "bg");
+    });
+  const pdfAbsences = absenceRows.map((row) => ({
+    id: row.id,
+    employeeName: [row.employeeFirstName, row.employeeLastName].filter(Boolean).join(" ") || "-",
+    reason: row.reasonName ?? "-",
+    period: `${row.startDate} - ${row.endDate}`,
+    notes: row.notes ?? ""
+  }));
 
   return (
     <AppShell>
@@ -83,6 +162,13 @@ export default async function PlanSchedulePage({
         <Link href="/planned-duties" className="inline-flex h-10 items-center rounded border border-rail-line px-4 text-sm font-medium hover:bg-slate-100">
           Планирани повески
         </Link>
+        <PlanSchedulePdfButton
+          date={selectedDate}
+          trainDuties={trainDuties}
+          businessTrips={businessTrips}
+          daysOff={daysOff}
+          absences={pdfAbsences}
+        />
       </form>
 
       <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
@@ -94,7 +180,9 @@ export default async function PlanSchedulePage({
                 <p className="text-sm text-slate-600">Назначения: {rows.length}</p>
               </div>
               <div className="grid gap-px bg-rail-line md:grid-cols-2 xl:grid-cols-3">
-                {[...Map.groupBy(rows, (row) => row.dutyId ?? row.dutyName ?? row.id).entries()].map(([dutyKey, dutyRows]) => (
+                {[...Map.groupBy(rows, (row) => row.dutyId ?? row.dutyName ?? row.id).entries()]
+                  .sort(([, leftRows], [, rightRows]) => compareDutyCardRows(leftRows[0], rightRows[0]))
+                  .map(([dutyKey, dutyRows]) => (
                   <article key={dutyKey} className="bg-white p-4">
                     <h4 className="font-semibold">{dutyRows[0]?.dutyName ?? "-"}</h4>
                     <p className="mt-1 text-sm text-slate-600">{dutyRows[0]?.dutyStartTime?.slice(0, 5)} - {dutyRows[0]?.dutyEndTime?.slice(0, 5)}</p>

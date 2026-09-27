@@ -21,6 +21,7 @@ type AssignmentRow = {
   dutyName: string | null;
   dutyStartTime: string | null;
   dutyEndTime: string | null;
+  dutyIsSecondDay: boolean | null;
   dutyTypeName: string | null;
 };
 
@@ -42,6 +43,22 @@ function asTime(value: string | null) {
 
 function employeeName(firstName: string | null, lastName: string | null) {
   return [firstName, lastName].filter(Boolean).join(" ") || "-";
+}
+
+function compareDutyRows(left: AssignmentRow | undefined, right: AssignmentRow | undefined) {
+  const leftSecondDay = Boolean(left?.dutyIsSecondDay);
+  const rightSecondDay = Boolean(right?.dutyIsSecondDay);
+  if (leftSecondDay !== rightSecondDay) {
+    return leftSecondDay ? 1 : -1;
+  }
+
+  const leftStart = left?.dutyStartTime ?? "";
+  const rightStart = right?.dutyStartTime ?? "";
+  if (leftStart !== rightStart) {
+    return leftStart.localeCompare(rightStart);
+  }
+
+  return (left?.dutyName ?? "").localeCompare(right?.dutyName ?? "");
 }
 
 export function ScheduleAssignmentBoard({
@@ -157,7 +174,9 @@ export function ScheduleAssignmentBoard({
               <p className="text-sm text-slate-600">Реални назначения: {rows.length}</p>
             </div>
             <div className="grid gap-px bg-rail-line md:grid-cols-2 xl:grid-cols-3">
-              {[...Map.groupBy(rows, (row) => row.dutyId ?? row.dutyName ?? row.id).entries()].map(([dutyKey, dutyRows]) => {
+              {[...Map.groupBy(rows, (row) => row.dutyId ?? row.dutyName ?? row.id).entries()]
+                .sort(([, leftRows], [, rightRows]) => compareDutyRows(leftRows[0], rightRows[0]))
+                .map(([dutyKey, dutyRows]) => {
                 const base = dutyRows[0];
 
                 return (

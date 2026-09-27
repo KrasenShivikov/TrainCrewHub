@@ -17,6 +17,7 @@ import {
   schedulePublications
 } from "@/db/schema";
 import { requirePermission } from "@/lib/auth/permissions";
+import { loadDutiesForScheduleDate } from "@/lib/schedule-duties";
 import { confirmScheduleAction, publishScheduleAction } from "../actions";
 
 const roleLabels = {
@@ -36,6 +37,28 @@ function fullName(firstName: string | null, lastName: string | null) {
   return [firstName, lastName].filter(Boolean).join(" ") || "-";
 }
 
+type ScheduleCardRow = {
+  dutyIsSecondDay: boolean | null;
+  dutyStartTime: string | null;
+  dutyName: string | null;
+};
+
+function compareScheduleCardRows(left: ScheduleCardRow | undefined, right: ScheduleCardRow | undefined) {
+  const leftSecondDay = Boolean(left?.dutyIsSecondDay);
+  const rightSecondDay = Boolean(right?.dutyIsSecondDay);
+  if (leftSecondDay !== rightSecondDay) {
+    return leftSecondDay ? 1 : -1;
+  }
+
+  const leftStart = left?.dutyStartTime ?? "";
+  const rightStart = right?.dutyStartTime ?? "";
+  if (leftStart !== rightStart) {
+    return leftStart.localeCompare(rightStart);
+  }
+
+  return (left?.dutyName ?? "").localeCompare(right?.dutyName ?? "");
+}
+
 function publicationStatus(publication: { publishedAt: Date | null; confirmedAt: Date | null; invalidatedAt: Date | null } | undefined) {
   if (publication?.confirmedAt && !publication.invalidatedAt) {
     return { label: "Потвърден", className: "bg-emerald-50 text-emerald-700" };
@@ -52,7 +75,7 @@ export default async function ScheduleDatePage({ params }: { params: Promise<{ d
   if (!isIsoDate(date)) notFound();
 
   const db = getDb();
-  const [actualRows, absenceRows, [publication], changeRows] = await Promise.all([
+  const [actualRows, absenceRows, [publication], changeRows, scheduleDuties] = await Promise.all([
     db
       .select({
         id: actualDuties.id,
@@ -107,13 +130,34 @@ export default async function ScheduleDatePage({ params }: { params: Promise<{ d
       .leftJoin(duties, eq(scheduleChangeEvents.dutyId, duties.id))
       .where(eq(scheduleChangeEvents.date, date))
       .orderBy(desc(scheduleChangeEvents.createdAt))
-      .limit(12)
+      .limit(12),
+    loadDutiesForScheduleDate(date)
   ]);
 
   const absentEmployeeIds = new Set(absenceRows.map((row) => row.employeeId).filter(Boolean));
   const visibleActualRows = actualRows.filter((row) => !row.employeeId || !absentEmployeeIds.has(row.employeeId));
-  const grouped = Map.groupBy(visibleActualRows, (row) => row.dutyTypeName || "Без тип");
-  const byDuty = Map.groupBy(visibleActualRows.filter((row) => row.dutyId), (row) => row.dutyId as string);
+  const visibleDutyKeys = new Set(visibleActualRows.map((row) => row.dutyId ?? row.dutyName ?? row.id));
+  const scheduleDutyPlaceholders = scheduleDuties
+    .filter((duty) => !visibleDutyKeys.has(duty.id))
+    .map((duty) => ({
+      id: `schedule-duty-${duty.id}`,
+      assignmentRole: null,
+      startTimeOverride: null,
+      endTimeOverride: null,
+      dutyId: duty.id,
+      employeeId: null,
+      employeeFirstName: null,
+      employeeLastName: null,
+      employeeIsActive: null,
+      dutyName: duty.name,
+      dutyStartTime: duty.startTime,
+      dutyEndTime: duty.endTime,
+      dutyIsSecondDay: duty.isSecondDay,
+      dutyTypeName: duty.dutyTypeName
+    }));
+  const scheduleRows = [...visibleActualRows, ...scheduleDutyPlaceholders];
+  const grouped = Map.groupBy(scheduleRows, (row) => row.dutyTypeName || "Без тип");
+  const byDuty = Map.groupBy(scheduleRows.filter((row) => row.dutyId), (row) => row.dutyId as string);
   const status = publicationStatus(publication);
   const isPublished = Boolean(publication?.publishedAt && !publication.invalidatedAt);
   const isConfirmed = Boolean(publication?.confirmedAt && !publication.invalidatedAt);
@@ -128,8 +172,8 @@ export default async function ScheduleDatePage({ params }: { params: Promise<{ d
         ...(roles.has("conductor") ? [] : [`${dutyName}: липсва кондуктор.`])
       ];
     }),
-    ...visibleActualRows.flatMap((row) => row.employeeIsActive === false ? [`${fullName(row.employeeFirstName, row.employeeLastName)} е неактивен служител.`] : []),
-    ...visibleActualRows.flatMap((row) => row.startTimeOverride || row.endTimeOverride ? [`${row.dutyName ?? "Повеска"} има коригирани часове.`] : [])
+    ...scheduleRows.flatMap((row) => row.employeeIsActive === false ? [`${fullName(row.employeeFirstName, row.employeeLastName)} е неактивен служител.`] : []),
+    ...scheduleRows.flatMap((row) => row.startTimeOverride || row.endTimeOverride ? [`${row.dutyName ?? "Повеска"} има коригирани часове.`] : [])
   ];
 
   return (
@@ -181,7 +225,7 @@ export default async function ScheduleDatePage({ params }: { params: Promise<{ d
             <div key={typeName} className="overflow-hidden rounded border border-rail-line bg-white shadow-panel">
               <Header title={typeName} count={rows.length} />
               <div className="grid gap-px bg-rail-line md:grid-cols-2 xl:grid-cols-3">
-                {rows.map((row) => (
+                {[...rows].sort(compareScheduleCardRows).map((row) => (
                   <article key={row.id} className="bg-white p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>

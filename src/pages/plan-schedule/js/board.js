@@ -518,13 +518,9 @@ function chunkArray(items, chunkSize) {
 }
 
 function formatDutyTimeRange(duty) {
-  const trains = Array.isArray(duty?.duty_trains) ? duty.duty_trains : [];
-  if (trains.length) {
-    const sorted = [...trains].sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
-    const firstDeparture = (sorted[0]?.trains?.departure_time || '').slice(0, 5);
-    if (firstDeparture) {
-      return firstDeparture;
-    }
+  const firstDeparture = getFirstTrainDepartureTime(duty);
+  if (firstDeparture) {
+    return firstDeparture;
   }
 
   const start = (duty?.start_time || '').slice(0, 5);
@@ -539,6 +535,19 @@ function formatDutyTimeRange(duty) {
   }
 
   return start || end;
+}
+
+function getFirstTrainDepartureTime(duty) {
+  const trains = Array.isArray(duty?.duty_trains) ? duty.duty_trains : [];
+  if (trains.length) {
+    const sorted = [...trains].sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
+    const firstDeparture = (sorted[0]?.trains?.departure_time || '').slice(0, 5);
+    if (firstDeparture) {
+      return firstDeparture;
+    }
+  }
+
+  return '';
 }
 
 function renderCellKeyBadge(label, variant) {
